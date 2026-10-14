@@ -84,7 +84,7 @@ export const AGENT_ROSTER: AgentRosterEntry[] = [
     id: 'review-agent',
     name: '刘市',
     color: 0xf97316,
-    task: '市场：打包情报简报',
+    task: '产物：整理输出成果',
   },
   {
     id: 'data-agent',
@@ -94,14 +94,7 @@ export const AGENT_ROSTER: AgentRosterEntry[] = [
   },
 ]
 
-const BOOT_STATES: AgentState[] = [
-  'working',
-  'working',
-  'working',
-  'working',
-  'working',
-  'working',
-]
+const BOOT_STATES: AgentState[] = AGENT_ROSTER.map(() => 'idle')
 
 function buildInitialAgents(): Agent[] {
   return AGENT_ROSTER.map((entry, i) => {
@@ -116,9 +109,8 @@ function buildInitialAgents(): Agent[] {
       state,
       currentTask: state === 'idle' ? undefined : entry.task,
       assignedDeskId: desk.id,
-      facing: i % 2 === 0 ? 1 : -1,
-      viewFacing:
-        state === 'working' || state === 'thinking' ? ('back' as const) : ('front' as const),
+      facing: 1,
+      viewFacing: 'back' as const,
     }
   })
 }

@@ -11,6 +11,7 @@ const CHAIR_ALIAS = 'office-chair'
 let backgroundTexture: Texture | null = null
 let deskTexture: Texture | null = null
 let chairTexture: Texture | null = null
+let loadPromise: Promise<boolean> | null = null
 
 export function getOfficeBackgroundTexture(): Texture | null {
   return backgroundTexture
@@ -28,7 +29,7 @@ export function isOfficeAssetsReady(): boolean {
   return deskTexture != null && chairTexture != null
 }
 
-export async function loadOfficeAssets(): Promise<boolean> {
+async function loadOfficeAssetsOnce(): Promise<boolean> {
   let deskOk = false
 
   try {
@@ -84,4 +85,13 @@ export async function loadOfficeAssets(): Promise<boolean> {
   }
 
   return deskOk
+}
+
+/** 多个 Agent 空间共享同一办公室纹理加载任务，避免重复注册和并发日志。 */
+export async function loadOfficeAssets(): Promise<boolean> {
+  if (isOfficeAssetsReady() && backgroundTexture) return true
+  loadPromise ??= loadOfficeAssetsOnce()
+  const result = await loadPromise
+  if (!result) loadPromise = null
+  return result
 }

@@ -21,7 +21,8 @@ export interface DeskVisitMission {
   hostAgentId: string
   hostDeskId: string
   message: string
-  resumeTask: string
+  resumeState: AgentState
+  resumeTask?: string
   talkDuration: number
   talkRemaining?: number
   /** 当前站之后还要去的目标 */
@@ -41,6 +42,9 @@ export interface Agent {
   walkPathIndex?: number
   state: AgentState
   currentTask?: string
+  /** 作为交接接收方前的状态，仅在 talking 生命周期内暂存。 */
+  interactionResumeState?: AgentState
+  interactionResumeTask?: string
   assignedDeskId?: string
   bubbleText?: string
   customAnimation?: string

@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { ArtifactShelf } from '@/components/ArtifactShelf'
+import { MAIN_OFFICE_WORKSPACE_ID, officeSceneScopeId } from '@/config/officeWorkspaces'
 import { OfficeScene, type OfficeAgentClick } from '@/scene/OfficeScene'
+import { INITIAL_AGENTS, SCENE_HEIGHT, SCENE_WIDTH } from '@/scene/layout/officeLayout'
+import { getOfficeAgents } from '@/store/officeStore'
 import type { Agent, AgentState } from '@/types/agent'
+import type { OfficeAgentSummary } from '@/types/officeData'
 
 type AgentMenuState = {
   agent: Agent
@@ -47,40 +52,86 @@ const EMOTE_ACTIONS = [
   { label: '挥手', animation: 'emotes/wave' },
 ] as const
 
-export function OfficeCanvas() {
+type OfficeCanvasProps = {
+  workspaceId?: string
+  sessionId?: string
+  agentSummaries?: OfficeAgentSummary[]
+  interactive?: boolean
+  compact?: boolean
+  publishToStore?: boolean
+  paused?: boolean
+}
+
+function initialAgentsFromSummaries(summaries?: OfficeAgentSummary[]) {
+  return INITIAL_AGENTS.map((agent, index) => {
+    const summary = summaries?.find((item) => item.rosterNo === index + 1)
+    return summary ? { ...agent, state: summary.state, currentTask: summary.task || undefined } : { ...agent }
+  })
+}
+
+export function OfficeCanvas({ workspaceId = 'main', sessionId, agentSummaries, interactive = true, compact = false, publishToStore, paused = false }: OfficeCanvasProps = {}) {
   const hostRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<OfficeScene | null>(null)
   const readyRef = useRef(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const initialSummariesRef = useRef(agentSummaries)
+  const sceneScopeId = officeSceneScopeId(sessionId, workspaceId)
   const [menu, setMenu] = useState<AgentMenuState | null>(null)
+  const [sceneScale, setSceneScale] = useState(1)
+
+  const openMenu = useCallback((agent: Agent, rosterNo: number, x: number, y: number) => {
+    const rect = hostRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const menuWidth = Math.min(260, Math.max(220, rect.width - 24))
+    const menuHeight = Math.min(520, rect.height - 24)
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setMenu({
+      agent,
+      rosterNo,
+      x: Math.max(12, Math.min(x, rect.width - menuWidth - 12)),
+      y: Math.max(12, Math.min(y, rect.height - menuHeight - 12)),
+      agents: sceneRef.current?.getAgents() ?? getOfficeAgents(),
+      pickingTarget: false,
+    })
+  }, [])
+
+  const closeMenu = useCallback(() => {
+    setMenu(null)
+    window.setTimeout(() => restoreFocusRef.current?.focus(), 0)
+  }, [])
 
   useEffect(() => {
     const host = hostRef.current
-    if (!host) return
+    if (!host || typeof ResizeObserver === 'undefined') return
+    let cancelled = false
 
     const handleAgentClick = (event: OfficeAgentClick) => {
       const rect = host.getBoundingClientRect()
-      const menuWidth = 260
-      const menuHeight = Math.min(520, rect.height - 24)
-      setMenu({
-        agent: event.agent,
-        rosterNo: event.rosterNo,
-        x: Math.max(12, Math.min(event.clientX - rect.left, rect.width - menuWidth - 12)),
-        y: Math.max(12, Math.min(event.clientY - rect.top, rect.height - menuHeight - 12)),
-        agents: sceneRef.current?.getAgents() ?? [],
-        pickingTarget: false,
-      })
+      openMenu(event.agent, event.rosterNo, event.clientX - rect.left, event.clientY - rect.top)
     }
 
-    const scene = new OfficeScene({ onAgentClick: handleAgentClick })
+    const scene = new OfficeScene({
+      onAgentClick: interactive ? handleAgentClick : undefined,
+      initialAgents: initialAgentsFromSummaries(initialSummariesRef.current),
+      bridgeWorkspaceId: sceneScopeId,
+      publishToStore: publishToStore ?? workspaceId === MAIN_OFFICE_WORKSPACE_ID,
+    })
     sceneRef.current = scene
 
     const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect
       if (width <= 0 || height <= 0) return
+      setSceneScale(Math.min(width / SCENE_WIDTH, height / SCENE_HEIGHT))
 
       if (!readyRef.current) {
         readyRef.current = true
-        void scene.init(host, width, height)
+        void scene.init(host, width, height).catch((error: unknown) => {
+          readyRef.current = false
+          if (!cancelled) {
+            console.error('[办公室] 场景初始化失败。', error)
+          }
+        })
         return
       }
 
@@ -90,12 +141,22 @@ export function OfficeCanvas() {
     ro.observe(host)
 
     return () => {
+      cancelled = true
       ro.disconnect()
       readyRef.current = false
       scene.destroy()
       sceneRef.current = null
     }
-  }, [])
+  }, [interactive, openMenu, publishToStore, sceneScopeId, workspaceId])
+
+  useEffect(() => {
+    if (!agentSummaries) return
+    for (const agent of agentSummaries) sceneRef.current?.setAgentState(agent.id, agent.state, agent.task || undefined)
+  }, [agentSummaries])
+
+  useEffect(() => {
+    sceneRef.current?.setVisualPaused(paused)
+  }, [paused])
 
   useEffect(() => {
     const close = (event: PointerEvent) => {
@@ -103,10 +164,27 @@ export function OfficeCanvas() {
       if (target instanceof Element && target.closest('.agent-action-menu')) {
         return
       }
-      setMenu(null)
+      closeMenu()
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMenu(null)
+      if (!menu) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closeMenu()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? [])
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
 
     document.addEventListener('pointerdown', close)
@@ -115,18 +193,23 @@ export function OfficeCanvas() {
       document.removeEventListener('pointerdown', close)
       document.removeEventListener('keydown', onKeyDown)
     }
-  }, [])
+  }, [closeMenu, menu])
+
+  useEffect(() => {
+    if (!menu) return
+    window.setTimeout(() => menuRef.current?.querySelector<HTMLElement>('button')?.focus(), 0)
+  }, [menu])
 
   const applyState = (state: AgentState, task?: string) => {
     if (!menu) return
     sceneRef.current?.setAgentState(menu.agent.id, state, task)
-    setMenu(null)
+    closeMenu()
   }
 
   const playEmote = (animation: string, label: string) => {
     if (!menu) return
     sceneRef.current?.playAgentAnimation(menu.agent.id, animation, label)
-    setMenu(null)
+    closeMenu()
   }
 
   const startInteraction = (targetRosterNo: number, targetName: string) => {
@@ -136,19 +219,34 @@ export function OfficeCanvas() {
       targetRosterNo,
       `${targetName}，我来和你同步一下。`,
     )
-    setMenu(null)
+    closeMenu()
   }
 
   return (
-    <div ref={hostRef} className="office-canvas">
+    <div ref={hostRef} className={`office-canvas${compact ? ' is-compact' : ''}`} aria-label={`${workspaceId} 办公室场景`} data-visual-paused={paused ? 'true' : 'false'}>
+      <div
+        className="office-scene-overlay"
+        style={{
+          width: SCENE_WIDTH,
+          height: SCENE_HEIGHT,
+          transform: `translate(-50%, -50%) scale(${sceneScale})`,
+        } as CSSProperties}
+      >
+        <ArtifactShelf variant="wall" owner="当前协作空间" workspaceId={workspaceId} />
+      </div>
       {menu && (
         <div
+          ref={menuRef}
           className="agent-action-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${menu.agent.name} 操作菜单`}
           style={{ left: menu.x, top: menu.y }}
         >
           <div className="agent-action-head">
             <span className="agent-action-name">{menu.agent.name}</span>
             <span className="agent-action-state">{menu.agent.state}</span>
+            <button type="button" className="agent-action-close" aria-label="关闭人物操作菜单" onClick={closeMenu}>×</button>
           </div>
 
           {!menu.pickingTarget ? (

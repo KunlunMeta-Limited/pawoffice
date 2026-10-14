@@ -12,6 +12,10 @@ const TASK_STYLE = {
   fontSize: 10,
   fill: 0x666666,
   fontStyle: 'italic' as const,
+  align: 'center' as const,
+  wordWrap: true,
+  wordWrapWidth: 150,
+  lineHeight: 13,
 }
 
 const STATE_COLORS: Record<string, number> = {

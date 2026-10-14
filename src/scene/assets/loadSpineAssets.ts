@@ -5,6 +5,7 @@ import { Assets } from 'pixi.js'
 export type SpineCharacterPack = 'chibi-stickers'
 
 let loaded = false
+let loadPromise: Promise<boolean> | null = null
 let activePack: SpineCharacterPack | null = null
 let skeletonAlias = ''
 let atlasAlias = ''
@@ -17,15 +18,13 @@ const PACKS: { id: SpineCharacterPack; skeleton: string; atlas: string }[] = [
   },
 ]
 
-export async function loadSpineAssets(): Promise<boolean> {
-  if (loaded) return true
-
+async function loadSpineAssetsOnce(): Promise<boolean> {
   for (const pack of PACKS) {
     const sk = `${pack.id}-skeleton`
     const at = `${pack.id}-atlas`
     try {
-      Assets.add({ alias: sk, src: pack.skeleton })
-      Assets.add({ alias: at, src: pack.atlas })
+      if (!Assets.resolver.hasKey(sk)) Assets.add({ alias: sk, src: pack.skeleton })
+      if (!Assets.resolver.hasKey(at)) Assets.add({ alias: at, src: pack.atlas })
       await Assets.load([sk, at])
       skeletonAlias = sk
       atlasAlias = at
@@ -40,6 +39,15 @@ export async function loadSpineAssets(): Promise<boolean> {
 
   console.error('[Spine] 角色资源加载失败，将使用程序绘制')
   return false
+}
+
+/** 多个完整办公室并发初始化时共享同一资源注册与加载任务。 */
+export async function loadSpineAssets(): Promise<boolean> {
+  if (loaded) return true
+  loadPromise ??= loadSpineAssetsOnce()
+  const result = await loadPromise
+  if (!result) loadPromise = null
+  return result
 }
 
 export function isSpineReady(): boolean {

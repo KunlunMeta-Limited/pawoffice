@@ -268,7 +268,6 @@ export class SpineCharacter extends Container {
       this.addChild(spine)
       this.drawShadow(cfg.shadow)
       this.setAgentColor(this.agentColor)
-      this.applyAnimation()
     } catch (err) {
       console.error(`[SpineCharacter] 角色创建失败 (${pack}):`, err)
       this.ready = false

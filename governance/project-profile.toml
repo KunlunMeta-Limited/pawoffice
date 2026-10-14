@@ -1,0 +1,115 @@
+schema = "ai-governance/project/v1"
+project_id = "ai-office-react-main-b-line"
+display_name = "AI Office B 线受控治理"
+language = ["typescript"]
+baseline = [
+  "docs/governance/项目设计基线.md",
+  "docs/governance/需求验收基线.md",
+]
+changes_dir = "docs/changes"
+contract_dirs = ["contracts"]
+
+[owners]
+architecture = "AI Office 架构负责人"
+api = "Office 接口负责人"
+security = "网关安全负责人"
+test = "AI Office 测试负责人"
+
+[[repositories]]
+id = "ai-office-react-main"
+root = "."
+language = "typescript"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L4"
+pattern = "scripts/action-gateway.mjs"
+owner = "网关安全负责人"
+reason = "网关接收外部动作并扫描/写入指定目录，是本地安全和数据边界"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = "src/types/officeAction.ts"
+owner = "跨项目接口负责人"
+reason = "动作联合类型决定 OpenPaw 与场景消费的字段和枚举"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = "src/types/officeData.ts"
+owner = "Office 接口负责人"
+reason = "侧栏和网关共享的会话、任务、文件、权限数据契约"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = "src/services/officeGatewayApi.ts"
+owner = "Office 接口负责人"
+reason = "所有 /office/* 请求的类型化边界和错误处理集中于此"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L2"
+pattern = "src/services/officeActionDispatcher.ts"
+owner = "场景负责人"
+reason = "控制动作 FIFO、繁忙策略和每次一个拜访任务"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L2"
+pattern = "src/scene/officeSceneBridge.ts"
+owner = "场景负责人"
+reason = "场景初始化缓存和拜访串行执行，错误会丢动作或覆盖任务"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = "package.json"
+owner = "构建负责人"
+reason = "脚本和依赖入口决定本地与 CI 的构建测试方式"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = "package-lock.json"
+owner = "构建负责人"
+reason = "锁定依赖解析结果，保证可复现安装"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = ".github/workflows/**"
+owner = "发布与安全负责人"
+reason = "CI 是契约、注释和构建门禁入口"
+
+[[protected_paths]]
+repository = "ai-office-react-main"
+level = "L3"
+pattern = ".github/CODEOWNERS"
+owner = "架构负责人"
+reason = "责任映射决定敏感网关和契约文件的人工复核人"
+
+[[commands]]
+name = "代码检查"
+repository = "ai-office-react-main"
+run = "npm run lint"
+risk = "medium"
+
+[[commands]]
+name = "生产构建"
+repository = "ai-office-react-main"
+run = "npm run build"
+risk = "medium"
+
+[[commands]]
+name = "单元与组件测试"
+repository = "ai-office-react-main"
+run = "npm run test"
+risk = "high"
+
+[[commands]]
+name = "端到端测试"
+repository = "ai-office-react-main"
+run = "npm run test:e2e"
+risk = "high"

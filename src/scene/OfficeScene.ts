@@ -2,9 +2,9 @@ import { Application, Container, Graphics, Sprite } from 'pixi.js'
 import type { FederatedPointerEvent } from 'pixi.js'
 import type { Agent, AgentState } from '@/types/agent'
 import {
-  AGENT_ROSTER,
   COLORS,
   DESKS,
+  AGENT_ROSTER,
   INITIAL_AGENTS,
   pickHandoffVisitMessage,
   SCENE_HEIGHT,
@@ -17,7 +17,8 @@ import { AnimationSystem } from '@/scene/systems/AnimationSystem'
 import { OfficeSimulator } from '@/scene/simulation/OfficeSimulator'
 import { bindOfficeScene } from '@/scene/officeSceneBridge'
 import {
-  hasPendingVisitQueue,
+  isVisitParticipantPending,
+  isVisitVisitorPending,
   notifyVisitMissionActivity,
 } from '@/services/officeActionDispatcher'
 import { setOfficeAgents } from '@/store/officeStore'
@@ -34,82 +35,99 @@ export type OfficeAgentClick = {
   clientY: number
 }
 
-type AutoWorkflowStep = {
-  visitor: number
-  host: number
-  message: string
-}
-
-const AUTO_WORKFLOW_MAX_ACTIVE = 2
-const AUTO_WORKFLOW_INTERVAL = 1.2
-
-const AUTO_WORKFLOW_STEPS: AutoWorkflowStep[] = [
-  { visitor: 1, host: 2, message: '新的任务来了，先帮我扫一下信息源。' },
-  { visitor: 2, host: 3, message: '资料已经找到，麻烦整理一下。' },
-  { visitor: 3, host: 4, message: '这份可以进入撰写了。' },
-  { visitor: 4, host: 6, message: '初稿好了，请帮忙审一下。' },
-  { visitor: 6, host: 4, message: '这里需要改一版，我标了重点。' },
-  { visitor: 5, host: 1, message: '市场简报已经打包，请看一下。' },
-  { visitor: 1, host: 5, message: '同步一下调研方向，准备发给团队。' },
-  { visitor: 3, host: 6, message: '归档完成，合规队列可以接手。' },
-  { visitor: 2, host: 5, message: '这些来源适合市场情报线。' },
-  { visitor: 4, host: 1, message: '修改稿已完成，等你签批。' },
-]
-
 export class OfficeScene {
   private app: Application | null = null
+  /** Monotonically invalidates an in-flight Pixi/asset initialization. */
+  private initVersion = 0
+  private disposedApps = new WeakSet<Application>()
   private world: Container | null = null
   private agentEntities = new Map<string, AgentEntity>()
   private deskEntities = new Map<string, DeskEntity>()
   private officeLayer: Container | null = null
+  private visualPaused = false
+  private deferredAgentStates = new Map<string, { state: AgentState; task?: string }>()
 
   private movement = new MovementSystem()
   private animation = new AnimationSystem()
   private simulator = new OfficeSimulator()
 
   private agents: Agent[] = INITIAL_AGENTS.map((a) => ({ ...a }))
-  private autoWorkflowTimer = 0.8
-  private autoWorkflowIndex = 0
+  private readonly bridgeWorkspaceId: string | null
+  private readonly publishToStore: boolean
   private readonly options: {
     onAgentClick?: (event: OfficeAgentClick) => void
   }
 
-  constructor(options: { onAgentClick?: (event: OfficeAgentClick) => void } = {}) {
+  constructor(options: { onAgentClick?: (event: OfficeAgentClick) => void; initialAgents?: Agent[]; bridgeWorkspaceId?: string; publishToStore?: boolean } = {}) {
     this.options = options
+    this.agents = options.initialAgents?.map((agent) => ({ ...agent })) ?? INITIAL_AGENTS.map((agent) => ({ ...agent }))
+    this.bridgeWorkspaceId = options.bridgeWorkspaceId ?? null
+    this.publishToStore = options.publishToStore !== false
   }
 
   async init(container: HTMLElement, width: number, height: number) {
+    const version = ++this.initVersion
     const app = new Application()
-    await app.init({
-      width,
-      height,
-      backgroundColor: COLORS.floor,
-      antialias: true,
-      resolution: window.devicePixelRatio || 1,
-      autoDensity: true,
-    })
+    try {
+      await app.init({
+        width,
+        height,
+        backgroundColor: COLORS.floor,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      })
 
-    this.app = app
-    container.appendChild(app.canvas)
+      // React can unmount the canvas while Pixi or assets are still loading.
+      // Dispose the local app and leave no stale bridge/canvas behind.
+      if (version !== this.initVersion) {
+        this.disposeApp(app)
+        return
+      }
 
-    this.world = new Container()
-    app.stage.addChild(this.world)
-    this.fitStage(width, height)
+      this.app = app
+      container.appendChild(app.canvas)
 
-    await loadSpineAssets()
-    const officeOk = await loadOfficeAssets()
-    if (!officeOk) {
-      console.error(
-        '[Office] desk.png / chair.png 加载失败，工位将使用矢量占位图。请检查 public/assets/office/ 并硬刷新。',
-      )
+      this.world = new Container()
+      app.stage.addChild(this.world)
+      this.fitStage(width, height)
+
+      await loadSpineAssets()
+      if (version !== this.initVersion) {
+        this.disposeApp(app)
+        return
+      }
+
+      const officeOk = await loadOfficeAssets()
+      if (version !== this.initVersion) {
+        this.disposeApp(app)
+        return
+      }
+      if (!officeOk) {
+        console.error(
+          '[办公室] desk.png / chair.png 加载失败，工位将使用矢量占位图。请检查 public/assets/office/ 并硬刷新。',
+        )
+      }
+
+      this.drawMap(this.world)
+      this.spawnOffice(this.world)
+      this.pushDataToEntities()
+
+      if (version !== this.initVersion) {
+        this.disposeApp(app)
+        return
+      }
+      app.ticker.add(this.onTick)
+      if (this.bridgeWorkspaceId) bindOfficeScene(this, this.bridgeWorkspaceId)
+    } catch (error) {
+      // A failed initialization must not leave a partially mounted Pixi app.
+      if (this.app === app) {
+        this.destroy()
+      } else {
+        this.disposeApp(app)
+      }
+      throw error
     }
-
-    this.drawMap(this.world)
-    this.spawnOffice(this.world)
-    this.pushDataToEntities()
-
-    app.ticker.add(this.onTick)
-    bindOfficeScene(this)
   }
 
   /** 名册序号从 1 开始：visitor 去找 host 说一句话后回座继续工作 */
@@ -146,27 +164,59 @@ export class OfficeScene {
     return this.agents.map((agent) => ({ ...agent }))
   }
 
+  /** 设置纯视觉暂停；不改写角色状态、任务、路径或 mission。 */
+  setVisualPaused(paused: boolean) {
+    this.visualPaused = paused
+  }
+
+  /** 返回场景是否处于纯视觉暂停状态。 */
+  isVisualPaused() {
+    return this.visualPaused
+  }
+
   setAgentState(id: string, state: AgentState, task?: string) {
+    const rosterNo = AGENT_ROSTER.findIndex((entry) => entry.id === id) + 1
+    const currentVisitHost = this.agents.some((agent) => {
+      const mission = agent.mission
+      return mission?.kind === 'desk_visit'
+        && mission.phase !== 'return'
+        && mission.hostAgentId === id
+    })
+    const visitParticipant = this.agents.some((agent) => {
+      const mission = agent.mission
+      if (mission?.kind !== 'desk_visit') return false
+      const isVisitor = agent.id === id
+      const isCurrentHost = mission.phase !== 'return' && mission.hostAgentId === id
+      const isQueuedHost = mission.queue.some((stop) => stop.hostAgentId === id)
+      return isVisitor || isCurrentHost || isQueuedHost
+    })
+    const queuedParticipant = Boolean(this.bridgeWorkspaceId) && rosterNo > 0 && isVisitParticipantPending(rosterNo, this.bridgeWorkspaceId!)
+    if (visitParticipant || queuedParticipant) {
+      // Host 往往会在工具很快结束后立即发送 idle。若此处直接应用，原实现会
+      // 清空王明的 mission 和路径，导致还没走到对方工位，交接动画就消失。
+      // 只保留最后状态，当前拜访结束后再落地。
+      this.deferredAgentStates.set(id, { state, task })
+      if (
+        currentVisitHost
+        && (state === 'working' || state === 'thinking')
+        && task
+      ) {
+        this.agents = this.agents.map((agent) => agent.id === id
+          ? {
+              ...agent,
+              interactionResumeState: state,
+              interactionResumeTask: task,
+            }
+          : agent)
+      }
+      return
+    }
+    this.deferredAgentStates.delete(id)
     this.agents = this.agents.map((agent) => {
       if (agent.id !== id) return agent
-      return {
-        ...agent,
-        state,
-        currentTask: task,
-        targetX: undefined,
-        targetY: undefined,
-        walkPath: undefined,
-        walkPathIndex: undefined,
-        mission: undefined,
-        bubbleText: undefined,
-        customAnimation: undefined,
-        viewFacing:
-          state === 'working' || state === 'thinking'
-            ? ('back' as const)
-            : agent.viewFacing,
-      }
+      return this.withAgentState(agent, state, task)
     })
-    setOfficeAgents(this.agents)
+    this.publishAgents()
     this.pushDataToEntities()
   }
 
@@ -188,11 +238,11 @@ export class OfficeScene {
         facing: 1 as const,
       }
     })
-    setOfficeAgents(this.agents)
+    this.publishAgents()
     this.pushDataToEntities()
     this.agentEntities.get(id)?.playCustomAnimation(animation, task)
     this.pullDataFromEntities()
-    setOfficeAgents(this.agents)
+    this.publishAgents()
   }
 
   resize(containerWidth: number, containerHeight: number) {
@@ -225,16 +275,48 @@ export class OfficeScene {
   }
 
   destroy() {
-    bindOfficeScene(null)
+    this.initVersion += 1
+    if (this.bridgeWorkspaceId) bindOfficeScene(null, this.bridgeWorkspaceId, this)
     this.app?.ticker.remove(this.onTick)
-    this.app?.destroy(true, { children: true })
+    if (this.app) this.disposeApp(this.app)
     this.app = null
     this.agentEntities.clear()
     this.deskEntities.clear()
+    this.deferredAgentStates.clear()
     this.officeLayer = null
   }
 
+  private disposeApp(app: Application) {
+    if (this.disposedApps.has(app)) return
+    this.disposedApps.add(app)
+    if (this.app === app) {
+      if (this.bridgeWorkspaceId) bindOfficeScene(null, this.bridgeWorkspaceId, this)
+      this.app = null
+      this.world = null
+      this.agentEntities.clear()
+      this.deskEntities.clear()
+      this.deferredAgentStates.clear()
+      this.officeLayer = null
+    }
+    try {
+      // `Application.init()` can fail before a renderer exists (for example
+      // when WebGL is unavailable), so avoid calling destroy on a half-built
+      // application whose renderer field is still null.
+      if (app.renderer) {
+        // Pixi 的 Application.destroy 会先销毁 renderer；多场景同时卸载时，
+        // 再由 stage 子节点归还文字纹理会访问已经释放的纹理池。先在 renderer
+        // 存活期间销毁场景树，再只回收 renderer/canvas，避免共享文本重复回收。
+        app.stage?.destroy({ children: true })
+        app.destroy({ removeView: true }, false)
+      }
+      else app.stage?.destroy({ children: true })
+    } catch (error) {
+      console.warn('[办公室] 场景资源清理失败。', error)
+    }
+  }
+
   private onTick = (ticker: { deltaTime: number }) => {
+    if (this.visualPaused) return
     const dt = Math.min(ticker.deltaTime / 60, 0.05)
 
     this.agents = this.simulator.tick(dt, this.agents)
@@ -250,81 +332,78 @@ export class OfficeScene {
     )
     this.pushDataToEntities()
 
-    // 先同步 store 并消费外部队列，再补 Demo，避免空闲窗口被自动工作流吞掉
-    setOfficeAgents(this.agents)
-    notifyVisitMissionActivity(this.agents)
-    this.updateAutoWorkflow(dt)
+    // 先完成 mission 调度与延迟状态落地，再只发布一次最终快照，避免
+    // 订阅面板在同一帧观察到 working -> idle 的短暂闪烁。
+    if (this.bridgeWorkspaceId) notifyVisitMissionActivity(this.agents, this.bridgeWorkspaceId)
+    if (this.applyDeferredAgentStates()) this.pushDataToEntities()
 
     this.animation.update(this.agentEntities, dt)
     this.sortOfficeDepth()
     this.syncDeskOccupancy()
 
-    setOfficeAgents(this.agents)
+    this.publishAgents()
   }
 
-  private updateAutoWorkflow(dt: number) {
-    this.autoWorkflowTimer -= dt
-    if (this.autoWorkflowTimer > 0) return
-
-    // 外部 HTTP 拜访优先：有待执行命令时不启动新的 Demo 拜访
-    if (hasPendingVisitQueue()) {
-      this.autoWorkflowTimer = 0.35
-      return
+  private withAgentState(agent: Agent, state: AgentState, task?: string): Agent {
+    return {
+      ...agent,
+      state,
+      currentTask: task,
+      targetX: undefined,
+      targetY: undefined,
+      walkPath: undefined,
+      walkPathIndex: undefined,
+      mission: undefined,
+      bubbleText: undefined,
+      customAnimation: undefined,
+      interactionResumeState: undefined,
+      interactionResumeTask: undefined,
+      viewFacing:
+        state === 'working' || state === 'thinking'
+          ? ('back' as const)
+          : agent.viewFacing,
     }
-
-    const activeCount = this.agents.filter((agent) => agent.mission).length
-    if (activeCount >= AUTO_WORKFLOW_MAX_ACTIVE) {
-      this.autoWorkflowTimer = 0.35
-      return
-    }
-
-    const step = this.nextAvailableWorkflowStep()
-    if (!step) {
-      this.autoWorkflowTimer = 0.45
-      return
-    }
-
-    const visitorName = AGENT_ROSTER[step.visitor - 1]?.name ?? `#${step.visitor}`
-    const message = `${visitorName}：${step.message}`
-    this.agents = this.simulator.startDeskVisit(
-      this.agents,
-      step.visitor,
-      step.host,
-      message,
-    )
-    this.pushDataToEntities()
-    this.autoWorkflowTimer = AUTO_WORKFLOW_INTERVAL
   }
 
-  private nextAvailableWorkflowStep(): AutoWorkflowStep | null {
-    for (let i = 0; i < AUTO_WORKFLOW_STEPS.length; i++) {
-      const index = (this.autoWorkflowIndex + i) % AUTO_WORKFLOW_STEPS.length
-      const step = AUTO_WORKFLOW_STEPS[index]!
-      if (this.canStartWorkflowStep(step)) {
-        this.autoWorkflowIndex = (index + 1) % AUTO_WORKFLOW_STEPS.length
-        return step
-      }
-    }
-    return null
+  private publishAgents() {
+    if (this.publishToStore) setOfficeAgents(this.agents)
   }
 
-  private canStartWorkflowStep(step: AutoWorkflowStep): boolean {
-    const visitor = this.agents[step.visitor - 1]
-    const host = this.agents[step.host - 1]
-    if (!visitor || !host || visitor.id === host.id) return false
-
-    const busyIds = new Set<string>()
-    for (const agent of this.agents) {
-      if (agent.mission) {
-        busyIds.add(agent.id)
-        busyIds.add(agent.mission.hostAgentId)
+  private applyDeferredAgentStates(): boolean {
+    if (this.deferredAgentStates.size === 0) return false
+    let changed = false
+    this.agents = this.agents.map((agent) => {
+      const deferred = this.deferredAgentStates.get(agent.id)
+      if (!deferred) return agent
+      const stillVisiting = this.agents.some((visitor) => {
+        const mission = visitor.mission
+        if (mission?.kind !== 'desk_visit') return false
+        const isVisitor = visitor.id === agent.id
+        const isCurrentHost = mission.phase !== 'return'
+          && mission.hostAgentId === agent.id
+        const isQueuedHost = mission.queue.some((stop) => stop.hostAgentId === agent.id)
+        return isVisitor || isCurrentHost || isQueuedHost
+      })
+      const rosterNo = AGENT_ROSTER.findIndex((entry) => entry.id === agent.id) + 1
+      const stillQueued = Boolean(this.bridgeWorkspaceId) && rosterNo > 0 && isVisitParticipantPending(rosterNo, this.bridgeWorkspaceId!)
+      const waitingAsVisitor = Boolean(this.bridgeWorkspaceId) && rosterNo > 0 && isVisitVisitorPending(rosterNo, this.bridgeWorkspaceId!)
+      if (stillVisiting || stillQueued) {
+        if (waitingAsVisitor && agent.state === 'idle') {
+          changed = true
+          return {
+            ...agent,
+            state: 'working' as const,
+            currentTask: '等待交接',
+            viewFacing: 'back' as const,
+          }
+        }
+        return agent
       }
-      if (agent.state === 'walking' || agent.customAnimation) {
-        busyIds.add(agent.id)
-      }
-    }
-
-    return !busyIds.has(visitor.id) && !busyIds.has(host.id)
+      this.deferredAgentStates.delete(agent.id)
+      changed = true
+      return this.withAgentState(agent, deferred.state, deferred.task)
+    })
+    return changed
   }
 
   private sortOfficeDepth() {
@@ -400,18 +479,20 @@ export class OfficeScene {
     }
 
     for (const agent of this.agents) {
-      const entity = new AgentEntity(agent)
+      const entity = new AgentEntity(agent, Boolean(this.options.onAgentClick))
       this.agentEntities.set(agent.id, entity)
       entity.zIndex = agent.y
-      entity.on('pointertap', (event: FederatedPointerEvent) => {
-        event.stopPropagation()
-        this.options.onAgentClick?.({
-          agent: { ...entity.data },
-          rosterNo: this.agents.findIndex((a) => a.id === agent.id) + 1,
-          clientX: event.clientX,
-          clientY: event.clientY,
+      if (this.options.onAgentClick) {
+        entity.on('pointertap', (event: FederatedPointerEvent) => {
+          event.stopPropagation()
+          this.options.onAgentClick?.({
+            agent: { ...entity.data },
+            rosterNo: this.agents.findIndex((a) => a.id === agent.id) + 1,
+            clientX: event.clientX,
+            clientY: event.clientY,
+          })
         })
-      })
+      }
       layer.addChild(entity)
     }
 

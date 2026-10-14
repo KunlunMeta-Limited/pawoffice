@@ -20,7 +20,7 @@ export class AgentEntity extends Container {
   private walkPhase = 0
   private useSpine = false
 
-  constructor(agent: Agent) {
+  constructor(agent: Agent, interactive = true) {
     super()
     this.agentId = agent.id
     this.agent = { ...agent }
@@ -46,9 +46,11 @@ export class AgentEntity extends Container {
       this.initFallbackGraphics()
     }
 
-    this.eventMode = 'static'
-    this.cursor = 'pointer'
-    this.hitArea = new Rectangle(-34, -92, 68, 124)
+    if (interactive) {
+      this.eventMode = 'static'
+      this.cursor = 'pointer'
+      this.hitArea = new Rectangle(-34, -92, 68, 124)
+    }
 
     this.syncVisual()
     this.position.set(agent.x, agent.y)
@@ -160,9 +162,9 @@ export class AgentEntity extends Container {
     }
 
     this.bubble.update(dt)
-    this.statusLabel.setState(state)
+    this.statusLabel.setState(this.statusDisplayState(state))
     this.statusLabel.setTask(
-      state === 'working' || state === 'thinking' ? this.agent.currentTask : undefined,
+      state !== 'idle' && state !== 'talking' ? this.agent.currentTask : undefined,
     )
     this.updateOverlayPositions()
   }
@@ -183,9 +185,9 @@ export class AgentEntity extends Container {
 
   private syncVisual() {
     this.statusLabel.setName(this.agent.name)
-    this.statusLabel.setState(this.agent.state)
+    this.statusLabel.setState(this.statusDisplayState(this.agent.state))
     this.statusLabel.setTask(
-      this.agent.state === 'working' || this.agent.state === 'thinking'
+      this.agent.state !== 'idle' && this.agent.state !== 'talking'
         ? this.agent.currentTask
         : undefined,
     )
@@ -201,6 +203,22 @@ export class AgentEntity extends Container {
       this.drawFallbackBody(this.agent.state, 0)
     }
     this.updateOverlayPositions()
+  }
+
+  private statusDisplayState(state: AgentState): AgentState {
+    if (
+      this.agent.mission?.kind === 'desk_visit'
+      || (
+        state === 'talking'
+        && (
+          this.agent.interactionResumeState === 'working'
+          || this.agent.interactionResumeState === 'thinking'
+        )
+      )
+    ) {
+      return 'working'
+    }
+    return state
   }
 
   private initFallbackGraphics() {

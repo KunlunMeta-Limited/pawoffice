@@ -36,6 +36,10 @@ export class OfficeSimulator {
       const desk = this.deskFor(agent)
       const roster = AGENT_ROSTER.find((r) => r.id === agent.id)
       const visitor = visitorByHost.get(agent.id)
+      if (!visitor && agent.state === 'talking' && agent.interactionResumeState) {
+        // 保留一帧交谈态，由 afterMovement 统一恢复并清理 interactionResume*。
+        return agent
+      }
       const toward = visitor
         ? talkFacingToward(agent.x, agent.y, visitor.x, visitor.y)
         : agent.customAnimation

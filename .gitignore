@@ -1,4 +1,25 @@
 node_modules
 dist
 .dev-server.log
+*.log
 *.tsbuildinfo
+.eslintcache
+test-results
+playwright-report
+coverage
+.DS_Store
+Thumbs.db
+*.exe
+*.dll
+*.pdb
+
+# Local environment and runtime state
+.env
+.env.*
+!.env.example
+.runtime/
+
+# Local screenshots and accidental shell artifacts
+/test-results-*.png
+/.exe/
+/net use/

@@ -14,7 +14,15 @@ import { MovementSystem } from '@/scene/systems/MovementSystem'
 import type { AgentEntity } from '@/scene/entities/AgentEntity'
 import { talkFacingToward } from '@/scene/systems/movementFacing'
 
-const DEFAULT_TALK_SEC = 3.5
+const MIN_TALK_SEC = 2.5
+const MAX_TALK_SEC = 6
+
+export function talkDurationForMessage(message: string): number {
+  return Math.min(
+    MAX_TALK_SEC,
+    Math.max(MIN_TALK_SEC, 2.2 + Array.from(message).length * 0.055),
+  )
+}
 
 export function rosterAgentAt(agents: Agent[], rosterNo: number): Agent | undefined {
   const i = rosterNo - 1
@@ -78,13 +86,14 @@ function assignGotoHost(
   return {
     ...walking,
     bubbleText: undefined,
-    currentTask: HANDOFF_STATUS.delivering,
+    currentTask: stop.message,
   }
 }
 
 function missionForStops(
   stops: DeskVisitStop[],
-  resumeTask: string,
+  resumeState: Agent['state'],
+  resumeTask: string | undefined,
   talkDuration: number,
 ): DeskVisitMission | null {
   if (stops.length === 0) return null
@@ -95,6 +104,7 @@ function missionForStops(
     hostAgentId: current.hostAgentId,
     hostDeskId: current.hostDeskId,
     message: current.message,
+    resumeState,
     resumeTask,
     talkDuration,
     queue,
@@ -107,14 +117,14 @@ export function startDeskVisit(
   visitorRosterNo: number,
   hostRosterNo: number,
   message: string,
-  talkDuration = DEFAULT_TALK_SEC,
+  talkDuration?: number,
 ): Agent[] {
   return startDeskVisitTour(
     agents,
     visitorRosterNo,
     [hostRosterNo],
     () => message,
-    talkDuration,
+    talkDuration ?? talkDurationForMessage(message),
   )
 }
 
@@ -124,7 +134,7 @@ export function startDeskVisitTour(
   visitorRosterNo: number,
   hostRosterNos: number[],
   messageFn: DeskVisitMessageFn = defaultVisitMessage,
-  talkDuration = DEFAULT_TALK_SEC,
+  talkDuration?: number,
 ): Agent[] {
   const visitor = rosterAgentAt(agents, visitorRosterNo)
   if (!visitor || hostRosterNos.length === 0) return agents
@@ -132,12 +142,49 @@ export function startDeskVisitTour(
   const stops = buildStops(agents, hostRosterNos, messageFn).filter(
     (s) => s.hostAgentId !== visitor.id,
   )
+  const activeMission = visitor.mission?.kind === 'desk_visit' ? visitor.mission : null
+  if (activeMission) {
+    const scheduledHostIds = new Set([
+      activeMission.hostAgentId,
+      ...activeMission.queue.map((stop) => stop.hostAgentId),
+    ])
+    const appendedStops = stops.filter((stop) => !scheduledHostIds.has(stop.hostAgentId))
+    if (appendedStops.length === 0) return agents
+
+    return agents.map((agent) => {
+      if (agent.id !== visitor.id) return agent
+      if (activeMission.phase !== 'return') {
+        return {
+          ...agent,
+          mission: {
+            ...activeMission,
+            queue: [...activeMission.queue, ...appendedStops],
+          },
+        }
+      }
+
+      const next = appendedStops[0]!
+      const queue = appendedStops.slice(1)
+      const going = assignGotoHost(agent, next, agents)
+      return {
+        ...going,
+        mission: {
+          ...activeMission,
+          phase: 'goto' as const,
+          hostAgentId: next.hostAgentId,
+          hostDeskId: next.hostDeskId,
+          message: next.message,
+          queue,
+          talkRemaining: undefined,
+        },
+      }
+    })
+  }
   const mission = missionForStops(
     stops,
-    visitor.currentTask ??
-      AGENT_ROSTER[visitorRosterNo - 1]?.task ??
-      '工作中…',
-    talkDuration,
+    visitor.state,
+    visitor.currentTask,
+    talkDuration ?? talkDurationForMessage(stops[0]?.message ?? ''),
   )
   if (!mission) return agents
 
@@ -170,7 +217,7 @@ function syncDeskVisitTalkPartners(agents: Agent[]): Agent[] {
         ...agent,
         ...toward,
         state: 'talking' as const,
-        currentTask: HANDOFF_STATUS.handingOff,
+        currentTask: mission.message,
       }
     }
 
@@ -178,9 +225,14 @@ function syncDeskVisitTalkPartners(agents: Agent[]): Agent[] {
     if (visitor) {
       return {
         ...agent,
+        interactionResumeState: agent.interactionResumeState
+          ?? (agent.state === 'talking' ? undefined : agent.state),
+        interactionResumeTask: agent.interactionResumeTask
+          ?? (agent.state === 'talking' ? undefined : agent.currentTask),
         ...talkFacingToward(agent.x, agent.y, visitor.x, visitor.y),
         state: 'talking' as const,
-        currentTask: HANDOFF_STATUS.receiving,
+        currentTask: agent.interactionResumeTask
+          ?? `接收：${visitor.mission?.message ?? '任务交接'}`,
       }
     }
 
@@ -212,7 +264,7 @@ function syncDeskVisitTalkPartners(agents: Agent[]): Agent[] {
         return {
           ...agent,
           state: 'walking' as const,
-          currentTask: HANDOFF_STATUS.delivering,
+          currentTask: mission.message,
         }
       }
       return {
@@ -225,11 +277,16 @@ function syncDeskVisitTalkPartners(agents: Agent[]): Agent[] {
     }
 
     if (agent.state === 'talking' && !agent.mission && !agent.customAnimation) {
+      const restored = { ...agent }
+      delete restored.interactionResumeState
+      delete restored.interactionResumeTask
       return {
-        ...agent,
-        state: 'working' as const,
-        viewFacing: 'back' as const,
-        currentTask: roster?.task ?? agent.currentTask,
+        ...restored,
+        state: agent.interactionResumeState ?? 'idle',
+        viewFacing: agent.interactionResumeState === 'working' || agent.interactionResumeState === 'thinking'
+          ? ('back' as const)
+          : agent.viewFacing,
+        currentTask: agent.interactionResumeTask,
         bubbleText: undefined,
       }
     }
@@ -264,7 +321,7 @@ export function processDeskVisitMissions(
       return {
         ...agent,
         state: 'talking' as const,
-        currentTask: HANDOFF_STATUS.handingOff,
+        currentTask: mission.message,
         viewFacing: toward.viewFacing,
         facing: toward.facing,
         mission: {
@@ -286,7 +343,7 @@ export function processDeskVisitMissions(
           ...agent,
           ...(toward ?? {}),
           state: 'talking' as const,
-          currentTask: HANDOFF_STATUS.handingOff,
+          currentTask: mission.message,
           mission: { ...mission, talkRemaining: left } satisfies DeskVisitMission,
         }
       }
@@ -341,8 +398,10 @@ export function processDeskVisitMissions(
       delete rest.mission
       return {
         ...rest,
-        state: 'working' as const,
-        viewFacing: 'back' as const,
+        state: mission.resumeState,
+        viewFacing: mission.resumeState === 'working' || mission.resumeState === 'thinking'
+          ? ('back' as const)
+          : agent.viewFacing,
         currentTask: mission.resumeTask,
         bubbleText: undefined,
       }
