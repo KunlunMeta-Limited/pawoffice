@@ -1,0 +1,7 @@
+{
+  "name": "@pawoffice/assets-classroom", "version": "0.1.0", "type": "module", "license": "MIT",
+  "files": ["dist", "LICENSE", "README.md"],
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dependencies": { "@pawoffice/contracts": "0.1.0", "@pawoffice/animation-frame": "0.1.0" }
+}

@@ -19,8 +19,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["apps/web/src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["apps/web/src", "examples/minimal-vanilla/src", "examples/isolated-scene/src", "examples/classroom/src", "examples/farm/src", "examples/dimetric/src"]
 }

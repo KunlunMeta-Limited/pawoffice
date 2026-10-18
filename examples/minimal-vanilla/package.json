@@ -1,0 +1,19 @@
+{
+  "name": "@pawoffice/example-minimal-vanilla",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@pawoffice/contracts": "0.1.0",
+    "@pawoffice/runtime": "0.1.0",
+    "@pawoffice/renderer-pixi": "0.1.0",
+    "@pawoffice/animation-frame": "0.1.0",
+    "@pawoffice/scene-office": "0.1.0",
+    "pixi.js": "^8.18.1",
+    "@pawoffice/assets-office": "0.1.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "@pawoffice/example-farm", "private": true, "type": "module",
+  "scripts": { "assets": "node build-assets.mjs", "predev": "npm run assets", "dev": "vite --host 127.0.0.1", "prebuild": "npm run assets", "build": "vite build" },
+  "dependencies": { "@pawoffice/contracts": "0.1.0", "@pawoffice/runtime": "0.1.0", "@pawoffice/renderer-pixi": "0.1.0", "@pawoffice/animation-frame": "0.1.0", "@pawoffice/scene-farm": "0.1.0", "@pawoffice/assets-farm": "0.1.0", "pixi.js": "^8.18.1", "react": "^19.2.6", "react-dom": "^19.2.6", "lucide-react": "^1.48.0" }
+}
