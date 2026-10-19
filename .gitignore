@@ -30,6 +30,9 @@ dist/
 /public/assets/office/reference-v1/room-whiteboard-v3.webp
 /public/assets/office/reference-v1/conference-table.webp
 /public/assets/office/reference-v1/desk-accessories.webp
+/public/assets/office/effects/work-crafting-lite-v1.png
+/public/assets/office/effects/work-crafting-lite-v1.webp
+/public/assets/office/effects/*.tmp-*
 
 # Local character authoring and publication workspaces
 /.character-staging/
