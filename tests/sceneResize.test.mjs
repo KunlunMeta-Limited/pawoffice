@@ -96,11 +96,12 @@ test('prop display frames run while visible but stop when suspended or destroyed
   assert.deepEqual(updates, [.02])
 })
 
-test('idle rendering saves frames without slowing simulation or losing visual elapsed time', t => {
+test('the office renders walking at 60 FPS and idle work at 20 FPS without slowing simulation', async t => {
+  const { createReferenceOfficePresentation } = await server.ssrLoadModule('/packages/scene-office/src/pixi/index.ts')
   let moving = false
   const actor = { id: 'one', intent: { actionId: 'core.idle' } }
   const { scene, frames, ticks } = fixture(t, {
-    rendering: { idleFPS: 20 },
+    rendering: createReferenceOfficePresentation().rendering,
     projectActors: () => [{ ...actor, intent: { actionId: moving ? 'core.walk' : 'core.idle' } }],
   })
   scene.runtime.getRevision = () => 0
@@ -132,7 +133,7 @@ test('unconfigured scenes keep their normal frame rate and projection reuses the
   assert(snapshots.every(world => world === data))
 })
 
-test('30 FPS office motion preserves elapsed time and simulation speed while editing stays at 60 FPS', t => {
+test('a custom 30 FPS profile preserves elapsed time and simulation speed while editing stays at 60 FPS', t => {
   let moving = true
   const { scene, data, frames, ticks } = fixture(t, {
     rendering: { idleFPS: 20, motionFPS: 30 },

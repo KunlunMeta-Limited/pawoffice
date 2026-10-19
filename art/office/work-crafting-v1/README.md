@@ -57,7 +57,7 @@ remain tracked. The browser never requests the original high-resolution sheet.
 - Airborne tools are shifted toward the outer shoulders so the smaller objects
   remain visible behind the character instead of disappearing behind the head.
 - Smoke keeps its original scene scale. Playback, frame count, runtime atlas
-  dimensions, layering and the office's 20/30 FPS rendering profile are unchanged.
+  dimensions and layering are unchanged. The office uses a 20/60 FPS rendering profile.
 - The original `spritesheet.png` remains untouched as the source reference.
 
 Edit prompt:
@@ -78,7 +78,8 @@ Use case: precise-object-edit. Edit target: this transparent 1448 x 1086 sprites
 - Smoke puffs, outlines and motion curls use neutral white and light gray.
   Small colored tools and golden sparkles retain their original palettes.
 - The half-size tools, runtime atlas dimensions, six-frame timing, layering,
-  fade behavior and 20/30 FPS rendering profile are unchanged. Current render
+  fade behavior are unchanged. The scene renders idle work at 20 FPS and walking
+  or seat transitions at 60 FPS. Current render
   opacity and vertical offset are listed under Source And Registration.
 - Earlier source variants are retained for authoring history, not loaded by the
   browser or included in the runtime asset catalog.
