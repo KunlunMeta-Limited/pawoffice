@@ -12,6 +12,33 @@ const taskStatuses: Record<DashboardTask['status'], string> = {
   queued: '待开始', running: '进行中', blocked: '待处理', completed: '已完成', failed: '失败',
 }
 
+export function EmployeeTaskList({ employees, tasks, appearanceIds }: {
+  employees: DashboardSnapshot['employees']
+  tasks: DashboardTask[]
+  appearanceIds: Readonly<Record<string, string>>
+}) {
+  if (!employees.length) return <p className="runtime-empty">尚无员工数据</p>
+  return <div className="runtime-employee-list">{employees.map(employee => {
+    const assignedTasks = tasks.filter(task => task.assigneeId === employee.id)
+    return <section className="runtime-employee" key={employee.id} aria-label={`${employee.name}的工作进度`}>
+      <CharacterAvatar appearanceId={employee.sceneActorId ? appearanceIds[employee.sceneActorId] : undefined} />
+      <div className="runtime-employee-body">
+        <strong>{employee.name}</strong>
+        <small>{employee.role ?? '成员'} · {employee.online === undefined ? '在线状态未知' : employee.online ? '在线' : '离线'}</small>
+        {assignedTasks.length ? <ul className="runtime-employee-tasks">{assignedTasks.map(task => {
+          const progress = task.progress
+          const knownProgress = progress !== undefined && progress >= 0
+          return <li key={task.id}>
+            <div className="runtime-employee-task-heading"><span>{task.title}</span><em className={`status-${task.status}`}>{taskStatuses[task.status]}</em></div>
+            {knownProgress && <div className="runtime-task-meter" role="progressbar" aria-label={`${task.title}进度`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div>}
+            <small className="runtime-task-progress">{knownProgress ? `${Math.round(progress)}%` : '进度未提供'}</small>
+          </li>
+        })}</ul> : <p>暂无分配任务</p>}
+      </div>
+    </section>
+  })}</div>
+}
+
 function formatTime(value: string) {
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -110,10 +137,7 @@ export function OfficeShell({ connection, dashboard, dashboardError, sceneLinkEr
         {dashboard && !dashboard.events.length && <p className="runtime-empty">暂无动态</p>}
         <div className="runtime-panel-heading runtime-tools-heading"><h2>快捷工具</h2></div>
         <div className="runtime-quick-tools"><button disabled={!hasOffice} onClick={() => exportCapabilities()}><FileJson size={19} />场景协议</button><button disabled={!hasOffice} onClick={() => exportSnapshot()}><Download size={19} />导出快照</button></div>
-      </div> : section === 'employees' ? <div className="runtime-inspector-scroll"><div className="runtime-panel-heading"><h2>团队成员</h2><span>{employees.length}</span></div><div className="runtime-employee-list">{employees.map(employee => {
-        const task = shownTasks.find(item => item.assigneeId === employee.id && item.status === 'running')
-        return <div className="runtime-employee" key={employee.id}><CharacterAvatar appearanceId={employee.sceneActorId ? appearanceIds[employee.sceneActorId] : undefined} /><div><strong>{employee.name}</strong><small>{employee.role ?? '成员'} · {employee.online === undefined ? '在线状态未知' : employee.online ? '在线' : '离线'}</small><p>{task?.title ?? '当前无执行任务'}</p></div></div>
-      })}</div></div> : renderScenePanel(section)}
+      </div> : section === 'employees' ? <div className="runtime-inspector-scroll"><div className="runtime-panel-heading"><h2>团队成员</h2><span>{employees.length}</span></div><EmployeeTaskList employees={employees} tasks={shownTasks} appearanceIds={appearanceIds} /></div> : renderScenePanel(section)}
     </aside>
   </div>
 }

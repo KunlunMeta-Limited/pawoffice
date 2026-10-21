@@ -96,9 +96,19 @@
 .runtime-quick-tools button:hover { background: #f3f6f3; }
 .runtime-employee-list { display: flex; flex-direction: column; }
 .runtime-employee { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 8px; padding: 11px 0; border-bottom: 1px solid #edf0ed; }
+.runtime-employee-body { min-width: 0; }
 .runtime-employee strong, .runtime-employee small, .runtime-employee p { display: block; margin: 0; }
 .runtime-employee small { color: #9ca49d; font-size: 10px; }
 .runtime-employee p { margin-top: 5px; color: #6b756d; font-size: 11px; }
+.runtime-employee-tasks { list-style: none; margin: 7px 0 0; padding: 0; }
+.runtime-employee-tasks li { padding: 7px 0; border-top: 1px solid #edf0ed; }
+.runtime-employee-task-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 5px; font-size: 11px; }
+.runtime-employee-task-heading span { min-width: 0; overflow-wrap: anywhere; }
+.runtime-employee-task-heading em { flex: 0 0 auto; color: #497665; font-size: 10px; font-style: normal; white-space: nowrap; }
+.runtime-employee-task-heading em.status-running { color: #397da7; }
+.runtime-employee-task-heading em.status-blocked, .runtime-employee-task-heading em.status-failed { color: #ac6a56; }
+.runtime-employee-tasks .runtime-task-meter { margin-top: 6px; }
+.runtime-employee-tasks .runtime-task-progress { margin-top: 2px; }
 .runtime-muted, .runtime-empty { color: #9da59e; font-size: 11px; }
 .runtime-panel-content h2 { display: flex; justify-content: space-between; margin: 0 0 14px; }
 .runtime-panel-content h2:not(:first-child) { margin-top: 22px; }
