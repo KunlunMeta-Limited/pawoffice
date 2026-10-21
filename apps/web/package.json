@@ -23,6 +23,8 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "zod": "^4.6.5",
-    "@pawoffice/assets-office": "0.1.0"
+    "@pawoffice/assets-office": "0.1.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   }
 }
