@@ -1,0 +1,77 @@
+{
+  "source": "source-sheet.png",
+  "scale": 0.5859872611464968,
+  "alignment": "whole-figure-shoe-anchor",
+  "targetAnchor": {
+    "x": 131,
+    "y": 342
+  },
+  "calibration": {
+    "originalBounds": {
+      "left": 55,
+      "right": 201,
+      "top": 66,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    "neutralBounds": {
+      "left": 76,
+      "right": 335,
+      "top": 27,
+      "footY": 498,
+      "edgeClipped": false
+    }
+  },
+  "sequence": [
+    {
+      "frame": 1,
+      "durationMs": 1000,
+      "phase": "端杯"
+    },
+    {
+      "frame": 2,
+      "durationMs": 150,
+      "phase": "屈肘举杯"
+    },
+    {
+      "frame": 3,
+      "durationMs": 150,
+      "phase": "靠近嘴部"
+    },
+    {
+      "frame": 4,
+      "durationMs": 170,
+      "phase": "杯沿接触嘴部"
+    },
+    {
+      "frame": 5,
+      "durationMs": 400,
+      "phase": "倾杯喝一口"
+    },
+    {
+      "frame": 4,
+      "durationMs": 150,
+      "phase": "回正杯子"
+    },
+    {
+      "frame": 6,
+      "durationMs": 170,
+      "phase": "移开杯子"
+    },
+    {
+      "frame": 7,
+      "durationMs": 170,
+      "phase": "放下"
+    },
+    {
+      "frame": 2,
+      "durationMs": 150,
+      "phase": "放下"
+    },
+    {
+      "frame": 1,
+      "durationMs": 1000,
+      "phase": "恢复端杯"
+    }
+  ]
+}

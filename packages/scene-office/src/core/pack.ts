@@ -4,6 +4,7 @@ import type { PluginContext, ScenePlugin } from '@pawoffice/runtime/plugins'
 import { SceneFault, idSchema } from '@pawoffice/protocol'
 import { scenePrimitives } from '@pawoffice/runtime/builtin/primitives'
 import { officeObjects } from './objects.ts'
+import { officeIdleCoffee } from './idleCoffee.ts'
 export { officeObjects } from './objects.ts'
 export { createOfficeWorld } from './definition.ts'
 
@@ -116,4 +117,4 @@ export const furnitureUse: ScenePlugin = {
     ] }
   } }],
 }
-export const builtinPlugins = [scenePrimitives, officeObjects, officeVisits, officeMeetings, officePersonal, furnitureUse]
+export const builtinPlugins = [scenePrimitives, officeObjects, officeVisits, officeMeetings, officePersonal, furnitureUse, officeIdleCoffee]

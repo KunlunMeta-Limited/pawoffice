@@ -63,12 +63,13 @@ test('animation time cannot create business progress or enable demo in a real-da
   const session = setup(t)
   await session.refresh()
   const before = session.getSnapshot().dashboard
-  const records = session.runtime.snapshot().records.length
+  const businessRecords = () => session.runtime.snapshot().records.filter(record => !record.command.commandId.startsWith('coffee-'))
+  const records = businessRecords()
   assert.equal(session.simulation.canDemo, false)
   assert.throws(() => session.simulation.setDemo(true), /真实数据/)
   for (let i = 0; i < 200; i++) advanceOfficeTeamSessions([session], 1000)
   assert.deepEqual(session.getSnapshot().dashboard, before)
-  assert.equal(session.runtime.snapshot().records.length, records)
+  assert.deepEqual(businessRecords(), records)
 })
 
 test('explicit example choreography does not complete business tasks', async t => {
@@ -117,7 +118,7 @@ test('background scene commands target their own runtime and visual completion d
     now += 50; advanceOfficeTeamSessions([a, b], 50)
   }
   assert.equal(a.runtime.getRecord(result.commandId).status, 'completed')
-  assert.equal(b.runtime.snapshot().activities.length, 0)
+  assert.equal(b.runtime.snapshot().activities.filter(activity => !['office.idle-coffee', 'office.idle-return'].includes(activity.capability)).length, 0)
   assert.deepEqual(a.getSnapshot().dashboard, before)
   a.runtime.submit(presentationCommand(a.runtime, a.runtime.readActors()[0].id, 'working', '只影响 A'))
   assert.equal(a.runtime.readActors()[0].presentation.title, '只影响 A')

@@ -11,12 +11,14 @@ import { loadReferenceOfficeBackground, loadReferenceOfficeObjects } from './ass
 import { createReferenceOfficePropViews, referenceMonitorAnchor } from './views/referenceOffice.ts'
 import type { WhiteboardProgress } from '../whiteboard.ts'
 import { createOfficeWorkEffects } from './effects/OfficeWorkEffect.ts'
+import { projectCoffeeActors } from './coffeePresentation.ts'
 import { loadOfficeTexture } from './assets/loadOfficeTexture.ts'
 import type { Texture } from 'pixi.js'
 export { configureOfficeAssets } from './assets/loadOfficeTexture.ts'
 
-export function createOfficePresentation(trialEnabled: () => boolean = () => true): ScenePresentationPack {
-  return {
+export function createOfficePresentation(trialEnabled: () => boolean = () => true, coffeeEffects = false,
+  supportsCoffee: (appearanceId: string) => boolean = () => true): ScenePresentationPack {
+  const pack: ScenePresentationPack = {
     id: 'pawoffice.office', cellPixels: CELL_PIXELS, resourceCount: 6, cellCenter,
     loadBackground: loadOfficeBackground,
     async loadObjects(report) {
@@ -24,7 +26,7 @@ export function createOfficePresentation(trialEnabled: () => boolean = () => tru
     },
     createPropViews: () => createOfficePropViews(trialEnabled),
     projectActors(runtime, preview) {
-      return projectAgents(runtime, false, preview).map(agent => {
+      const actors = projectAgents(runtime, false, preview).map(agent => {
         const pose = apartmentPoseForState(agent.state, agent.customAnimation, Boolean(agent.seated && !agent.customAnimation && agent.state !== 'walking'))
         const seated = pose === 'seated' || pose === 'typing', view = agent.viewFacing ?? 'front'
         const intent: ActorIntent = { actionId: pose === 'walking' ? 'core.walk' : pose === 'typing' && view === 'back' ? 'office.type'
@@ -46,12 +48,14 @@ export function createOfficePresentation(trialEnabled: () => boolean = () => tru
           bubble: agent.bubbleText,
         }
       })
+      return coffeeEffects ? projectCoffeeActors(runtime, preview ?? runtime.readWorld(), actors, supportsCoffee) : actors
     },
   }
+  return pack
 }
 
-export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean } = {}): ScenePresentationPack {
-  const base = createOfficePresentation()
+export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean } = {}): ScenePresentationPack {
+  const base = createOfficePresentation(undefined, options.coffeeEffects, options.supportsCoffee)
   const workEffects = options.workEffects ?? false
   let workEffectTexture: Texture | undefined
   const pack: ScenePresentationPack = { ...base, id: 'pawoffice.office.reference', resourceCount: workEffects ? 9 : 8,
@@ -78,8 +82,8 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
     },
   }
   if (workEffects) pack.createAmbientViews = runtime => {
-    if (!workEffectTexture) throw new Error('Load the office crafting atlas before mounting the work effect')
-    return [createOfficeWorkEffects(workEffectTexture, runtime, runtime.readActors().map(actor => actor.id), world => pack.projectActors(runtime, world))]
+    if (workEffects && !workEffectTexture) throw new Error('Load the office crafting atlas before mounting the work effect')
+    return [createOfficeWorkEffects(workEffectTexture!, runtime, runtime.readActors().map(actor => actor.id), world => pack.projectActors(runtime, world))]
   }
   return pack
 }

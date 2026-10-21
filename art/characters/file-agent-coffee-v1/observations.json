@@ -1,0 +1,71 @@
+{
+  "characterId": "file-agent",
+  "label": "周理",
+  "status": "candidate-unreviewed",
+  "observations": [
+    {
+      "frame": 1,
+      "left": 50,
+      "right": 202,
+      "top": 65,
+      "footY": 344,
+      "edgeClipped": false
+    },
+    {
+      "frame": 2,
+      "left": 49,
+      "right": 201,
+      "top": 64,
+      "footY": 344,
+      "edgeClipped": false
+    },
+    {
+      "frame": 3,
+      "left": 50,
+      "right": 203,
+      "top": 64,
+      "footY": 344,
+      "edgeClipped": false
+    },
+    {
+      "frame": 4,
+      "left": 48,
+      "right": 200,
+      "top": 65,
+      "footY": 344,
+      "edgeClipped": false
+    },
+    {
+      "frame": 5,
+      "left": 50,
+      "right": 205,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 6,
+      "left": 49,
+      "right": 203,
+      "top": 64,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 7,
+      "left": 49,
+      "right": 202,
+      "top": 64,
+      "footY": 344,
+      "edgeClipped": false
+    },
+    {
+      "frame": 8,
+      "left": 49,
+      "right": 203,
+      "top": 64,
+      "footY": 343,
+      "edgeClipped": false
+    }
+  ]
+}

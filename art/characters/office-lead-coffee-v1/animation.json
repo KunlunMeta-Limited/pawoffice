@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate-unreviewed",
+  "characterId": "office-lead",
+  "label": "王明",
+  "canvas": {
+    "width": 256,
+    "height": 384
+  },
+  "pivot": {
+    "x": 128,
+    "y": 344
+  },
+  "referenceHeight": 280,
+  "view": "right",
+  "loop": true,
+  "frames": [
+    {
+      "file": "frames/right/001.png",
+      "durationMs": 1000,
+      "phase": "端杯"
+    },
+    {
+      "file": "frames/right/002.png",
+      "durationMs": 150,
+      "phase": "屈肘举杯"
+    },
+    {
+      "file": "frames/right/003.png",
+      "durationMs": 150,
+      "phase": "靠近嘴部"
+    },
+    {
+      "file": "frames/right/004.png",
+      "durationMs": 170,
+      "phase": "杯沿接触嘴部"
+    },
+    {
+      "file": "frames/right/005.png",
+      "durationMs": 400,
+      "phase": "倾杯喝一口"
+    },
+    {
+      "file": "frames/right/004.png",
+      "durationMs": 150,
+      "phase": "回正杯子"
+    },
+    {
+      "file": "frames/right/006.png",
+      "durationMs": 170,
+      "phase": "移开杯子"
+    },
+    {
+      "file": "frames/right/007.png",
+      "durationMs": 170,
+      "phase": "放下"
+    },
+    {
+      "file": "frames/right/002.png",
+      "durationMs": 150,
+      "phase": "放下"
+    },
+    {
+      "file": "frames/right/001.png",
+      "durationMs": 1000,
+      "phase": "恢复端杯"
+    }
+  ],
+  "registrations": [
+    {
+      "file": "frames/right/001.png",
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 7,
+      "top": 50,
+      "sourceShoeAnchor": {
+        "x": 211.5,
+        "y": 498
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/002.png",
+      "crop": {
+        "left": 384,
+        "top": 0,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 14,
+      "top": 50,
+      "sourceShoeAnchor": {
+        "x": 200.5,
+        "y": 498
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/003.png",
+      "crop": {
+        "left": 768,
+        "top": 0,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 24,
+      "top": 50,
+      "sourceShoeAnchor": {
+        "x": 182.5,
+        "y": 498
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/004.png",
+      "crop": {
+        "left": 1152,
+        "top": 0,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 32,
+      "top": 50,
+      "sourceShoeAnchor": {
+        "x": 169.5,
+        "y": 498
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/005.png",
+      "crop": {
+        "left": 0,
+        "top": 512,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 6,
+      "top": 53,
+      "sourceShoeAnchor": {
+        "x": 212.5,
+        "y": 494
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/006.png",
+      "crop": {
+        "left": 384,
+        "top": 512,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 13,
+      "top": 53,
+      "sourceShoeAnchor": {
+        "x": 201.5,
+        "y": 494
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/007.png",
+      "crop": {
+        "left": 768,
+        "top": 512,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 23,
+      "top": 53,
+      "sourceShoeAnchor": {
+        "x": 184,
+        "y": 494
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    },
+    {
+      "file": "frames/right/008.png",
+      "crop": {
+        "left": 1152,
+        "top": 512,
+        "width": 384,
+        "height": 512
+      },
+      "scale": 0.5859872611464968,
+      "left": 31,
+      "top": 53,
+      "sourceShoeAnchor": {
+        "x": 170.5,
+        "y": 494
+      },
+      "targetShoeAnchor": {
+        "x": 131,
+        "y": 342
+      },
+      "alphaNoiseCutoff": 1
+    }
+  ]
+}

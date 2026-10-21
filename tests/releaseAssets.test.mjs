@@ -20,7 +20,7 @@ test('application release only includes current catalogs, live fallbacks and Paw
     assert.notEqual(name, 'favicon.svg')
   }
   const registry = JSON.parse(files.get('characters/registry.json'))
-  const allowed = new Set(['characters/registry.json'])
+  const allowed = new Set(['characters/registry.json', 'characters/coffee-registry.json'])
   for (const character of registry.characters) {
     const catalog = JSON.parse(await readFile(`${root}/asset-packs/${character.id}.json`, 'utf8'))
     for (const file of catalog.files) allowed.add(file.path)

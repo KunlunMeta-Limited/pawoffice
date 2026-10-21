@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { batchSchema, canonical, commandSchema, idSchema, pointSchema, protocolDescription, SceneFault, sceneError, terminal } from '@pawoffice/protocol'
-import type { CommandRecord, CommandResult, StartCommand } from '@pawoffice/protocol'
+import type { CommandRecord, CommandResult, SceneCommand, StartCommand } from '@pawoffice/protocol'
 import type { Activity, ActivityPlan, Actor, Checkpoint, Persistence, SceneEvent, Snapshot, World } from './model.ts'
 import { resolvePoses, unrestrictedPoses } from './actionContract.ts'
 import type { PoseSupport } from './actionContract.ts'
@@ -58,6 +58,7 @@ export class SceneRuntime {
   private activities = new Map<string, Activity>()
   private events: SceneEvent[] = []
   private listeners = new Set<() => void>()
+  private commandListeners = new Set<(command: SceneCommand) => void>()
   private now: () => number
   private persistence?: Persistence
   private persistenceError?: string
@@ -100,6 +101,11 @@ export class SceneRuntime {
   }
 
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
+  /** Optional local behaviors can release their own claims before an accepted command is queued. */
+  beforeCommand(listener: (command: SceneCommand) => void) {
+    this.commandListeners.add(listener)
+    return () => { this.commandListeners.delete(listener) }
+  }
   getRevision = () => this.revision
   get sceneId() { return this.world.sceneId }
   get isEditing() { return this.editing }
@@ -142,6 +148,10 @@ export class SceneRuntime {
     this.prune()
     // Keep two bounded slots available for immediate cancellation and stop commands.
     if (this.records.size >= (control ? MAX_RECORDS : MAX_RECORDS - CONTROL_RECORD_RESERVE)) return { commandId: command.commandId, status: 'rejected', error: { code: 'QUEUE_FULL', message: '命令记录已满' } }
+    if (command.sceneId === this.sceneId) for (const listener of this.commandListeners) {
+      try { listener(structuredClone(command)) }
+      catch (error) { console.warn('[SceneRuntime] local command observer failed', error) }
+    }
     const record: CommandRecord = { command, status: 'queued', acceptedAt: this.now() }
     this.records.set(command.commandId, record)
     if (context?.stateSource) this.stateSources.set(command.commandId, context.stateSource)
@@ -595,6 +605,7 @@ export class SceneRuntime {
     }
   }
   dispose() {
+    this.commandListeners.clear()
     if (this.disposed) return
     this.disposed = true
     for (const activity of this.activities.values()) if (activity.status === 'active') this.endActivity(activity, 'cancelled', { code: 'RUNTIME_DISPOSED', message: '场景已关闭' })
