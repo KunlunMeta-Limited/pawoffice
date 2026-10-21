@@ -1,0 +1,48 @@
+name: governance
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  governance:
+    name: AI Office 治理门禁
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: 校验项目和 CHG
+        run: python governance/check.py validate --profile governance/project-profile.toml
+      - name: 校验 JSON Schema
+        run: python governance/check.py contracts --dir contracts
+      - name: 生成 CHG 索引
+        run: python governance/check.py index --changes docs/changes --output docs/changes/INDEX.md
+      - name: 历史中文注释报告
+        run: python governance/check.py comments --root . --language typescript --all --report-only
+      - name: PR 范围和审批门禁
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python governance/check.py pr-check --profile governance/project-profile.toml --repository ai-office-react-main --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: 新增代码中文注释门禁
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python governance/check.py comments-diff --root . --language typescript --base "$BASE_SHA" --head "$HEAD_SHA"
+      - name: 代码检查
+        run: npm run lint
+      - name: 生产构建
+        run: npm run build
+      - name: 单元与组件测试
+        run: npm run test

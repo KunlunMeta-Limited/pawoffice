@@ -1,0 +1,11 @@
+# AI Office B 线治理责任映射；提交前必须将中文占位符替换为真实 GitHub 用户或团队。
+/scripts/action-gateway.mjs @待替换-网关安全负责人
+/src/types/officeAction.ts @待替换-跨项目接口负责人
+/src/types/officeData.ts @待替换-Office接口负责人
+/src/services/officeGatewayApi.ts @待替换-Office接口负责人
+/src/services/officeActionDispatcher.ts @待替换-场景负责人
+/src/scene/officeSceneBridge.ts @待替换-场景负责人
+/package.json @待替换-构建负责人
+/package-lock.json @待替换-构建负责人
+/.github/workflows/ @待替换-发布与安全负责人
+/.github/CODEOWNERS @待替换-架构负责人

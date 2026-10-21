@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openpaw.local/contracts/office-action-v1.schema.json",
+  "title": "OpenPaw 与 AI Office 动作契约 v1",
+  "description": "约束 Host 投影到 AI Office Gateway 的办公室动作、名册编号和状态枚举。",
+  "oneOf": [
+    { "$ref": "#/$defs/deskVisit" },
+    { "$ref": "#/$defs/deskVisitTour" },
+    { "$ref": "#/$defs/setState" }
+  ],
+  "$defs": {
+    "deskVisit": {
+      "title": "单次拜访动作",
+      "description": "一名访客向一名主持角色发起一次脱敏拜访。",
+      "type": "object",
+      "required": ["type", "visitor", "host", "message"],
+      "properties": {
+        "type": { "description": "动作类型，固定为 desk_visit。", "const": "desk_visit" },
+        "visitor": { "description": "访客名册编号，范围 1 至 6。", "type": "integer", "minimum": 1, "maximum": 6 },
+        "host": { "description": "主持名册编号，范围 1 至 6，不能与访客相同。", "type": "integer", "minimum": 1, "maximum": 6 },
+        "message": { "description": "展示给场景的脱敏工具摘要，不得包含凭据或完整 Prompt。", "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "deskVisitTour": {
+      "title": "连续拜访动作",
+      "description": "一名访客按 hosts 顺序依次拜访多个主持角色。",
+      "type": "object",
+      "required": ["type", "visitor", "hosts"],
+      "properties": {
+        "type": { "description": "动作类型，固定为 desk_visit_tour。", "const": "desk_visit_tour" },
+        "visitor": { "description": "访客名册编号，范围 1 至 6。", "type": "integer", "minimum": 1, "maximum": 6 },
+        "hosts": { "description": "主持名册编号列表；至少一个，不能包含访客。", "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 6 } },
+        "message": { "description": "可选的脱敏拜访消息。", "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "setState": {
+      "title": "角色状态动作",
+      "description": "更新办公室角色的状态和可选任务摘要。",
+      "type": "object",
+      "required": ["type", "state"],
+      "properties": {
+        "type": { "description": "动作类型，固定为 set_state。", "const": "set_state" },
+        "rosterNo": { "description": "优先使用的名册编号，范围 1 至 6。", "type": "integer", "minimum": 1, "maximum": 6 },
+        "agentId": { "description": "角色稳定标识；未提供 rosterNo 时可用于定位。", "type": "string" },
+        "state": { "description": "角色状态，只能是 idle、walking、working、talking 或 thinking。", "type": "string", "enum": ["idle", "walking", "working", "talking", "thinking"] },
+        "task": { "description": "可选的脱敏任务摘要。", "type": "string" }
+      },
+      "anyOf": [{ "required": ["rosterNo"] }, { "required": ["agentId"] }],
+      "additionalProperties": false
+    }
+  }
+}
