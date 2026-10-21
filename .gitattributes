@@ -1,3 +1,5 @@
 # Preserve fingerprints of the new coffee action metadata on Windows.
 art/characters/*-coffee-v1/*.json text eol=lf
 art/characters/coffee-v1/*.json text eol=lf
+# Character standards are hashed as raw bytes by the frozen admission baseline.
+art/characters/packs/*/standard.json text eol=lf
