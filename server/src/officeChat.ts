@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream'
+import { Agent } from 'undici'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
-import { chatCancelResultSchema, chatHistoryPageSchema, chatOperationSchema, chatPath, chatTimeoutMs, readChatEvents } from '@pawoffice/protocol/chat'
+import { chatCancelResultSchema, chatControlTimeoutMs, chatHistoryPageSchema, chatOperationSchema, chatPath, readChatEvents } from '@pawoffice/protocol/chat'
 import type { OfficeChatConfig } from '@pawoffice/protocol/chat'
 import { parseProtocolObject, responseEnvelopeSchema, stringifyProtocolObject } from '@pawoffice/protocol/schema'
 import { OfficeStateFault } from './officeState.ts'
@@ -8,10 +9,12 @@ import { OfficeStateFault } from './officeState.ts'
 export function registerOfficeChat(app: FastifyInstance, options: {
   sameOrigin: (request: FastifyRequest) => boolean
   hasOffice: (teamId: string) => boolean
-  timeoutMs?: number
+  controlTimeoutMs?: number
 }) {
   let url = ''
   const active = new Set<AbortController>()
+  // Scope disabled transport deadlines to LLM streams, without changing global fetch.
+  const streamingAgent = new Agent({ connectTimeout: 0, headersTimeout: 0, bodyTimeout: 0 })
   app.post(chatPath, { bodyLimit: 524288 }, async (request, reply) => {
     if (!options.sameOrigin(request)) throw new OfficeStateFault(403, 'FORBIDDEN', 'Use a same-origin browser connection')
     const parsed = chatOperationSchema.safeParse(request.body)
@@ -22,14 +25,16 @@ export function registerOfficeChat(app: FastifyInstance, options: {
     const controller = new AbortController()
     let timedOut = false
     const abort = () => controller.abort()
-    const timer = setTimeout(() => { timedOut = true; controller.abort() }, streaming ? options.timeoutMs ?? chatTimeoutMs : Math.min(options.timeoutMs ?? chatTimeoutMs, 15000))
-    timer.unref(); active.add(controller)
+    const timer = streaming ? undefined : setTimeout(() => { timedOut = true; controller.abort() }, options.controlTimeoutMs ?? chatControlTimeoutMs)
+    timer?.unref(); active.add(controller)
     reply.raw.on('close', abort)
     const cleanup = () => { clearTimeout(timer); active.delete(controller); reply.raw.off('close', abort) }
     let upstream: Response
     try {
-      upstream = await fetch(url, { method: 'POST', redirect: 'error', signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', Accept: streaming ? 'application/x-ndjson' : 'application/json' }, body: stringifyProtocolObject(parsed.data) })
+      const init = { method: 'POST', redirect: 'error' as const, signal: controller.signal,
+        headers: { 'Content-Type': 'application/json', Accept: streaming ? 'application/x-ndjson' : 'application/json' }, body: stringifyProtocolObject(parsed.data),
+        ...(streaming ? { dispatcher: streamingAgent } : {}) }
+      upstream = await fetch(url, init)
       if (!upstream.ok || !upstream.headers.get('content-type')?.includes(streaming ? 'application/x-ndjson' : 'application/json') || !upstream.body) {
         await upstream.body?.cancel()
         throw new Error('Invalid upstream response')
@@ -80,6 +85,6 @@ export function registerOfficeChat(app: FastifyInstance, options: {
   })
   return {
     configure: (config: OfficeChatConfig) => { url = config.url },
-    close: () => { for (const controller of active) controller.abort() },
+    close: async () => { for (const controller of active) controller.abort(); await streamingAgent.destroy() },
   }
 }

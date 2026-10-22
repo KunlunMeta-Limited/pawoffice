@@ -1,4 +1,4 @@
-import { chatHistoryPageSchema } from '@pawoffice/protocol/chat'
+import { chatControlTimeoutMs, chatHistoryPageSchema } from '@pawoffice/protocol/chat'
 import type { ChatEvent, ChatTurn, OfficeChatSource } from '@pawoffice/protocol/chat'
 import { notifySubscribers } from '../notifications.ts'
 import { chatArchiveSchema } from './persistence.ts'
@@ -14,12 +14,10 @@ export class ChatSession {
     syncing: false, historyError: null, hasMoreHistory: false, loadingOlder: false, olderError: null, canceling: false }
   private listeners = new Set<() => void>()
   private active: AbortController | null = null
-  private timeout: ReturnType<typeof setTimeout> | undefined
   private conversationId: string = crypto.randomUUID()
   readonly source: OfficeChatSource
   readonly teamId: string
   readonly ready: Promise<void>
-  private readonly timeoutMs: number
   private readonly persistence?: ChatPersistence
   private persistenceBlocked = false
   private saveTimer?: ReturnType<typeof setTimeout>
@@ -36,8 +34,8 @@ export class ChatSession {
   private cancelFlight?: Promise<boolean>
   private readonly syncOnRestore: boolean
 
-  constructor(teamId: string, source: OfficeChatSource, options: { timeoutMs?: number; persistence?: ChatPersistence; conversationId?: string; syncOnRestore?: boolean } = {}) {
-    this.teamId = teamId; this.source = source; this.timeoutMs = options.timeoutMs ?? 180000; this.persistence = options.persistence
+  constructor(teamId: string, source: OfficeChatSource, options: { persistence?: ChatPersistence; conversationId?: string; syncOnRestore?: boolean } = {}) {
+    this.teamId = teamId; this.source = source; this.persistence = options.persistence
     if (options.conversationId) this.conversationId = options.conversationId
     this.syncOnRestore = options.syncOnRestore !== false
     this.snapshot.ready = !this.persistence && !this.source.history
@@ -123,7 +121,7 @@ export class ChatSession {
     const controller = new AbortController(); this.syncController = controller
     this.update({ ...this.snapshot, syncing: true, historyError: null, loadingOlder: false, olderError: null }, false)
     try {
-      const page = chatHistoryPageSchema.parse(await this.source.history!({ version: '1.0', type: 'history', teamId: this.teamId, conversationId: this.conversationId, cursor: '', limit: 20 }, AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])))
+      const page = chatHistoryPageSchema.parse(await this.source.history!({ version: '1.0', type: 'history', teamId: this.teamId, conversationId: this.conversationId, cursor: '', limit: 20 }, AbortSignal.any([controller.signal, AbortSignal.timeout(chatControlTimeoutMs)])))
       if (controller.signal.aborted) return
       this.synchronized = true; this.historyCursor = page.nextCursor; this.activeTurnId = page.activeTurnId
       this.update({ ...this.snapshot, syncing: false, historyError: null, error: null, phase: page.activeTurnId ? 'thinking' : 'idle', hasMoreHistory: page.hasMore, messages: mergeHistory(this.snapshot.messages, page.turns) })
@@ -138,7 +136,7 @@ export class ChatSession {
     const cursor = this.historyCursor, controller = new AbortController(); this.olderController = controller
     this.update({ ...this.snapshot, loadingOlder: true, olderError: null }, false)
     try {
-      const page = chatHistoryPageSchema.parse(await this.source.history({ version: '1.0', type: 'history', teamId: this.teamId, conversationId: this.conversationId, cursor, limit: 20 }, AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])))
+      const page = chatHistoryPageSchema.parse(await this.source.history({ version: '1.0', type: 'history', teamId: this.teamId, conversationId: this.conversationId, cursor, limit: 20 }, AbortSignal.any([controller.signal, AbortSignal.timeout(chatControlTimeoutMs)])))
       if (controller.signal.aborted) return
       if (page.hasMore && page.nextCursor === cursor) throw new Error('聊天历史游标未前进')
       this.historyCursor = page.nextCursor
@@ -175,15 +173,7 @@ export class ChatSession {
   }
   private async receive(turnId: string, events: (controller: AbortController) => AsyncIterable<ChatEvent>) {
     const controller = new AbortController(); this.active = controller
-    const timer = setTimeout(() => {
-      if (this.active !== controller) return
-      this.active = null
-      this.timeout = undefined
-      controller.abort()
-      this.finish('error', '回复超时，请稍后重试')
-      if (this.source.history) this.update({ ...this.snapshot, historyError: '回复接收超时，请重新同步会话' }, false)
-    }, this.timeoutMs)
-    this.timeout = timer
+    // Generation may outlive a browser deadline; only stop/detach aborts this receiver.
     try {
       for await (const event of events(controller)) {
         if (this.active !== controller) return
@@ -212,8 +202,7 @@ export class ChatSession {
         if (this.source.history) this.update({ ...this.snapshot, historyError: this.snapshot.error }, false)
       }
     } finally {
-      clearTimeout(timer)
-      if (this.active === controller) { this.active = null; this.timeout = undefined }
+      if (this.active === controller) this.active = null
       await this.flush()
     }
   }
@@ -222,14 +211,14 @@ export class ChatSession {
     if (this.snapshot.canceling && this.cancelFlight) return this.cancelFlight
     const turnId = this.activeTurnId
     const active = this.active
-    this.active = null; clearTimeout(this.timeout); this.timeout = undefined; active?.abort()
+    this.active = null; active?.abort()
     if (active || turnId) this.finish('stopped')
     void this.flush()
     if (turnId && this.source.cancel) {
       const controller = new AbortController(); this.cancelController = controller
       const conversationId = this.conversationId
       this.update({ ...this.snapshot, canceling: true }, false)
-      const cancellation = Promise.resolve().then(() => this.source.cancel!({ version: '1.0', type: 'cancel', teamId: this.teamId, conversationId, turnId }, AbortSignal.any([controller.signal, AbortSignal.timeout(15000)])))
+      const cancellation = Promise.resolve().then(() => this.source.cancel!({ version: '1.0', type: 'cancel', teamId: this.teamId, conversationId, turnId }, AbortSignal.any([controller.signal, AbortSignal.timeout(chatControlTimeoutMs)])))
         .then(() => true)
         .catch(error => {
           if (!controller.signal.aborted && this.cancelController === controller && this.conversationId === conversationId) {
@@ -252,7 +241,7 @@ export class ChatSession {
   detach() {
     this.synchronized = false
     this.syncController?.abort(); this.olderController?.abort(); this.cancelController?.abort()
-    const active = this.active; this.active = null; clearTimeout(this.timeout); this.timeout = undefined; active?.abort()
+    const active = this.active; this.active = null; active?.abort()
     if (active || this.snapshot.syncing || this.snapshot.loadingOlder || this.snapshot.canceling) this.update({ ...this.snapshot, phase: 'idle', syncing: false, loadingOlder: false, canceling: false })
     void this.flush()
   }
