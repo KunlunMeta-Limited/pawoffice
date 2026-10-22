@@ -60,12 +60,15 @@ export const referenceWorkstationView: PropViewFactory = prop => {
   const workSurface = () => { const s = seat(prop); return transformWorkSurface(desk.getWorkSurface(), SCALE, s.x * (1 - SCALE), s.y * (1 - SCALE)) }
   const parts = [desk.shadowGfx, desk.deskLayer, desk.chairLayer, desk.occupiedIndicator, desk.deskFrontLayer]
   desk.deskLayer.hitArea = new Rectangle(-55, -12, 110, 80)
+  let placedX = NaN, placedY = NaN
   return { roots: [...parts, accessories], hitTarget: desk.deskLayer,
     getWorkSurface: workSurface,
     update(p, _template, actors) {
       prop = p
-      desk.setArtwork('trial'); desk.setDesk(asDesk(p)); desk.updateDepthZ()
       desk.setOccupied(actors.some(a => a.furniture?.propId === p.id && a.furniture.seated && !a.furniture.transitioning))
+      if (placedX === p.position.x && placedY === p.position.y) return
+      placedX = p.position.x; placedY = p.position.y
+      desk.setArtwork('trial'); desk.setDesk(asDesk(p)); desk.updateDepthZ()
       const s = seat(p)
       for (const part of parts) { part.position.set(s.x + (part.x - s.x) * SCALE, s.y + (part.y - s.y) * SCALE); part.scale.set(SCALE) }
       accessories.position.set(s.x, s.y); accessories.zIndex = desk.deskLayer.zIndex + .1

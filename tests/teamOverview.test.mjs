@@ -39,7 +39,7 @@ test('the overview exposes team cards, real summaries and search without style c
 })
 
 test('unselected switcher implementations and styles are removed', async () => {
-  const files = await readdir(new URL('../apps/web/src/ui/team-switcher', import.meta.url))
+  const files = await readdir(new URL('../apps/web/src/ui/team-switcher/', import.meta.url))
   for (const old of ['TeamModePicker.tsx', 'TeamPickerDialog.tsx', 'TeamSwitcher.css']) assert(!files.includes(old))
   const css = await readFile(new URL('../apps/web/src/ui/team-switcher/TeamOverview.css', import.meta.url), 'utf8')
   assert(!/team-(stack|carousel|orbit|mode)/.test(css))
@@ -127,7 +127,9 @@ test('the directory projects submission and failure state from the owning team o
   const sessions = teams.slice(0, 2).map(team => ({
     runtime: { sceneId: team.id, readActors: () => [], subscribe: () => () => {} },
     getSnapshot: () => ({ dashboard: null }), subscribe: () => () => {},
-    decisions: { getSnapshot: () => ({ pending: [], submittingId: team.id === 'b' ? 'b-question' : undefined, error: team.id === 'b' ? 'B failed' : null }), subscribe: () => () => {} },
+    decisions: { getSnapshot: () => ({ pending: team.id === 'b' ? [{ id: 'b-question', conversationId: 'main' }] : [],
+      submittingIds: team.id === 'b' ? ['b-question'] : [], errorDecisionId: team.id === 'b' ? 'b-question' : undefined,
+      error: team.id === 'b' ? 'B failed' : null }), subscribe: () => () => {} },
   }))
   let options
   function Directory() { options = useOfficeTeamDirectory(teams.slice(0, 2), sessions); return null }

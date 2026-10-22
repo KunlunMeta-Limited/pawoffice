@@ -37,6 +37,8 @@ test('workstation accessories use separate cropped contact bases, not the transp
   const { loadWorkstationTrialAssets } = await server.ssrLoadModule('/packages/scene-office/src/pixi/assets/loadWorkstationTrialAssets.ts')
   const { loadOfficeAssets } = await server.ssrLoadModule('/packages/scene-office/src/pixi/assets/loadOfficeAssets.ts')
   await loadOfficeAssets(); await loadReferenceOfficeObjects(() => {}); await loadWorkstationTrialAssets()
+  const { DeskEntity } = await server.ssrLoadModule('/packages/scene-office/src/pixi/views/DeskEntity.ts')
+  const placements = t.mock.method(DeskEntity.prototype, 'setDesk', DeskEntity.prototype.setDesk)
   const prop = { id: 'desk', position: { x: 5, y: 5 } }
   const view = views.referenceWorkstationView(prop)
   try {
@@ -58,6 +60,19 @@ test('workstation accessories use separate cropped contact bases, not the transp
     const sourceScale = computer.scale.x * desktop.scale.x
     assert(Math.abs(right.x - 6 - (desktop.x + (1233 - 800) * sourceScale)) < 1e-7)
     assert(Math.abs(right.y - (desktop.y + computer.y * desktop.scale.y + (362 - 112) * sourceScale)) < 1e-7)
+    const occupied = view.roots[3], clears = t.mock.method(occupied, 'clear', occupied.clear)
+    const actors = [{ furniture: { propId: prop.id, seated: true } }]
+    for (let frame = 0; frame < 600; frame++) view.update(prop, {}, actors)
+    assert.equal(placements.mock.callCount(), 1, 'stationary workstations keep their existing transforms')
+    assert.equal(clears.mock.callCount(), 1, 'the occupied marker draws once for the whole occupied period')
+    view.update(prop, {}, [])
+    assert.equal(clears.mock.callCount(), 2)
+    assert.equal(occupied.context.instructions.length, 0)
+    const moved = { ...prop, position: { x: prop.position.x + 1, y: prop.position.y + 2 } }
+    view.update(moved, {}, [])
+    assert.equal(placements.mock.callCount(), 2, 'editing the desk still updates its geometry')
+    assert.equal(group.x, (moved.position.x + 2) * 50)
+    assert.equal(group.y, (moved.position.y + 2) * 50 + 15)
   } finally {
     view.roots.forEach(root => root.destroy({ children: true }))
     textures.forEach(texture => texture.destroy(true))

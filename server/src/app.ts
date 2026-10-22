@@ -15,10 +15,12 @@ import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 import { OfficeRequests } from './officeRequests.ts'
 import { OfficeState, OfficeStateFault } from './officeState.ts'
 import { OfficeUi } from './officeUi.ts'
+import { registerOfficeChat } from './officeChat.ts'
+import { chatPath } from '@pawoffice/protocol/chat'
 
 export const DEMO_API_KEY = 'pawoffice-demo-key'
 export const defaultStaticRoot = fileURLToPath(new URL('../../dist/', import.meta.url))
-export type ServerOptions = { apiKey?: string; staticRoot?: string; publicOrigin?: string; logger?: boolean; maxConnections?: number; maxBufferedBytes?: number; heartbeatMs?: number; maxOfficeRequests?: number; officeRequestMs?: number }
+export type ServerOptions = { apiKey?: string; staticRoot?: string; publicOrigin?: string; logger?: boolean; maxConnections?: number; maxBufferedBytes?: number; heartbeatMs?: number; maxOfficeRequests?: number; officeRequestMs?: number; chatTimeoutMs?: number }
 const errorReasons: Record<number, string> = { 401: 'AUTH_FAILED', 403: 'FORBIDDEN', 404: 'NOT_FOUND', 408: 'REQUEST_TIMEOUT',
   410: 'REQUEST_CLOSED', 413: 'MESSAGE_TOO_LARGE', 422: 'BUSINESS_ERROR', 499: 'CALLER_DISCONNECTED', 500: 'INTERNAL_ERROR', 503: 'RECEIVER_UNAVAILABLE' }
 const envelope = (code: number, msg: string, data?: unknown) => responseEnvelopeSchema.parse({ code, msg,
@@ -42,6 +44,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
   })
   app.addHook('onSend', async (request, reply, payload) => {
     if (!protocolRoute(request.url)) return payload
+    if (request.url.split('?')[0] === chatPath && reply.statusCode === 200 && String(reply.getHeader('content-type')).startsWith('application/x-ndjson')) return payload
     try {
       const source = typeof payload === 'string' ? payload : Buffer.isBuffer(payload) ? payload.toString('utf8') : ''
       const response = responseEnvelopeSchema.parse(parseProtocolObject(source))
@@ -54,7 +57,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
   const discovery = createSceneRuntime(referenceOfficeScenePack)
   const capabilities = officeCapabilities(describeOfficeScene(discovery)); discovery.dispose()
   const workspace = (ready: { id: string; seq: number; runtimeReady: boolean }[] = []) => ({ offices: state.list().map(snapshot => ({ id: snapshot.workspace.id, name: snapshot.workspace.name, seq: snapshot.seq,
-    runtimeReady: ready.some(office => office.id === snapshot.workspace.id && office.seq === snapshot.seq && office.runtimeReady), taskCount: snapshot.tasks.length })), actors: OFFICE_ROSTER.map(({ id, name }) => ({ id, name })),
+    runtimeReady: ready.some(office => office.id === snapshot.workspace.id && office.seq === snapshot.seq && office.runtimeReady), taskCount: snapshot.conversations.reduce((sum, conversation) => sum + conversation.tasks.length, 0) })), actors: OFFICE_ROSTER.map(({ id, name }) => ({ id, name })),
     supportedMessages: [...officeSupportedMessages], sceneCommandProtocol: '2.0', ui: describeOfficeUi() })
   const publishSnapshot = (snapshot: ReturnType<OfficeState['list']>[number]) => relay.publish(officeWorkspaceTopic,
     eventFrame({ type: 'office.sync', snapshot }))
@@ -66,6 +69,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     const expectedOrigin = publicOrigin ?? `${request.protocol}://${request.headers.host}`
     return request.headers['sec-fetch-site'] !== 'cross-site' && (!request.headers.origin || request.headers.origin === expectedOrigin)
   }
+  const chat = registerOfficeChat(app, { sameOrigin, hasOffice: teamId => Boolean(state.get(teamId)), timeoutMs: options.chatTimeoutMs })
   const maxBufferedBytes = options.maxBufferedBytes ?? maxRelayEventBytes
   if (apiKey === DEMO_API_KEY && options.logger) app.log.warn('Using the public demo API key. Set PAWOFFICE_API_KEY before public deployment.')
 
@@ -104,6 +108,10 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       if (data.type === 'office.capabilities') return envelope(200, 'OK', capabilities)
       if (data.type === 'office.read' && !data.teamId && (!state.list().length || !relay.hasReceiver(officeWorkspaceTopic))) return envelope(200, 'OK', workspace())
       if (data.type === 'office.read' && data.teamId && !state.get(data.teamId)) throw new OfficeStateFault(404, 'OFFICE_NOT_INITIALIZED', '办公室未初始化')
+      if (data.type === 'decision.request') {
+        const { teamId, conversationId } = data
+        if (!state.get(teamId)?.conversations.some(item => item.id === conversationId)) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '审批所属会话不存在')
+      }
       if (data.type === 'ui.next') {
         const pending = ui.next(data.timeoutMs), abort = () => pending.cancel()
         reply.raw.on('close', abort)
@@ -113,8 +121,15 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       if (data.type === 'ui.respond') {
         const action = ui.get(data.interactionId)
         if (!action) throw new OfficeStateFault(410, 'UI_REQUEST_EXPIRED', '用户请求已结束或超时')
+        if (action.action === 'conversation.delete') {
+          if (data.presentation.target !== 'result') throw new OfficeStateFault(400, 'INVALID_MESSAGE', '删除会话须返回 result 处理结果')
+          if (data.presentation.success && state.get(action.teamId)?.conversations.some(item => item.id === action.conversationId)) {
+            throw new OfficeStateFault(409, 'SNAPSHOT_REQUIRED', '请先推送不含该会话的办公室快照，再确认删除')
+          }
+        }
         if (data.presentation.target === 'whiteboard') {
           if (data.presentation.snapshot.workspace.id !== action.teamId) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '白板快照与用户请求不属于同一办公室')
+          if (!data.presentation.snapshot.conversations.some(item => item.id === action.conversationId)) throw new OfficeStateFault(400, 'CONVERSATION_NOT_FOUND', '白板快照缺少用户请求所属会话')
           const applied = state.apply([data.presentation.snapshot], true)
           if (applied.results[0].reasonCode === 'STALE_SEQ') throw new OfficeStateFault(409, 'STALE_SEQ', '白板快照已过期')
           publishSnapshot(state.get(action.teamId)!)
@@ -124,6 +139,10 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       }
       if (data.type === 'offices.initialize' || data.type === 'office.snapshot') {
         const update = state.apply(data.type === 'offices.initialize' ? data.offices : [data.snapshot], data.type === 'office.snapshot')
+        if (data.type === 'offices.initialize') {
+          if (data.chat) chat.configure(data.chat)
+          data = { type: 'offices.initialize', offices: data.offices }
+        }
         if (data.type === 'office.snapshot' && update.results[0].reasonCode === 'STALE_SEQ') return envelope(200, 'Snapshot ignored', update.results[0])
         // Cached state may not have reached the browser; identical retries must be delivered again.
         if (data.type === 'offices.initialize') data = { ...data, offices: data.offices.filter(snapshot => snapshot.seq === state.get(snapshot.workspace.id)!.seq) }
@@ -155,6 +174,8 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       return reply.code(response.code).send(envelope(response.code, response.msg, result))
     }
     const message = parsed.data
+    const conversationId = message.conversationId
+    if (conversationId && !state.get(message.teamId)?.conversations.some(item => item.id === conversationId)) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '动画所属会话不存在')
     const commands = 'commands' in message.command ? message.command.commands : [message.command]
     if (state.get(message.teamId) && commands.some(command => command.type === 'object.state.set'
       && capabilities.scene.objects.some(object => object.id === command.entityId && object.templateId === 'office.wall-whiteboard'))) {
@@ -172,10 +193,12 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     if (!parsed.success) return reply.code(400).send(envelope(400, 'Invalid UI action', { reasonCode: 'UNSUPPORTED_UI_ACTION', issues: parsed.error.issues }))
     const action = parsed.data, snapshot = state.get(action.teamId)
     if (!snapshot) throw new OfficeStateFault(404, 'OFFICE_NOT_INITIALIZED', '办公室未初始化')
+    const conversation = snapshot.conversations.find(item => item.id === action.conversationId)
+    if (!conversation) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '操作所属会话不存在')
     if (action.action === 'actor.inspect' && !OFFICE_ROSTER.some(actor => actor.id === action.actorId)) throw new OfficeStateFault(404, 'ACTOR_NOT_FOUND', '人物不存在')
-    if (action.action === 'employee.inspect' && !snapshot.employees.some(employee => employee.id === action.employeeId)
-      || 'taskId' in action && !snapshot.tasks.some(task => task.id === action.taskId)
-      || action.action === 'task.assign' && !snapshot.employees.some(employee => employee.id === action.assigneeId)) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '用户操作引用的数据不存在')
+    if (action.action === 'employee.inspect' && !conversation.employees.some(employee => employee.id === action.employeeId)
+      || 'taskId' in action && !conversation.tasks.some(task => task.id === action.taskId)
+      || action.action === 'task.assign' && !conversation.employees.some(employee => employee.id === action.assigneeId)) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '用户操作引用的数据不存在')
     const pending = ui.open(action), abort = () => pending.cancel()
     reply.raw.on('close', abort)
     const result = await pending.response; reply.raw.off('close', abort)
@@ -231,7 +254,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     return reply
   })
 
-  app.addHook('preClose', async () => { ui.close(); officeRequests.close(); relay.close() })
+  app.addHook('preClose', async () => { chat.close(); ui.close(); officeRequests.close(); relay.close() })
   if (options.staticRoot) await app.register(serveStatic, { root: path.resolve(options.staticRoot), index: ['index.html'], redirect: true })
   return app
 }

@@ -4,6 +4,30 @@ import { createTestServer } from './helpers/vite.mjs'
 import { characterPackFixture } from './helpers/characterPack.mjs'
 import { frameVisualFixture } from './helpers/frameVisual.mjs'
 
+test('unchanged labels reuse their graphics while names, states and placement still update', async t => {
+  const server = await createTestServer(); t.after(() => server.close())
+  const { StatusLabel } = await server.ssrLoadModule('/packages/renderer-pixi/src/ui/StatusLabel.ts')
+  const constructorPaint = t.mock.method(StatusLabel.prototype, 'paintStateDot', () => {})
+  const label = new StatusLabel('王明')
+  constructorPaint.mock.restore()
+  t.after(() => label.destroy({ children: true }))
+  for (const text of [label.nameText, label.taskText]) {
+    Object.defineProperties(text, { width: { get: () => text.text.length * 12 }, height: { get: () => 12 } })
+  }
+  label.setState('working'); label.setTask('核对接口'); label.layoutBeside(62, 29, 1.15, -100)
+  const clears = [label.stateDot, label.taskBg, label.nameBg].map(graphic => t.mock.method(graphic, 'clear', graphic.clear))
+  for (let frame = 0; frame < 600; frame++) {
+    label.setName('王明'); label.setState('working'); label.setTask('核对接口'); label.layoutBeside(62, 29, 1.15, -100)
+  }
+  assert.deepEqual(clears.map(clear => clear.mock.callCount()), [0, 0, 0])
+  label.setName('新同事'); label.setState('walking'); label.setTask('检查数据'); label.layoutBeside(62, 29, 1.15, -100)
+  assert.deepEqual(clears.map(clear => clear.mock.callCount()), [2, 1, 1])
+  label.layout(-100)
+  for (let frame = 0; frame < 60; frame++) label.layout(-100)
+  assert.equal(clears[2].mock.callCount(), 2)
+  assert.equal(label.nameBg.context.instructions.length, 0)
+})
+
 test('task labels stay above the head independently of the beside-seat name label', async t => {
   const server = await createTestServer(); t.after(() => server.close())
   const { StatusLabel } = await server.ssrLoadModule('/packages/renderer-pixi/src/ui/StatusLabel.ts')

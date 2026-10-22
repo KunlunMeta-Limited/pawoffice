@@ -8,7 +8,7 @@ import { createOfficeDataSource } from './dashboard/createSource.ts'
 import type { OfficeDataSource } from '@pawoffice/protocol/dashboard'
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
 import type { OfficeChatSource } from '@pawoffice/protocol/chat'
-import { createOfficeChatSource } from './chat/sources.ts'
+import { PreviewChatSource } from './chat/sources.ts'
 import { browserChatPersistence } from './chat/persistence.ts'
 import type { ComponentType } from 'react'
 import type { LayoutMode } from '../../shared/scene/layout.tsx'
@@ -35,7 +35,7 @@ function createTeamRuntime(sceneId: string) {
 }
 
 export function OfficeApp({ dataSource, runtime: suppliedRuntime, simulation, session: suppliedSession, chatSource: suppliedChatSource, layout, shell, teamSelection, decisionOpenToken, integrationError }: { layout?: LayoutMode; shell?: ComponentType<OfficeShellProps>; dataSource: OfficeDataSource; runtime?: SceneRuntime; simulation?: OfficeSimulation; session?: OfficeTeamSession; chatSource?: OfficeChatSource; teamSelection?: OfficeTeamSelection; decisionOpenToken?: number; integrationError?: string | null }) {
-  const [defaultChatSource] = useState(createOfficeChatSource)
+  const [defaultChatSource] = useState<OfficeChatSource>(() => new PreviewChatSource())
   const chatSource = suppliedSession?.chat.source ?? suppliedChatSource ?? defaultChatSource
   const decisionPreview = dataSource.kind === 'example' && chatSource.kind === 'preview'
   const session = useMemo(() => {
@@ -95,6 +95,8 @@ export function OfficeTeamWorkspace({ initialTeams, createTeam, chatSource, layo
   const openDecisions = (id: string) => {
     const session = sessions.get(id)
     if (!session) return
+    const conversationId = session.decisions.getSnapshot().pending[0]?.conversationId
+    if (conversationId) session.chat.select(conversationId)
     select(id); setDecisionFocus({ teamId: id, requests: session.decisions.getSnapshot().pending }); setDecisionOpenToken(value => value + 1)
   }
   if (!activeSession) {
@@ -111,7 +113,7 @@ export function OfficeTeamWorkspace({ initialTeams, createTeam, chatSource, layo
 
 function DemoApp() {
   const [dataSource] = useState(createOfficeDataSource)
-  const [chatSource] = useState(createOfficeChatSource)
+  const [chatSource] = useState(() => new PreviewChatSource())
   const [directory] = useState(() => dataSource.kind === 'example' ? new DemoOfficeDirectory(dataSource, localStorage) : undefined)
   const [initialTeams] = useState(() => {
     const teams = directory?.list() ?? []

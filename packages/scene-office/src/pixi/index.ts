@@ -55,7 +55,8 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
   const workEffects = options.workEffects ?? false
   let workEffectTexture: Texture | undefined
   const pack: ScenePresentationPack = { ...base, id: 'pawoffice.office.reference', resourceCount: workEffects ? 9 : 8,
-    rendering: { idleFPS: 20, motionFPS: 60 },
+    // Preserve native pixel density without a multisampled full-screen buffer.
+    rendering: { antialias: false, idleFPS: 20, motionFPS: 60 },
     contentBounds: () => ({ left: 0, top: 0, right: 1100, bottom: 850 }),
     loadBackground: loadReferenceOfficeBackground,
     async loadObjects(report) {

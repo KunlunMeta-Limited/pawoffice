@@ -10,4 +10,4 @@ React 应用负责团队、聊天、业务数据源、地图编辑器与 HTTP/SS
 
 从仓库根目录运行 `npm run dev:vite` 启动本地演示，或运行 `npm run dev` 启动前端与 Fastify。`npm run build` 输出到根目录 `dist/`。
 
-项目包名使用 `@pawoffice/*`，服务端配置变量使用 `PAWOFFICE_*`，聊天地址使用 `VITE_PAWOFFICE_CHAT_URL`；业务接口位于 `/api/pawoffice/`。
+项目包名使用 `@pawoffice/*`，服务端配置变量使用 `PAWOFFICE_*`；业务接口位于 `/api/pawoffice/`。外部后端在 `offices.initialize` 中通过 `chat.url` 注册聊天地址，浏览器使用同源聊天转发接口。多会话、历史分页及刷新续接的接入方式见[聊天协议](../../integration/docs/chat-integration.md)。

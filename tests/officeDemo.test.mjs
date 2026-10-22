@@ -20,6 +20,20 @@ function fixture(t, { runtimeOptions = {}, ...options } = {}) {
   return { scene, runtime, tick(ms = 50) { now += ms; scene.onTick({ deltaTime: 3 }) } }
 }
 
+test('an active demo reads command history on revisions rather than on every render tick', t => {
+  const { scene, runtime } = fixture(t)
+  scene.setDemo(true)
+  const snapshots = t.mock.method(runtime, 'snapshot', runtime.snapshot)
+  const demo = scene.simulation.demoSource
+  demo.tick(16)
+  for (let frame = 0; frame < 120; frame++) demo.tick(16)
+  assert.equal(snapshots.mock.callCount(), 2, 'starting the round and observing its commands each need one snapshot')
+  scene.setAgentState(runtime.readActors()[0].id, 'working', '新任务')
+  demo.tick(16)
+  assert.equal(snapshots.mock.callCount(), 3, 'new command revisions must be observed on the next tick')
+  assert.equal(scene.isDemoRunning, true)
+})
+
 test('demo pairs cover every directed colleague pair, reverse visits and support an odd roster', t => {
   const { runtime } = fixture(t)
   for (const count of [2, 5, 6]) {

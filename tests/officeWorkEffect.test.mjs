@@ -25,6 +25,18 @@ function fixture() {
 
 function atlas() { return new Texture({ source: new TextureSource({ width: 480, height: 320 }) }) }
 
+test('the renderer can supply current actor projections without a second effect projection', () => {
+  const { world, actor, runtime } = fixture(), texture = atlas()
+  const view = effect.createOfficeWorkEffects(texture, runtime, ['worker'], () => { throw new Error('Redundant projection') }, () => false)
+  try {
+    for (let frame = 0; frame < 60; frame++) view.update(.05, world, [actor])
+    assert.equal(view.roots[0].visible, true)
+    const idle = { ...actor, status: 'idle', task: { ...actor.task, status: 'idle' } }
+    for (let frame = 0; frame < 60; frame++) view.update(.05, world, [idle])
+    assert.equal(view.roots[0].visible, false, 'the supplied state can stop the effect immediately')
+  } finally { view.dispose(); view.roots.forEach(root => root.destroy({ children: true })); texture.destroy(true) }
+})
+
 test('work clouds are opt-in and require a running task at the actor own workstation', () => {
   const { world, actor } = fixture()
   assert.equal(createReferenceOfficePresentation().createAmbientViews, undefined)

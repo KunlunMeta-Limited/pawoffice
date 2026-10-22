@@ -35,6 +35,7 @@ export class StatusLabel extends Container {
   private taskLayer = new Container()
   private nameBg = new Graphics()
   private currentState = 'idle'
+  private nameBackground?: { width: number; height: number }
 
   constructor(name: string) {
     super()
@@ -54,11 +55,13 @@ export class StatusLabel extends Container {
   }
 
   setName(name: string) {
+    if (this.nameText.text === name) return
     this.nameText.text = name
     this.paintStateDot()
   }
 
   setTask(task?: string) {
+    if (this.taskText.text === (task ?? '')) return
     if (!task) {
       this.taskText.text = ''
       this.taskBg.visible = false
@@ -86,13 +89,15 @@ export class StatusLabel extends Container {
   }
 
   setState(state: string) {
+    if (this.currentState === state) return
     this.currentState = state
     this.paintStateDot()
   }
 
   /** 发顶 Y：名字贴在发顶上方，任务叠在名字上面 */
   layout(crownTopY: number) {
-    this.scale.set(1); this.nameBg.clear()
+    this.scale.set(1)
+    if (this.nameBackground) { this.nameBg.clear(); this.nameBackground = undefined }
     this.position.set(0, crownTopY - CROWN_GAP)
     this.taskLayer.position.set(0, this.taskBg.visible ? -this.nameText.height - NAME_TASK_GAP : 0)
   }
@@ -100,7 +105,10 @@ export class StatusLabel extends Container {
   layoutBeside(x: number, y: number, scale = 1, crownTopY?: number) {
     this.position.set(x, y); this.scale.set(scale)
     const width = this.nameText.width + 27, height = this.nameText.height + 12
-    this.nameBg.clear().roundRect(-width / 2, -this.nameText.height - 6, width, height, 6).fill({ color: 0xffffff, alpha: .96 })
+    if (this.nameBackground?.width !== width || this.nameBackground.height !== height) {
+      this.nameBackground = { width, height }
+      this.nameBg.clear().roundRect(-width / 2, -this.nameText.height - 6, width, height, 6).fill({ color: 0xffffff, alpha: .96 })
+    }
     if (crownTopY !== undefined) {
       // Keep the task over the actor even when the identity label sits beside the seat.
       this.taskLayer.position.set(-x / scale, (crownTopY - CROWN_GAP - y) / scale)

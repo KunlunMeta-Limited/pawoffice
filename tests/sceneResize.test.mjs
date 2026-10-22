@@ -204,11 +204,14 @@ test('changed world dimensions update the camera without needlessly resizing the
 })
 
 test('optional ambient views share the scene frame, pause while editing, and dispose exactly once', t => {
-  const { scene, data } = fixture(t), frames = []
+  const actors = [{ id: 'one', intent: { actionId: 'core.idle' } }]
+  const project = t.mock.fn(() => actors)
+  const { scene, data } = fixture(t, { projectActors: project }), frames = []
   let disposed = 0
-  scene.ambientViews = [{ roots: [], update(dt, world) { frames.push({ dt, world }) }, dispose() { disposed++ } }]
+  scene.ambientViews = [{ roots: [], update(dt, world, projected) { assert.equal(projected, actors); frames.push({ dt, world }) }, dispose() { disposed++ } }]
   scene.syncActors(.02)
   assert.deepEqual(frames, [{ dt: .02, world: data }])
+  assert.equal(project.mock.callCount(), 1, 'actors and ambient effects share a single projection')
   scene.runtime.isEditing = true; scene.runtime.readEditorWorld = () => data
   scene.syncActors(.02)
   assert.equal(frames.at(-1).dt, 0)

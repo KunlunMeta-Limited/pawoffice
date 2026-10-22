@@ -337,7 +337,7 @@ export class SceneView {
       if (entity) entity.overlay.visible = !this.runtime.isEditing
     }
     this.syncTaskOcclusion(dt)
-    for (const view of this.ambientViews) view.update(this.runtime.isEditing ? 0 : dt, world)
+    for (const view of this.ambientViews) view.update(this.runtime.isEditing ? 0 : dt, world, agents)
     this.layer?.sortChildren()
     this.overlays.sortChildren()
   }

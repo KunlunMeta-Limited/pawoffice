@@ -78,9 +78,11 @@ export class ActorView extends Container {
     }
     this.bubble.update(dt)
     const top = (this.visual?.getSocket('ui.label')?.y ?? -1) * actor.displayHeight
-    this.statusLabel.layout(top)
     if (actor.label?.placement === 'beside') this.statusLabel.layoutBeside(actor.label.x, actor.label.y, actor.label.scale, top)
-    if (actor.label?.placement === 'above') this.statusLabel.scale.set(actor.label.scale ?? 1)
+    else {
+      this.statusLabel.layout(top)
+      if (actor.label?.placement === 'above') this.statusLabel.scale.set(actor.label.scale ?? 1)
+    }
     const labelTop = this.statusLabel.getLabelTopY(top)
     this.taskBadge.position.set(actor.taskAnchor ? actor.taskAnchor.x - actor.position.x : 0,
       actor.taskAnchor ? actor.taskAnchor.y - actor.position.y : labelTop - 4)

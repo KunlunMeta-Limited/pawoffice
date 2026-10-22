@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import { SseMessageTransport } from '@pawoffice/runtime/adapters/sse'
 import { officeIntegrationPaths, officeUiPresentationSchema } from '@pawoffice/protocol/office-integration'
+import { chatPath } from '@pawoffice/protocol/chat'
 import { responseEnvelopeSchema, stringifyProtocolObject } from '@pawoffice/protocol/schema'
 import { OfficeIntegrationSession } from '../application/OfficeIntegrationSession.ts'
 import { OfficeTeamSession } from '../application/OfficeTeamSession.ts'
@@ -9,7 +10,7 @@ import { createOfficeRuntime } from '../application/createOfficeRuntime.ts'
 import { supportsCharacterPose } from '../application/poseSupport.ts'
 import { seatStepDurationMs } from '@pawoffice/scene-office/pixi/projection'
 import { browserChatPersistence } from '../chat/persistence.ts'
-import { createOfficeChatSource } from '../chat/sources.ts'
+import { HttpChatSource } from '../chat/sources.ts'
 import { useOfficeTeamHost } from '../controller/useOfficeTeamHost.ts'
 import { useOfficeTeamDirectory } from '../controller/useOfficeTeamDirectory.ts'
 import type { OfficeTeamSelection } from './TeamSwitcher.tsx'
@@ -21,7 +22,7 @@ import { SceneOnlyLayout } from '../../../shared/scene/layout.tsx'
 export function ConnectedOfficeWorkspace({ baseUrl, renderOffice }: { baseUrl: string; renderOffice: (props: {
   session: OfficeTeamSession; teamSelection: OfficeTeamSelection; layout: LayoutMode; decisionOpenToken: number; integrationError: string | null
 }) => ReactNode }) {
-  const [chatSource] = useState(createOfficeChatSource)
+  const [chatSource] = useState(() => new HttpChatSource(`${baseUrl.replace(/\/$/, '')}${chatPath}`))
   const [integration] = useState(() => new OfficeIntegrationSession({
     transport: new SseMessageTransport(baseUrl), storage: localStorage,
     createSession: (source, sceneId) => new OfficeTeamSession(createOfficeRuntime({ sceneId, referenceLayout: true,
@@ -62,6 +63,11 @@ export function ConnectedOfficeWorkspace({ baseUrl, renderOffice }: { baseUrl: s
   }
   return renderOffice({ session: office.session, layout, decisionOpenToken, integrationError: state.error,
     teamSelection: { teams: options, activeId: office.id, focusedDecisionTeamId, select: selectTeam,
-      openDecisions: id => { select(id); setFocusedDecisionTeamId(id); setDecisionOpenToken(value => value + 1) },
+      openDecisions: id => {
+        const session = state.offices.find(item => item.id === id)?.session
+        const conversationId = session?.decisions.getSnapshot().pending[0]?.conversationId
+        if (conversationId) session?.chat.select(conversationId)
+        select(id); setFocusedDecisionTeamId(id); setDecisionOpenToken(value => value + 1)
+      },
       resolveDecision: (teamId, decisionId, choiceId) => { void state.offices.find(item => item.id === teamId)?.session.decisions.choose(teamId, decisionId, choiceId) } } })
 }

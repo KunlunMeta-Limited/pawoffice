@@ -79,9 +79,9 @@ export function createOfficeWorkEffects(atlas: Texture, runtime: SceneReadPort, 
   })
   let disposed = false
   return { roots: workers.map(worker => worker.root),
-    update(dt, world) {
+    update(dt, world, projectedActors) {
       if (disposed || runtime.isEditing) { workers.forEach(worker => { worker.root.visible = false }); return }
-      const actors = new Map(projectActors(world).map(actor => [actor.id, actor]))
+      const actors = new Map((projectedActors ?? projectActors(world)).map(actor => [actor.id, actor]))
       const reduced = reduceMotion()
       for (const { actorId, root, sprite, clock, phase } of workers) {
         const actor = actors.get(actorId)

@@ -8,7 +8,7 @@ import type { SceneProjection, SceneRenderProfile, ScreenBounds } from '@pawoffi
 /** Scene-local decoration, outside actor commands and resource reservations. */
 export interface SceneAmbientView {
   readonly roots: Container[]
-  update(elapsedSeconds: number, world: World): void
+  update(elapsedSeconds: number, world: World, actors?: PresentedActor[]): void
   dispose?(): void
 }
 

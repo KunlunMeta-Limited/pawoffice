@@ -6,7 +6,7 @@ import { describeOfficeUi } from '@pawoffice/protocol/office-integration'
 const workspace = () => ({ offices: [], actors: [], supportedMessages: [], sceneCommandProtocol: '2.0', ui: describeOfficeUi() })
 
 const message = data => data
-const state = id => ({ schemaVersion: '1.0', seq: 1, workspace: { id, name: id } })
+const state = id => ({ schemaVersion: '1.0', seq: 1, workspace: { id, name: id }, conversations: [{ id: 'main', title: '主会话' }] })
 const post = (app, value) => app.inject({ method: 'POST', url: '/api/pawoffice/messages', headers: { authorization: `Bearer ${DEMO_API_KEY}` }, payload: value })
 async function setup(t, options = {}) {
   const app = await createPawOfficeServer(options), base = await app.listen({ port: 0, host: '127.0.0.1' })
@@ -34,28 +34,32 @@ const respond = (app, delivery, result = workspace(), code = 200) => app.inject(
 test('a backend initializes an empty browser and the same POST returns only after runtime initialization', async t => {
   const { app, base } = await setup(t), browser = await subscribe(t, base, 'workspace=1')
   let settled = false
-  const request = post(app, message({ type: 'offices.initialize', offices: [] })).then(value => { settled = true; return value })
+  const request = post(app, message({ type: 'offices.initialize', offices: [], chat: { url: 'http://private-backend.example/chat' } })).then(value => { settled = true; return value })
   const delivery = await browser.next()
   assert.equal(delivery.type, 'office.request')
+  assert.equal(Object.hasOwn(delivery.request, 'chat'), false, 'chat destinations stay on the server and are not sent over SSE')
   assert.equal(settled, false)
   assert.equal((await respond(app, delivery, workspace())).statusCode, 200)
   const result = await request
   assert.equal(result.statusCode, 200); assert.deepEqual(result.json().data.offices, [])
+  assert.doesNotMatch(result.body, /private-backend/)
   assert.deepEqual(Object.keys(result.json()).sort(), ['code', 'data', 'msg'])
   assert.equal((await respond(app, delivery)).statusCode, 410, 'reply tokens cannot be reused')
 })
 
 test('the original backend request returns the validated user choice without any callback endpoint', async t => {
-  const { app, base } = await setup(t), browser = await subscribe(t, base)
-  const request = post(app, message({ type: 'decision.request', teamId: 'team-a', timeoutMs: 5000,
+  const { app, base } = await setup(t)
+  await post(app, { type: 'offices.initialize', offices: [state('team-a')] })
+  const browser = await subscribe(t, base); await browser.next()
+  const request = post(app, message({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 5000,
     decision: { id: 'decision-one', kind: 'confirmation', title: '提交吗？', confirmLabel: '提交', rejectLabel: '暂不提交' } })).then(value => value)
   const delivery = await browser.next()
-  const invalid = await respond(app, delivery, { teamId: 'team-a', decisionId: 'decision-one', choiceId: 'unknown' })
+  const invalid = await respond(app, delivery, { conversationId: 'main', teamId: 'team-a', decisionId: 'decision-one', choiceId: 'unknown' })
   assert.equal(invalid.statusCode, 400)
-  assert.equal((await respond(app, delivery, { teamId: 'team-a', decisionId: 'decision-one', choiceId: 'reject', label: '不可信文字' })).statusCode, 200)
+  assert.equal((await respond(app, delivery, { conversationId: 'main', teamId: 'team-a', decisionId: 'decision-one', choiceId: 'reject', label: '不可信文字' })).statusCode, 200)
   const result = await request
   assert.equal(result.statusCode, 200)
-  assert.deepEqual(result.json().data, { teamId: 'team-a', decisionId: 'decision-one', choiceId: 'reject', label: '暂不提交' })
+  assert.deepEqual(result.json().data, { conversationId: 'main', teamId: 'team-a', decisionId: 'decision-one', choiceId: 'reject', label: '暂不提交' })
   assert.equal((await browser.next()).type, 'office.request.closed')
 })
 
@@ -107,7 +111,7 @@ test('an empty parallel page cannot reject an operation handled by an initialize
   const rejected = await empty.next(), accepted = await ready.next()
   await respond(app, rejected, { reasonCode: 'OFFICE_NOT_INITIALIZED' }, 404)
   const capabilities = await post(app, message({ type: 'office.capabilities' }))
-  await respond(app, accepted, { snapshot: { schemaVersion: '1.0', seq: 1, whiteboard: { template: 'task-board-v1', title: '', status: 'queued', steps: [] }, workspace: { id: 'team-a', name: 'ready-page' }, employees: [], tasks: [], events: [] },
+  await respond(app, accepted, { snapshot: { schemaVersion: '1.0', seq: 1, workspace: { id: 'team-a', name: 'ready-page' }, conversations: [{ id: 'main', title: '主会话', whiteboard: { template: 'task-board-v1', title: '', status: 'queued', steps: [] }, employees: [], tasks: [], events: [] }] },
     scene: capabilities.json().data.scene, pendingDecisions: [] })
   const response = await request
   assert.equal(response.statusCode, 200)
@@ -127,7 +131,7 @@ test('concurrent requests receive their own results through internal tokens, eve
     assert.deepEqual(Object.keys(delivery).sort(), ['remainingMs', 'request', 'responseToken', 'type'])
     const id = delivery.request.teamId
     assert.equal((await respond(app, delivery, {
-      snapshot: { schemaVersion: '1.0', seq: 1, whiteboard: { template: 'task-board-v1', title: '', status: 'queued', steps: [] }, workspace: { id, name: id }, employees: [], tasks: [], events: [] },
+      snapshot: { schemaVersion: '1.0', seq: 1, workspace: { id, name: id }, conversations: [{ id: 'main', title: '主会话', whiteboard: { template: 'task-board-v1', title: '', status: 'queued', steps: [] }, employees: [], tasks: [], events: [] }] },
       scene: { ...capabilities.json().data.scene, sceneId: id }, pendingDecisions: [],
     })).statusCode, 200)
   }

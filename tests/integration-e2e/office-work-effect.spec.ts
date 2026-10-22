@@ -11,6 +11,16 @@ test.describe('static office work effect', () => {
     await expect(page.getByRole('button', { name: '开始演示', exact: true })).toBeEnabled({ timeout: 30000 })
     const canvas = page.locator('canvas')
     await expect(canvas).toBeVisible()
+    const output = await canvas.evaluate((element: HTMLCanvasElement) => {
+      const gl = element.getContext('webgl2') || element.getContext('webgl')
+      const bounds = element.getBoundingClientRect()
+      return { antialias: gl?.getContextAttributes()?.antialias, samples: gl?.getParameter(gl.SAMPLES),
+        ratioX: element.width / bounds.width, ratioY: element.height / bounds.height }
+    })
+    expect(output.antialias).toBe(false)
+    expect(output.samples).toBe(0)
+    expect(output.ratioX).toBeCloseTo(2, 2)
+    expect(output.ratioY).toBeCloseTo(2, 2)
     await page.clock.runFor(500)
     const first = await canvas.screenshot()
     await page.clock.runFor(400)
