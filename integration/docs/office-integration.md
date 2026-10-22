@@ -415,6 +415,10 @@ sequenceDiagram
 
 `conversationId` 必填，必须是该办公室已登记的会话，否则返回 `404 CONVERSATION_NOT_FOUND`。`decision.id` 为该办公室内本次菜单的唯一标识，每次发起新菜单应使用不同值，即使分属不同会话也不能重复。选项 ID 在该菜单内唯一。`actorId` 可省略，默认使用第一个场景人物；人物姓名和头像由 PawOffice 根据人物 ID 确定。
 
+多选项菜单通过 `decision.allowCustom` 控制是否允许用户输入自定义需求。该字段可省略，默认按 `true` 处理；显式设为 `false` 时，前端不显示自定义输入框，服务端也会拒绝自由文本答案。
+
+`options` 仅包含 2–8 个普通选项。允许自定义输入时，前端在操作区提供“其他需求”入口，点击后才显示输入框；选择普通选项会收起输入框并清空自定义文本。输入框默认收起，保持原有选项布局和卡片尺寸。`custom` 是自定义答案的保留 ID，不能出现在 `options[].id` 中，无论 `allowCustom` 开启、关闭或省略，请求都会校验失败；不要通过添加 `id: "custom"` 的选项来声明输入框。
+
 用户选择后，发起菜单的 HTTP 请求返回：
 
 ```json
@@ -432,6 +436,25 @@ sequenceDiagram
 ```
 
 确认菜单返回 `choiceId: "confirm"` 或 `"reject"`；多选项菜单返回所选选项的 ID。`label` 为对应按钮标签。收到结果后，由外部业务后端执行业务操作并发送更新后的快照。
+
+用户在自定义输入框中提交需求时，返回：
+
+```json
+{
+  "code": 200,
+  "msg": "User selected",
+  "data": {
+    "teamId": "team-a",
+    "decisionId": "decision-2",
+    "choiceId": "custom",
+    "label": "其他",
+    "customText": "需要先补充导出能力",
+    "conversationId": "main"
+  }
+}
+```
+
+`customText` 会去除首尾空白，长度必须在 1–1000 之间（`maxDecisionCustomText`）。`choiceId` 为 `"custom"` 时，`label` 固定为 `"其他"`，服务端不会采用客户端传入的 `label`。标准选项的结果不包含 `customText`；标准选项结果若夹带 `customText`，或 `allowCustom: false` 时提交 `choiceId: "custom"`，都会被判为无效结果。`customText` 为可选字段，原有标准选项和确认菜单的响应结构保持不变。
 
 菜单在每个会话内排队，会话之间独立，切换后保留原有效期限。当前会话的菜单显示在办公室底部；展开聊天后，顶部会话标签显示各会话的待处理数量。非当前办公室的菜单会在场景左侧显示，可直接提交，也可进入对应办公室和会话查看上下文。结果携带原请求的 `teamId`、`conversationId` 和 `decisionId`。空间总览显示各办公室的待选择数量。页面显示倒计时，到期关闭菜单并返回 `408`，不产生默认选择。当前接口不提供菜单请求重试去重或历史结果查询；网络中断后，调用方应根据业务状态决定是否发起新菜单。
 

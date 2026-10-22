@@ -34,7 +34,7 @@ export function TeamSwitcher({ selection, fallbackName = '办公室', onOpenChan
       {pendingCount > 0 && <span className="team-decision-count" aria-hidden="true">{pendingCount > 99 ? '99+' : pendingCount}</span>}
     </button>
     {!open && !focused && notice && <TeamDecisionNotice key={decisionNoticeKey(notice)} team={notice} otherCount={backgroundTeams.length - 1} onDismiss={dismiss}
-      onResolve={selection?.resolveDecision ? (decisionId, choiceId) => selection.resolveDecision!(notice.id, decisionId, choiceId) : undefined}
+      onResolve={selection?.resolveDecision ? (decisionId, choiceId, customText) => selection.resolveDecision!(notice.id, decisionId, choiceId, customText) : undefined}
       onOpen={() => { (selection?.openDecisions ?? selection?.select)?.(notice.id) }} />}
     {open && canSwitch && <TeamOverviewDialog id={listId} selection={selection!}
       onClose={() => { setOpen(false); trigger.current?.focus() }} />}

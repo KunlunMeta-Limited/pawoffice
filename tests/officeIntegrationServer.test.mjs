@@ -152,3 +152,38 @@ test('directory results use server-owned offices and only confirm the exact brow
   assert.deepEqual(result.json().data.offices, [{ id: 'team-a', name: 'team-a', seq: 1, runtimeReady: false, taskCount: 0 }])
   assert.equal((await post(app, { type: 'office.read', teamId: 'stale-cache' })).statusCode, 404)
 })
+
+test('choice results accept custom text only when allowed and never trust a client label', async t => {
+  const { app, base } = await setup(t)
+  await post(app, { type: 'offices.initialize', offices: [state('team-a')] })
+  const browser = await subscribe(t, base); await browser.next()
+  const options = [{ id: 'full', label: '完整验收' }, { id: 'smoke', label: '快速验收' }]
+  for (const allowCustom of [undefined, true, false]) {
+    const invalid = await post(app, { conversationId: 'main', type: 'decision.request', teamId: 'team-a',
+      decision: { id: 'reserved-choice', kind: 'choice', title: '无效菜单', ...(allowCustom === undefined ? {} : { allowCustom }),
+        options: [{ id: 'custom', label: '不能用作普通选项' }, options[0]] } })
+    assert.equal(invalid.statusCode, 400, `reserved option must be rejected with allowCustom=${allowCustom}`)
+    assert.equal(invalid.json().data.reasonCode, 'INVALID_MESSAGE')
+  }
+  const ask = (id, allowCustom) => post(app, message({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 5000,
+    decision: { id, kind: 'choice', title: '选择验收方式', ...(allowCustom === undefined ? {} : { allowCustom }), options } })).then(value => value)
+  const pending = ask('custom-choice'), delivery = await browser.next()
+  const reply = data => respond(app, delivery, data)
+  assert.equal((await reply({ conversationId: 'main', teamId: 'team-a', decisionId: 'custom-choice', choiceId: 'custom', label: '其他' })).statusCode, 400,
+    'custom results must include customText')
+  assert.equal((await reply({ conversationId: 'main', teamId: 'team-a', decisionId: 'custom-choice', choiceId: 'full', label: '完整验收', customText: '夹带' })).statusCode, 400,
+    'standard options cannot smuggle custom text')
+  assert.equal((await reply({ conversationId: 'main', teamId: 'team-a', decisionId: 'custom-choice', choiceId: 'unknown', label: '未知' })).statusCode, 400)
+  assert.equal((await reply({ conversationId: 'main', teamId: 'team-a', decisionId: 'custom-choice', choiceId: 'custom', label: '伪造标签', customText: '  需要导出能力  ' })).statusCode, 200)
+  const accepted = await pending
+  assert.equal(accepted.statusCode, 200)
+  assert.deepEqual(accepted.json().data, { teamId: 'team-a', conversationId: 'main', decisionId: 'custom-choice', choiceId: 'custom', label: '其他', customText: '需要导出能力' })
+  assert.equal((await browser.next()).type, 'office.request.closed')
+
+  const deniedPending = ask('denied-choice', false), deniedDelivery = await browser.next()
+  assert.equal(deniedDelivery.request.decision.allowCustom, false, 'explicit opt-out must survive delivery to the browser')
+  assert.equal((await respond(app, deniedDelivery, { conversationId: 'main', teamId: 'team-a', decisionId: 'denied-choice', choiceId: 'custom', label: '其他', customText: '不允许' })).statusCode, 400,
+    'allowCustom false must reject custom results')
+  assert.equal((await respond(app, deniedDelivery, { conversationId: 'main', teamId: 'team-a', decisionId: 'denied-choice', choiceId: 'smoke', label: '伪造标签' })).statusCode, 200)
+  assert.deepEqual((await deniedPending).json().data, { teamId: 'team-a', conversationId: 'main', decisionId: 'denied-choice', choiceId: 'smoke', label: '快速验收' })
+})

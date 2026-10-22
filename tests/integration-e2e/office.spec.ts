@@ -198,6 +198,51 @@ test('choice menus show a shrinking bottom countdown and return the selected opt
   expect((await pending).data.choiceId).toBe('full')
 })
 
+test('choice menus submit custom text and keep the radio selection and input mutually exclusive', async ({ backend, page, service }) => {
+  await backend.post({ type: 'offices.initialize', offices: [office()] }); await openOffice(page, service.url)
+  const options = [{ id: 'full', label: '完整验收' }, { id: 'smoke', label: '快速验收' }]
+  const panel = page.getByRole('complementary', { name: '待你决定' }), submit = panel.getByRole('button', { name: '提交选择' })
+  const input = panel.getByRole('textbox', { name: '其他需求' })
+  const other = panel.getByRole('button', { name: '其他需求' })
+  const disabledPending = backend.post<{ choiceId: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
+    decision: { id: 'disabled-custom-choice', kind: 'choice', title: '只允许预设方案', allowCustom: false, options } })
+  await expect(panel.getByRole('heading', { name: '只允许预设方案' })).toBeVisible()
+  await expect(input).toHaveCount(0)
+  await expect(other).toHaveCount(0)
+  await panel.getByRole('radio', { name: '完整验收' }).check()
+  await submit.click()
+  expect((await disabledPending).data.choiceId).toBe('full')
+  const standardPending = backend.post<{ choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
+    decision: { id: 'standard-choice', kind: 'choice', title: '选择验收范围', options } })
+  await expect(submit).toBeDisabled()
+  await expect(input).toHaveCount(0)
+  await panel.getByRole('radio', { name: '完整验收' }).check()
+  await expect(submit).toBeEnabled()
+  await other.click()
+  await expect(panel.getByRole('radio', { name: '完整验收' })).not.toBeChecked()
+  await expect(submit).toBeDisabled()
+  await input.fill('需要补充导出能力')
+  await expect(submit).toBeEnabled()
+  await panel.getByRole('radio', { name: '快速验收' }).check()
+  await expect(input).toHaveCount(0)
+  await submit.click()
+  const standard = await standardPending
+  expect(standard.data).toEqual(expect.objectContaining({ choiceId: 'smoke', label: '快速验收' }))
+  expect(standard.data).not.toHaveProperty('customText')
+
+  const customPending = backend.post<{ choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
+    decision: { id: 'custom-choice', kind: 'choice', title: '选择验收范围', allowCustom: true, options } })
+  await expect(submit).toBeDisabled()
+  await other.click()
+  await expect(input).toHaveValue('')
+  await input.fill('需要补充导出能力')
+  await expect(submit).toBeEnabled()
+  await submit.click()
+  const custom = await customPending
+  expect(custom.code).toBe(200)
+  expect(custom.data).toMatchObject({ choiceId: 'custom', label: '其他', customText: '需要补充导出能力' })
+})
+
 test('an expired menu closes without creating a default approval', async ({ backend, page, service }) => {
   await backend.post({ type: 'offices.initialize', offices: [office()] }); await openOffice(page, service.url)
   const pending = backend.post<{ reasonCode: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 5000,
@@ -232,6 +277,19 @@ for (const mobile of [false, true]) test(`background-office decisions submit wit
   await card.getByRole('radio', { name: '快速验收', exact: true }).check()
   await card.getByRole('button', { name: '提交选择', exact: true }).click()
   expect((await pending).data).toMatchObject({ teamId: 'team-b', choiceId: 'smoke' })
+  await expect(card).toBeHidden()
+  const customPending = backend.post<{ teamId: string; choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-b', timeoutMs: 15000,
+    decision: { id: 'background-custom', kind: 'choice', title: '选择验收方式', allowCustom: true, options: [{ id: 'full', label: '完整验收' }, { id: 'smoke', label: '快速验收' }] } })
+  const customInput = card.getByRole('textbox', { name: '其他需求' })
+  await expect(card.getByRole('button', { name: '先选择一项', exact: true })).toBeDisabled()
+  await expect(customInput).toHaveCount(0)
+  await card.getByRole('button', { name: '其他需求', exact: true }).click()
+  await expect(customInput).toBeVisible()
+  await expect(card.getByRole('button', { name: '提交选择', exact: true })).toBeDisabled()
+  await customInput.fill('先补充移动端验收')
+  await expect(card.getByRole('button', { name: '提交选择', exact: true })).toBeEnabled()
+  await card.getByRole('button', { name: '提交选择', exact: true }).click()
+  expect((await customPending).data).toMatchObject({ teamId: 'team-b', choiceId: 'custom', label: '其他', customText: '先补充移动端验收' })
   await expect(card).toBeHidden()
   expect((await backend.read('team-a')).data.pendingDecisions).toEqual([])
   await expect(page.getByRole('button', { name: new RegExp(`^团队空间，当前团队：${a.workspace.name}`) })).toBeVisible()

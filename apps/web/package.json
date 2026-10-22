@@ -19,7 +19,7 @@
     "@pawoffice/scene-classroom": "0.1.0",
     "@pawoffice/scene-farm": "0.1.0",
     "@pawoffice/scene-office": "0.1.0",
-    "@tanstack/react-virtual": "3.14.21",
+    "@tanstack/react-virtual": "^3.14.21",
     "lucide-react": "^1.48.0",
     "pixi.js": "^8.18.1",
     "react": "^19.2.6",

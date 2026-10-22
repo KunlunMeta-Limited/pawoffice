@@ -1,12 +1,13 @@
+import { maxDecisionCustomText } from '@pawoffice/protocol/office-integration'
 import { notifySubscribers } from '../../notifications.ts'
 
 export type DecisionRequester = { name: string; appearanceId: string }
 type DecisionBase = { teamId: string; conversationId?: string; id: string; requester: DecisionRequester; title: string; description: string; expiresAt?: number; createdAt?: number; deadline?: number }
 export type DecisionRequest = DecisionBase & (
-  { kind: 'choice'; options: { id: string; label: string; description: string }[] }
+  { kind: 'choice'; allowCustom?: boolean; options: { id: string; label: string; description: string }[] }
   | { kind: 'confirmation'; confirmLabel: string; rejectLabel: string }
 )
-export type DecisionRecord = { id: string; request: DecisionRequest; choiceId: string; label: string }
+export type DecisionRecord = { id: string; request: DecisionRequest; choiceId: string; label: string; customText?: string }
 export type DecisionSnapshot = { teamId: string; pending: DecisionRequest[]; records: DecisionRecord[]; receipt: DecisionRecord | null; submittingId?: string; submittingIds?: readonly string[]; error?: string | null; errorDecisionId?: string }
 const remaining = (request: DecisionRequest) => request.deadline !== undefined ? request.deadline - performance.now()
   : request.expiresAt !== undefined ? request.expiresAt - Date.now() : Infinity
@@ -21,7 +22,7 @@ export class DecisionSession {
   private seen = new Set<string>()
   private receiptTimer?: ReturnType<typeof setTimeout>
   private expiryTimers = new Map<string, ReturnType<typeof setTimeout>>()
-  private submissions = new Map<string, (choiceId: string) => Promise<void>>()
+  private submissions = new Map<string, (choiceId: string, customText?: string) => Promise<void>>()
   private flights = new Map<string, Promise<DecisionRecord | null>>()
   constructor(teamId: string, source: DecisionRequest[] | (() => DecisionRequest[]) = []) {
     this.teamId = teamId
@@ -58,7 +59,7 @@ export class DecisionSession {
     this.snapshot = snapshot
     notifySubscribers(this.listeners, 'DecisionSession')
   }
-  enqueue(request: DecisionRequest, submit?: (choiceId: string) => Promise<void>) {
+  enqueue(request: DecisionRequest, submit?: (choiceId: string, customText?: string) => Promise<void>) {
     if (this.enqueueError(request)) return false
     this.seen.add(request.id)
     if (this.seen.size > 1024) this.seen.delete(this.seen.values().next().value!)
@@ -75,20 +76,21 @@ export class DecisionSession {
     if (this.snapshot.pending.length >= 32) return 'DECISION_QUEUE_FULL' as const
     return null
   }
-  resolve(teamId: string, decisionId: string, choiceId: string): DecisionRecord | null {
+  resolve(teamId: string, decisionId: string, choiceId: string, customText?: string): DecisionRecord | null {
     if (this.submissions.has(decisionId)) return null
-    return this.commit(teamId, decisionId, choiceId)
+    return this.commit(teamId, decisionId, choiceId, customText)
   }
-  choose(teamId: string, decisionId: string, choiceId: string): Promise<DecisionRecord | null> {
+  choose(teamId: string, decisionId: string, choiceId: string, customText?: string): Promise<DecisionRecord | null> {
     const existing = this.flights.get(decisionId)
     if (existing) return existing
     const submit = this.submissions.get(decisionId)
-    if (!submit) return Promise.resolve(this.resolve(teamId, decisionId, choiceId))
+    if (!submit) return Promise.resolve(this.resolve(teamId, decisionId, choiceId, customText))
     const request = this.firstForConversation(decisionId)
     if (!request || teamId !== this.teamId || request.id !== decisionId || remaining(request) <= 0) return Promise.resolve(null)
-    if (request.kind === 'choice' ? !request.options.some(option => option.id === choiceId) : !['confirm', 'reject'].includes(choiceId)) return Promise.resolve(null)
+    const outcome = this.outcome(request, choiceId, customText)
+    if (!outcome) return Promise.resolve(null)
     this.update({ ...this.snapshot, submittingId: decisionId, submittingIds: [...this.flights.keys(), decisionId], error: null, errorDecisionId: undefined })
-    const flight = Promise.resolve().then(() => submit(choiceId)).then(() => this.commit(teamId, decisionId, choiceId)).catch(error => {
+    const flight = Promise.resolve().then(() => submit(choiceId, outcome.customText)).then(() => this.commit(teamId, decisionId, choiceId, outcome.customText)).catch(error => {
       if (this.snapshot.pending.some(item => item.id === decisionId)) this.update({ ...this.snapshot, errorDecisionId: decisionId, error: error instanceof Error ? error.message : '选择提交失败，请重试' })
       return null
     }).finally(() => {
@@ -104,14 +106,29 @@ export class DecisionSession {
     this.update({ ...this.snapshot, pending: this.snapshot.pending.filter(request => request.id !== decisionId),
       ...(this.snapshot.submittingId === decisionId ? { submittingId: undefined, error: null } : {}) })
   }
-  private commit(teamId: string, decisionId: string, choiceId: string): DecisionRecord | null {
+  private outcome(request: DecisionRequest, choiceId: string, customText?: string): { label: string; customText?: string } | null {
+    if (request.kind === 'confirmation') {
+      const label = choiceId === 'confirm' ? request.confirmLabel : choiceId === 'reject' ? request.rejectLabel : undefined
+      return label ? { label } : null
+    }
+    if (choiceId === 'custom') {
+      if (request.allowCustom === false) return null
+      const value = customText?.trim()
+      if (!value || value.length > maxDecisionCustomText) return null
+      return { label: value, customText: value }
+    }
+    if (customText?.trim()) return null
+    const option = request.options.find(option => option.id === choiceId)
+    return option ? { label: option.label } : null
+  }
+  private commit(teamId: string, decisionId: string, choiceId: string, customText?: string): DecisionRecord | null {
     const request = this.firstForConversation(decisionId)
     if (teamId !== this.teamId || !request || request.teamId !== teamId || request.id !== decisionId) return null
     if (remaining(request) <= 0) { this.dismiss(decisionId); return null }
-    const label = request.kind === 'choice' ? request.options.find(option => option.id === choiceId)?.label
-      : choiceId === 'confirm' ? request.confirmLabel : choiceId === 'reject' ? request.rejectLabel : undefined
-    if (!label) return null
-    const record = { id: `${teamId}:${request.id}:${choiceId}`, request, choiceId, label }
+    const outcome = this.outcome(request, choiceId, customText)
+    if (!outcome) return null
+    const record = { id: `${teamId}:${request.id}:${choiceId}`, request, choiceId, label: outcome.label,
+      ...(outcome.customText !== undefined ? { customText: outcome.customText } : {}) }
     const pending = this.snapshot.pending.filter(item => item.id !== decisionId)
     clearTimeout(this.expiryTimers.get(decisionId)); this.expiryTimers.delete(decisionId); this.submissions.delete(decisionId)
     clearTimeout(this.receiptTimer)

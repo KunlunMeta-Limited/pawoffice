@@ -5,7 +5,7 @@ export function createDecisionPreview(teamId: string, requester: DecisionRequest
   const createdAt = Date.now(), expiresAt = createdAt + 60000, deadline = performance.now() + 60000
   const timing = { createdAt, expiresAt, deadline }
   return [
-    { teamId, id: 'preview-priority', kind: 'choice', requester, ...timing, title: '下一步优先推进哪一项？',
+    { teamId, id: 'preview-priority', kind: 'choice', allowCustom: true, requester, ...timing, title: '下一步优先推进哪一项？',
       description: '本轮任务还有三个方向，需要你确定优先级。', options: content ? [
         { id: 'copy', label: '先完善文案', description: '打磨标题和正文，明确核心表达。' },
         { id: 'assets', label: '先整理素材', description: '补齐图片和资料，统一内容质量。' },

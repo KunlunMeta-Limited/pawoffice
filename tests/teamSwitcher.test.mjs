@@ -115,6 +115,32 @@ test('background choices show radio options, disabled initial submit and team-lo
   assert(!failed.includes('aria-busy="true"'))
 })
 
+test('background choices preserve the original radio layout and defer custom input until opened', () => {
+  const options = [{ id: 'one', label: '方案一', description: '先开发' }, { id: 'two', label: '方案二', description: '先测试' }]
+  const team = { id: 'b', name: 'B', sceneLabel: '办公室', decisionCount: 1, pendingDecision: {
+    teamId: 'b', id: 'custom-choice', kind: 'choice', allowCustom: true, title: '选择处理方式', description: '', requester: { name: '负责人', appearanceId: 'office-lead' },
+    options,
+  } }
+  const render = value => renderToStaticMarkup(createElement(TeamDecisionNotice, { team: value, otherCount: 0, onOpen() {}, onDismiss() {}, onResolve() {} }))
+  const initial = render(team)
+  assert.equal((initial.match(/type="radio"/g) ?? []).length, 2)
+  assert.match(initial, /aria-label="其他需求" aria-expanded="false"/)
+  assert(!initial.includes('type="text"'))
+  assert(initial.includes('其他需求'))
+  assert.match(initial, /type="submit"[^>]*disabled=""/)
+  assert.match(initial, /type="submit"[^>]*>[^]*先选择一项/)
+  const optedOut = render({ ...team, pendingDecision: { ...team.pendingDecision, allowCustom: false } })
+  assert(!optedOut.includes('其他需求'))
+  assert(!optedOut.includes('type="text"'))
+  const busy = render({ ...team, decisionSubmittingId: 'custom-choice' })
+  assert.match(busy, /<fieldset[^>]*disabled=""/)
+  assert.match(busy, /type="submit"[^>]*disabled=""/)
+  assert(busy.includes('正在提交…'))
+  const failed = render({ ...team, decisionError: '提交失败，请重试' })
+  assert(failed.includes('role="alert">提交失败，请重试'))
+  assert(!failed.includes('aria-busy="true"'))
+})
+
 test('entering a decision office prioritizes its own panel until its queue is empty', () => {
   const teams = [{ id: 'a', name: 'A', sceneLabel: '办公室', decisionCount: 1 }, { id: 'b', name: 'B', sceneLabel: '办公室', decisionCount: 1 }]
   const selection = { teams, activeId: 'a', focusedDecisionTeamId: 'a', select() {} }

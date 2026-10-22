@@ -248,3 +248,18 @@ test('remote office whiteboards have one authoritative update path, not a silent
     type: 'object.state.set', entityId: 'whiteboard-1', expectedStateRevision: 0, state: {} } })
   assert.equal(response.statusCode, 400); assert.equal(response.json().data.reasonCode, 'SNAPSHOT_REQUIRED')
 })
+
+test('custom choice replies preserve the fixed label and trimmed custom text', { timeout: 5000 }, async t => {
+  const { app, base } = await setup(t)
+  await post(app, { type: 'offices.initialize', offices: [snapshot()] })
+  const browser = await stream(t, base); await browser.next()
+  const pending = post(app, { conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 1000,
+    decision: { id: 'custom-menu', kind: 'choice', title: '选择处理方式', options: [{ id: 'one', label: '方案一' }, { id: 'two', label: '方案二' }] } }).then(value => value)
+  const delivery = await browser.next()
+  assert.equal(delivery.request.decision.allowCustom, true, 'omitted allowCustom is normalized to true')
+  const response = await app.inject({ method: 'POST', url: '/api/pawoffice/reply', payload: { responseToken: delivery.responseToken,
+    result: { code: 200, msg: 'Selected', data: { conversationId: 'main', teamId: 'team-a', decisionId: 'custom-menu', choiceId: 'custom', label: '客户端标签', customText: ' 自定义说明 ' } } } })
+  assert.equal(response.statusCode, 200)
+  assert.deepEqual((await pending).json().data, { conversationId: 'main', teamId: 'team-a', decisionId: 'custom-menu', choiceId: 'custom', label: '其他', customText: '自定义说明' })
+  assert.equal((await browser.next()).type, 'office.request.closed')
+})
