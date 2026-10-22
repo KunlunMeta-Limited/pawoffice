@@ -58,7 +58,7 @@ test('choice cards use radio options and cannot submit before selection', () => 
   const html = renderToStaticMarkup(createElement(DecisionCard, {
     request: createDecisionPreview(teamId, requester)[0], count: 2, preview: true, onResolve() {}, onCollapse() {},
   }))
-  assert.equal((html.match(/type="radio"/g) ?? []).length, 3)
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 4)
   assert.match(html, /disabled=""[^>]*>[^]*提交选择/)
   assert(html.includes('收起待决定面板'))
   assert(html.includes('本地演示'))
@@ -221,12 +221,13 @@ test('omitted allowCustom allows custom text without a custom option', t => {
   assert.equal(session.resolve(teamId, request.id, 'custom', ' 自定义需求 ').customText, '自定义需求')
 })
 
-test('choice cards preserve the original radio layout and open custom input from the action area', () => {
+test('choice cards offer custom input as a radio option with the editor initially hidden', () => {
   const [choice, confirmation] = createDecisionPreview(teamId, requester)
   const render = request => renderToStaticMarkup(createElement(DecisionCard, { request, count: 1, onResolve() {}, onCollapse() {} }))
   const html = render(choice)
-  assert.equal((html.match(/type="radio"/g) ?? []).length, 3)
-  assert.match(html, /class="office-decision-secondary"[^>]*aria-expanded="false"[^>]*>其他需求<\/button>/)
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 4)
+  assert.match(html, /<label data-selected="false"><input type="radio"[^>]*value="custom"[^>]*><span><strong>其他需求<\/strong><small>填写你的具体需求<\/small><\/span><\/label>/)
+  assert(!html.includes('class="office-decision-secondary"'))
   assert(!html.includes('<textarea'))
   assert(!html.includes('class="office-decision-custom"'))
   assert.match(html, /disabled=""[^>]*>[^]*提交选择/)

@@ -66,6 +66,10 @@ export function DecisionCard({ request, count, onResolve, onCollapse, preview = 
         <input type="radio" name={groupId} value={option.id} checked={selected === option.id} onChange={() => { setSelected(option.id); setCustomText('') }} />
         <span><strong>{option.label}</strong><small>{option.description}</small></span>
       </label>)}
+      {allowCustom && <label data-selected={customSelected}>
+        <input type="radio" name={groupId} value="custom" checked={customSelected} onChange={() => { setSelected('custom'); setCustomText('') }} />
+        <span><strong>其他需求</strong><small>填写你的具体需求</small></span>
+      </label>}
     </fieldset>}
     {allowCustom && customSelected && <div className="office-decision-custom">
       <textarea aria-label="其他需求" autoFocus rows={2} maxLength={maxDecisionCustomText} value={customText} disabled={busy} placeholder="描述你的需求…"
@@ -77,8 +81,6 @@ export function DecisionCard({ request, count, onResolve, onCollapse, preview = 
     </div>}
     <footer className="office-decision-actions">
       <span>{busy ? '正在提交…' : count > 1 ? `另有 ${count - 1} 项待处理` : '最后一项'}</span>
-      {allowCustom && <button type="button" className="office-decision-secondary" disabled={busy} aria-expanded={customSelected}
-        onClick={() => { setSelected(customSelected ? '' : 'custom'); setCustomText('') }}>其他需求</button>}
       {request.kind === 'choice' ? <button type="button" className="office-decision-primary" disabled={!canSubmit} onClick={submit}><Check size={15} />提交选择</button>
         : <><button type="button" className="office-decision-secondary" disabled={busy} onClick={() => onResolve('reject')}><X size={15} />{request.rejectLabel}</button>
           <button type="button" className="office-decision-primary" disabled={busy} onClick={() => onResolve('confirm')}><Check size={15} />{request.confirmLabel}</button></>}

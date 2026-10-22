@@ -203,7 +203,7 @@ test('choice menus submit custom text and keep the radio selection and input mut
   const options = [{ id: 'full', label: '完整验收' }, { id: 'smoke', label: '快速验收' }]
   const panel = page.getByRole('complementary', { name: '待你决定' }), submit = panel.getByRole('button', { name: '提交选择' })
   const input = panel.getByRole('textbox', { name: '其他需求' })
-  const other = panel.getByRole('button', { name: '其他需求' })
+  const other = panel.getByRole('radio', { name: /^其他需求/ })
   const disabledPending = backend.post<{ choiceId: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
     decision: { id: 'disabled-custom-choice', kind: 'choice', title: '只允许预设方案', allowCustom: false, options } })
   await expect(panel.getByRole('heading', { name: '只允许预设方案' })).toBeVisible()
@@ -218,7 +218,8 @@ test('choice menus submit custom text and keep the radio selection and input mut
   await expect(input).toHaveCount(0)
   await panel.getByRole('radio', { name: '完整验收' }).check()
   await expect(submit).toBeEnabled()
-  await other.click()
+  await other.check()
+  await expect(other).toBeChecked()
   await expect(panel.getByRole('radio', { name: '完整验收' })).not.toBeChecked()
   await expect(submit).toBeDisabled()
   await input.fill('需要补充导出能力')
@@ -233,7 +234,7 @@ test('choice menus submit custom text and keep the radio selection and input mut
   const customPending = backend.post<{ choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
     decision: { id: 'custom-choice', kind: 'choice', title: '选择验收范围', allowCustom: true, options } })
   await expect(submit).toBeDisabled()
-  await other.click()
+  await other.check()
   await expect(input).toHaveValue('')
   await input.fill('需要补充导出能力')
   await expect(submit).toBeEnabled()
@@ -283,7 +284,7 @@ for (const mobile of [false, true]) test(`background-office decisions submit wit
   const customInput = card.getByRole('textbox', { name: '其他需求' })
   await expect(card.getByRole('button', { name: '先选择一项', exact: true })).toBeDisabled()
   await expect(customInput).toHaveCount(0)
-  await card.getByRole('button', { name: '其他需求', exact: true }).click()
+  await card.getByRole('radio', { name: /^其他需求/ }).check()
   await expect(customInput).toBeVisible()
   await expect(card.getByRole('button', { name: '提交选择', exact: true })).toBeDisabled()
   await customInput.fill('先补充移动端验收')
@@ -442,7 +443,7 @@ test.describe('static local demo', () => {
     await expect(sideCountdown).toBeInViewport()
     expect(Number(await sideCountdown.getAttribute('aria-valuenow'))).toBeGreaterThan(90)
     await expect(page.locator('.team-decision-notice')).toHaveCount(1)
-    await expect(notice.getByRole('radio')).toHaveCount(3)
+    await expect(notice.getByRole('radio')).toHaveCount(4)
     if (!mobile) await expect(panel.getByRole('heading', { name: '是否提交本轮审核？' })).toBeVisible()
     const sideScreenshot = testInfo.outputPath('start-demo-background.png')
     await page.screenshot({ path: sideScreenshot })
@@ -533,7 +534,8 @@ test.describe('static local demo', () => {
     await expect(page.locator('.office-decision-card h3')).toHaveCSS('font-size', mobile ? '16px' : '17px')
     const compactBounds = (await notice.boundingBox())!
     expect(compactBounds.width).toBeLessThanOrEqual(224)
-    expect(compactBounds.height).toBeLessThan(190)
+    // The custom radio adds one 24px option row and a 2px grid gap.
+    expect(compactBounds.height).toBeLessThan(216)
     await expect(notice).toHaveCSS('opacity', '1')
     const optionRows = notice.locator('label')
     for (let index = 0; index < await optionRows.count(); index++) {

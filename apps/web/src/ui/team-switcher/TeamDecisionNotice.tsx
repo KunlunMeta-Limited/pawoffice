@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { ArrowUpRight, Bell, Check, LoaderCircle, MessageSquarePlus, X } from 'lucide-react'
+import { ArrowUpRight, Bell, Check, LoaderCircle, X } from 'lucide-react'
 import { maxDecisionCustomText } from '@pawoffice/protocol/office-integration'
 import { decisionNoticeKey } from './model.ts'
 import type { OfficeTeamOption } from './model.ts'
@@ -42,6 +42,10 @@ export function TeamDecisionNotice({ team, otherCount, onOpen, onDismiss, onReso
             <input type="radio" name={groupId} value={option.id} checked={selected === option.id} onChange={() => { setSelected(option.id); setCustomText('') }} />
             <span><strong>{option.label}</strong>{option.description && <small className="team-decision-notice-option-detail">{option.description}</small>}</span>
           </label>)}
+          {allowCustom && <label data-selected={customSelected} title="填写你的具体需求">
+            <input type="radio" name={groupId} value="custom" checked={customSelected} onChange={() => { setSelected('custom'); setCustomText('') }} />
+            <span><strong>其他需求</strong><small className="team-decision-notice-option-detail">填写你的具体需求</small></span>
+          </label>}
         </fieldset>}
         {allowCustom && customSelected && <div className="team-decision-notice-custom">
           <input aria-label="其他需求" autoFocus type="text" maxLength={maxDecisionCustomText} value={customText} disabled={!enabled} placeholder="输入你的需求…"
@@ -57,8 +61,6 @@ export function TeamDecisionNotice({ team, otherCount, onOpen, onDismiss, onReso
         {openButton}
         {request.expiresAt !== undefined && <DecisionDeadline className="team-decision-notice-deadline" label="问题剩余有效时间"
           expiresAt={request.expiresAt} createdAt={request.createdAt} deadline={request.deadline} />}
-        {allowCustom && <button type="button" className="team-decision-notice-secondary" disabled={!enabled} title="其他需求" aria-label="其他需求" aria-expanded={customSelected}
-          onClick={() => { setSelected(customSelected ? '' : 'custom'); setCustomText('') }}><MessageSquarePlus size={12} /></button>}
         {request.kind === 'choice' ? <button type="submit" className="team-decision-notice-primary" disabled={!canSubmit}>
           {busy ? <LoaderCircle size={12} className="team-decision-notice-spinner" /> : selected ? <Check size={12} /> : undefined}
           {busy ? '正在提交…' : selected ? '提交选择' : '先选择一项'}
