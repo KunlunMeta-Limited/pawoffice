@@ -1,0 +1,71 @@
+{
+  "characterId": "review-agent",
+  "label": "刘市",
+  "status": "candidate-unreviewed",
+  "observations": [
+    {
+      "frame": 1,
+      "left": 47,
+      "right": 203,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 2,
+      "left": 48,
+      "right": 203,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 3,
+      "left": 48,
+      "right": 204,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 4,
+      "left": 48,
+      "right": 205,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 5,
+      "left": 47,
+      "right": 207,
+      "top": 65,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 6,
+      "left": 47,
+      "right": 207,
+      "top": 66,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 7,
+      "left": 48,
+      "right": 204,
+      "top": 66,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 8,
+      "left": 48,
+      "right": 204,
+      "top": 66,
+      "footY": 343,
+      "edgeClipped": false
+    }
+  ]
+}

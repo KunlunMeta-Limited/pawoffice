@@ -13,6 +13,15 @@ after(() => server?.close())
 
 const render = (content, pending = false) => renderToStaticMarkup(createElement(ChatMarkdown, { content, pending }))
 
+test('chat retains nested lists, literal code whitespace and ordinary line breaks', () => {
+  const html = render('- First\n  - Nested\n\n使用 `**原文**`\n\n```html\n<div>\n  # 标题 *原文*\n</div>\n```\n\n第一行\n第二行\n\n下一段')
+  assert.match(html, /<ul>\s*<li>First\s*<ul>\s*<li>Nested<\/li>/)
+  assert(html.includes('<code>**原文**</code>'))
+  assert(html.includes('<pre><code class="language-html">&lt;div&gt;\n  # 标题 *原文*\n&lt;/div&gt;\n</code></pre>'))
+  assert(html.includes('<p>第一行\n第二行</p>'))
+  assert(html.includes('<p>下一段</p>'))
+})
+
 test('chat renders Markdown headings, emphasis, lists, quotes and code', () => {
   const html = render('# Plan\n\n**Build** with *care* and `npm test`.\n\n1. Implement\n2. Verify\n\n- Ship\n\n> Keep it simple\n\n```js\nconst tag = "<script>"\n```')
   assert.match(html, /<h1>Plan<\/h1>/)

@@ -50,6 +50,7 @@ test('conversation tabs isolate pushed tasks, wall boards and drafts, including 
   await page.getByRole('button', { name: '关闭白板', exact: true }).click()
   await page.getByRole('button', { name: '展开对话', exact: true }).click()
   await page.getByRole('tab', { name: '登录开发', exact: true }).click()
+  await page.getByRole('button', { name: /^任务中心/ }).click()
   await expect(page.locator('.runtime-task-list')).toContainText('登录已完成')
   await expect(page.getByRole('textbox', { name: '给办公室发送消息' })).toHaveValue('')
   await page.getByRole('tab', { name: '需求评审', exact: true }).click()

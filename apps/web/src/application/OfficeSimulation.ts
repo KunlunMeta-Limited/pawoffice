@@ -1,13 +1,22 @@
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
 import { SceneFault } from '@pawoffice/protocol'
 import type { OfficeDemoSource } from '../dashboard/OfficeDemoSource.ts'
+import { OfficeIdleCoffee } from '@pawoffice/scene-office/core'
 
 /** Advances accepted scene behaviors only; business state comes from data events. */
 export class OfficeSimulation {
   readonly runtime: SceneRuntime
   readonly demoSource?: OfficeDemoSource
+  readonly idleCoffee?: OfficeIdleCoffee
+  private idleRunning = true
 
-  constructor(runtime: SceneRuntime, demoSource?: OfficeDemoSource) { this.runtime = runtime; this.demoSource = demoSource }
+  constructor(runtime: SceneRuntime, demoSource?: OfficeDemoSource, options: { idleCoffee?: { canIdle?: (id: string) => boolean } } = {}) {
+    this.runtime = runtime; this.demoSource = demoSource
+    if (options.idleCoffee) this.idleCoffee = new OfficeIdleCoffee(runtime, options.idleCoffee)
+  }
+  pauseIdleCoffee() { this.idleRunning = false; this.idleCoffee?.suspend() }
+  resumeIdleCoffee() { this.idleRunning = true; this.idleCoffee?.resume() }
+  dispose() { this.idleCoffee?.dispose() }
   get canDemo() { return Boolean(this.demoSource) }
   get isDemoRunning() { return this.demoSource?.isRunning ?? false }
   get error() { return this.demoSource?.error ?? null }
@@ -20,6 +29,11 @@ export class OfficeSimulation {
 
   tick(elapsedMs: number) {
     this.runtime.tick(elapsedMs)
+    if (this.idleCoffee) {
+      if (!this.idleRunning || this.isDemoRunning || this.runtime.isEditing) this.idleCoffee.suspend()
+      else this.idleCoffee.resume()
+      this.idleCoffee.tick(elapsedMs)
+    }
   }
 }
 

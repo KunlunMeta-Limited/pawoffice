@@ -72,7 +72,17 @@ export class OfficeTeamSession {
       },
     })
     this.ui = new OfficeUiSession(runtime.sceneId, options.requestUi, () => this.chat.getSnapshot().selectedId)
-    this.simulation = options.simulation ?? new OfficeSimulation(runtime, source.kind === 'example' ? new OfficeDemoSource(runtime) : undefined)
+    this.simulation = options.simulation ?? new OfficeSimulation(runtime, source.kind === 'example' ? new OfficeDemoSource(runtime) : undefined, {
+      idleCoffee: { canIdle: id => {
+        const dashboard = this.state?.dashboard
+        if (!dashboard || !this.active) return false
+        return !this.chat.getSnapshot().conversations.some(({ data }) => {
+          if (!data) return false
+          const employees = new Set(data.employees.filter(employee => employee.sceneActorId === id).map(employee => employee.id))
+          return data.tasks.some(task => task.assigneeId && employees.has(task.assigneeId) && task.status !== 'completed')
+        })
+      } },
+    })
     if (this.simulation.runtime !== runtime) throw new Error('团队会话与动画必须使用同一个运行时')
     this.bridge = new DashboardSceneBridge(runtime, { whiteboard: source.kind === 'example' ? 'demo-summary' : 'external' })
     this.state = { dashboard: null, dashboardError: null, sceneLinkError: null, connection: options.transport ? '连接中' : source.kind === 'example' ? '本地示例' : '未配置', pendingTaskIds: [], actionError: null }
@@ -101,6 +111,7 @@ export class OfficeTeamSession {
   start() {
     if (this.active) return this.flight?.promise ?? Promise.resolve()
     this.active = true
+    this.simulation.resumeIdleCoffee()
     const generation = ++this.generation
     try {
       this.decisions.start()
@@ -117,6 +128,7 @@ export class OfficeTeamSession {
   }
 
   stop() {
+    this.simulation.pauseIdleCoffee()
     this.decisions.stop()
     this.decisions.clearReceipt()
     this.chat.stop()

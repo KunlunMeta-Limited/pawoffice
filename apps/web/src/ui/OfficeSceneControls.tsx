@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { Grid2X2, Pause, Play, RotateCw } from 'lucide-react'
+import { Coffee, Grid2X2, Pause, Play, RotateCw } from 'lucide-react'
 import type { AgentState } from '@pawoffice/scene-office/types'
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
 import type { OfficeSceneController } from '../controller/useOfficeSceneController.ts'
@@ -28,6 +28,13 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
 }) {
   const { sceneRef, menu, setMenu, demo, setDemo, canDemo, setNotice, loaded, actions, thumbnails, previewProp, highlightProp } = controller
   const editorRuntime = runtime, editor = runtime.editorSnapshot()
+  const [coffee, setCoffee] = useState(true)
+  const [canCoffee, setCanCoffee] = useState(false)
+  const [preparingEdit, setPreparingEdit] = useState(false)
+  useEffect(() => {
+    setCanCoffee(loaded && Boolean(sceneRef.current?.canIdleCoffee))
+    if (loaded) setCoffee(sceneRef.current?.idleCoffeeEnabled ?? false)
+  }, [loaded, runtime, sceneRef])
   useEffect(() => {
     const close = (event: PointerEvent) => {
       const target = event.target
@@ -66,9 +73,16 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
     if (result?.error) setNotice(result.error.message)
     setMenu(null)
   }
-  const edit = () => {
-    try { sceneRef.current?.beginEditing(); setMapView(initialMapView); setDemo(false); setMenu(null); setNotice(null) }
+  const edit = async () => {
+    setPreparingEdit(true)
+    try {
+      const scene = sceneRef.current
+      await scene?.prepareIdleForEditing()
+      if (sceneRef.current !== scene) return
+      scene?.beginEditing(); setMapView(initialMapView); setDemo(false); setMenu(null); setNotice(null)
+    }
     catch (error) { setNotice(error instanceof Error ? error.message : '暂时无法编辑') }
+    finally { setPreparingEdit(false) }
   }
   const toggleDemo = () => {
     try { sceneRef.current?.setDemo(!demo); setNotice(null) }
@@ -81,7 +95,9 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
         <MapEditorOverlay runtime={editorRuntime} draft={editor} view={mapView} setView={setMapView} onError={setNotice} onPreview={previewProp} onHighlight={highlightProp} />
         <RoomEditor key={editor.id} runtime={editorRuntime} draft={editor} view={mapView} setView={setMapView} onError={setNotice} thumbnails={thumbnails} />
       </> : <div className="runtime-scene-toolbar">
-          <button type="button" title="编辑布局" aria-label="编辑布局" disabled={!loaded || !actions.ready} onClick={edit}><Grid2X2 size={17} /></button>
+          <button type="button" title={preparingEdit ? '人物正在返回工位' : '编辑布局'} aria-label="编辑布局" disabled={!loaded || !actions.ready || preparingEdit} onClick={() => { void edit() }}><Grid2X2 size={17} /></button>
+          {canCoffee && <button type="button" title={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-label={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-pressed={coffee} disabled={!actions.ready}
+            onClick={() => { const enabled = !coffee; sceneRef.current?.setIdleCoffee(enabled); setCoffee(enabled) }}><Coffee size={17} /></button>}
           {canDemo && <button type="button" title={demo ? '停止演示' : '开始演示'} aria-label={demo ? '停止演示' : '开始演示'} disabled={!loaded || !actions.ready} onClick={toggleDemo}>{demo ? <Pause size={17} /> : <Play size={17} />}</button>}
           {loaded && !actions.ready && <span role="status" title={actions.error}>{actions.error ? '互动动作加载失败' : `准备互动动作 · ${actions.completed}/${actions.total}`}</span>}
           {loaded && actions.error && <button type="button" title="重试加载互动动作" aria-label="重试加载互动动作" onClick={() => { void sceneRef.current?.prepareActions() }}><RotateCw size={16} /></button>}

@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "status": "selected-for-integration",
+  "authorization": "用户明确要求：我需要把这些动画都加入到真页面中。",
+  "characters": {
+    "office-lead": {
+      "animation": "b4b2d0f910706f2fb192a4b632313b9a11b346f8d5a4c027efb15184e16dcadf",
+      "reference": "ac6abe514358f0c1faf58a02c6825eaae159b2a0711e0d8b8efb27e6ef1aee6c",
+      "frames": {
+        "frames/right/001.png": "927f4e7bf55b07412165807207242cee9bf2b0cd1fbc9b2536cf3fd39d0a5c1f",
+        "frames/right/002.png": "e8fa752deabae7b5ad4bfea77b1a407c1979df30a27400f638c3a43d1d1ea37b",
+        "frames/right/003.png": "d854806105af032d5053954996cf46186a7cc739380ddca9d38018584bbb058e",
+        "frames/right/004.png": "8575dd7979eae8df7f648d95d011af537b2759075c556f83a9614c23b61f80ef",
+        "frames/right/005.png": "849b5b26d4fda3ee57603228a31e8b51165bbbffd90106849609fa9a31e9b109",
+        "frames/right/006.png": "cf76f079ee0a71f4b73f39a11c88721ae26272eea8c109ce79895782e9251312",
+        "frames/right/007.png": "585e5a024ac3bcb781b74052d4c7a285623d9f1a2086df1bd20f1da381541b41",
+        "frames/right/008.png": "6d38e9e2249fc948f32e6db0142fcb2752cd75e83308cc0a41c9b5280880f022"
+      }
+    },
+    "code-agent": {
+      "animation": "3ca667d2ec01cde56e2248194d6c82fe6f1fe738cfcb69c805d2726567d366ed",
+      "reference": "f9c0ae48e3dff6fd94fd413ffa36ce8014236792a8e73b2d53f4049a8a41b8a0",
+      "frames": {
+        "frames/right/001.png": "4a10d5e6a5689f0f87ba7b38dd4846bd5b57541e5f59b0d6cbe5c9fa147d5f99",
+        "frames/right/002.png": "b146954d9a58c9bb113ee32519bed74e9169ab07dde8b033e731e5689899d648",
+        "frames/right/003.png": "8abdecda0c8e54a5801f99ccecbba5c51dfee95e1602bd9543b9340fbe2d4c59",
+        "frames/right/004.png": "d5f1d10a2446a427322a50509b65ac0b7a28be52b2887a5fd45999a4f1bfb6ff",
+        "frames/right/005.png": "585e8f84dd2a7b83a3ca44a62a78b6868480fe62cf353efd3dc69d13e2e19b38",
+        "frames/right/006.png": "487dafd8da8f1c324f109c3897327a4607324a95525d774ca028f130647065e0",
+        "frames/right/007.png": "75f76bfbafdaaa014ff22aa5806769499e10677438ef741375cd5a9530ece931",
+        "frames/right/008.png": "a93672c62b4cb7b252b964a555b8f5048c6dd1e1ee2a9695cc8dee5c1c174939"
+      }
+    },
+    "file-agent": {
+      "animation": "5d6555dc1808389f36d2325fa63aa64f29fb312ebc3a073af38a59657e48a414",
+      "reference": "50e2e0e41babde95d397c60196347229545d8c9af03a0c2f287b6e12eb2d807d",
+      "frames": {
+        "frames/right/001.png": "7da9a0694b81011761aa7eff82cf5baf8b611d3624b90c6ba5309b5c72a94a66",
+        "frames/right/002.png": "1ee5ee1c16a3744e7abec8a986ba7656bd7bc3ffd244d715dab2b9d368c2d38e",
+        "frames/right/003.png": "fad56b80a768e3395bc3e3a68cc3ea497173c98dbb77e2ca729c0ae74d9cc181",
+        "frames/right/004.png": "40232574a52e0d051d20ae250e7d9f5a4d2c5ad91a100a148116fc904b6775df",
+        "frames/right/005.png": "bd7f197776b677b17c1afe880b815af92f699a0e67c440e3c129bc69928b841a",
+        "frames/right/006.png": "bcae41a4ec2d23f49582a71a1d0c2b6d278640726e6d31c8876476c35cb850f5",
+        "frames/right/007.png": "433617547f71803a4052d4270d64a29e3e634e44ff8813ceb50588c614e45b58",
+        "frames/right/008.png": "4fb3c6330bf8e2f33fbbe782092a4f4ed98ee993b4ec380e661e963de56fe366"
+      }
+    },
+    "app-agent": {
+      "animation": "12b2ee30c86a13177660c82929d60538304e84362a77dea14713caeb13f98194",
+      "reference": "f432de4620f861d9ecea719d2ae84ae6a1da8be01d1c97fe69c397b7fb1603a7",
+      "frames": {
+        "frames/right/001.png": "f4918ab3aafa97d0feb5f86ddff0b2860b2ff76ca11a84bfdbff819bc714429f",
+        "frames/right/002.png": "a17cb20c7926373e4b31939e2e29a37dfebeb09d8c2ba3dcbf95bcda047e741e",
+        "frames/right/003.png": "65e293305ed57c96d51c8d2e17fb5fcc8295f1cc76031ccbf2410d0b75296425",
+        "frames/right/004.png": "8f1098425f04a89ccb862d36c6ed2f62baded8693639d0f49b0bc17b64a53688",
+        "frames/right/005.png": "593a42e65e6f5466a71bf6f9cd45476b58d9c1538e8b08562cee25eaea33a0cc",
+        "frames/right/006.png": "57d1e4949b6fd30e9943152f5e1efd4a6f1ffb26e61cf3ba0a365c517374bca9",
+        "frames/right/007.png": "3521f9224f693177054a6a67e19a3c62b331f3fd5e6a4f6d205397fa48cbf126",
+        "frames/right/008.png": "2a935889298d376adff1fce43e3cf996e3874c66f1d3687a6fd1f62137ed1f87"
+      }
+    },
+    "review-agent": {
+      "animation": "c0907d290bbe3d2c08037e7b09e542b1c44fa37bcb6f271ebc9f21672bf481da",
+      "reference": "ab4bf730bc40ac1d41cbd243a69ce9496fa7668c712071f771a9a333c124a2a7",
+      "frames": {
+        "frames/right/001.png": "dfc554036692e7073551d4ce889c31593c537781ce8b1e4b6943ecdafdbce19b",
+        "frames/right/002.png": "5c0cef8b17846449de654224a4a59aa09583953f09d5ba853b3d464e7c1de627",
+        "frames/right/003.png": "ea02b8fea108cade717963f68243d6e8b67b22a7d7620dcb701497c81e9d2f5b",
+        "frames/right/004.png": "395dd45ffcdee5a0b611e848a86d64ab68223cf362a0f775959ee3c137c03bdf",
+        "frames/right/005.png": "b4874ebf2678533a238c28271f1dee8664d360fe10ba7483d77644b04eec5c55",
+        "frames/right/006.png": "ee48dd9059f261cd0dff276849a226c8b721caa2588dc0a572a3c185a408af9d",
+        "frames/right/007.png": "c0a05854a06ec94191d655d364257b4c3250eb33c4d8d46fac33c9c59e2a5f7e",
+        "frames/right/008.png": "8b003fac00b2275c4f89e2f5095bb28a8a326699e78b0dfe15f804cfd5757541"
+      }
+    },
+    "data-agent": {
+      "animation": "0676507d44618cf4235054966c1b1fe3f0f3de2b9c812f1e31c32c8e338e8f9e",
+      "reference": "64f475d5d18cc6b8e04336e1098f543e04a7a552f2c7d3fef3d570691d86a764",
+      "frames": {
+        "frames/right/001.png": "7d32c655b05d66b540862e102874e175e5378f3f7d722bf14e80d0d194816fe8",
+        "frames/right/002.png": "9057906f13413b5a8fcc741dc438590857b5d7801d8d4490ed064f73b63701da",
+        "frames/right/003.png": "06f712bc81709743af2e36ff7d5d1e0bc9e26034e785e8d6f06fccfd88f713a3",
+        "frames/right/004.png": "8641d9300b6bc67f08fdc27b593614277f404a5691c5ca453fce0b216d059b01",
+        "frames/right/005.png": "5e72dcb85089b5235780cf463d7bee86421a9b4484fc972622042c96871130de",
+        "frames/right/006.png": "d66b0145deba731f16c3293fbb2cb9371499c5cf182ca602ab9c0a21598d4a84",
+        "frames/right/007.png": "3275117e9cc57f55762f674081b8dff5596176448b008adca3414baf16fde8bf",
+        "frames/right/008.png": "b38c2211c44de75e1ae20527089403bcabd307fb0619556b7c417f8de92df796"
+      }
+    }
+  }
+}

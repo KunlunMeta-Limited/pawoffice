@@ -22,6 +22,7 @@ export type OfficeAgentClick = { agent: Agent; rosterNo: number; clientX: number
 export type OfficeSceneOptions = Partial<Pick<SceneViewOptions, 'animations' | 'resolveAppearance' | 'propViews' | 'onPropClick'>> & {
   runtime?: SceneRuntime
   simulation?: OfficeSimulation
+  idleCoffee?: boolean
   onAgentClick?: (event: OfficeAgentClick) => void
   taskForActor?: (id: string) => ActorTaskPresentation | undefined
   whiteboardProgress?: WhiteboardProgress
@@ -37,6 +38,7 @@ export class OfficeScene extends SceneView {
   private ownsRuntime: boolean
   private artwork: { enabled: boolean }
   private simulation: OfficeSimulation
+  private ownsSimulation: boolean
   private unsubscribeSimulation: () => void
 
   constructor(options: OfficeSceneOptions = {}) {
@@ -46,16 +48,19 @@ export class OfficeScene extends SceneView {
       return manifest ? manifest.capabilities.variants.some(v => v.actionId === 'core.idle' && v.poseId === posture && v.view === facing)
         : supportsOfficePose(id, posture, facing)
     } })
-    const simulation = options.simulation ?? new OfficeSimulation(runtime, new OfficeDemoSource(runtime))
+    const simulation = options.simulation ?? new OfficeSimulation(runtime, new OfficeDemoSource(runtime), options.idleCoffee ? { idleCoffee: {} } : {})
     const referenceOffice = runtime.readWorld().props.some(prop => prop.templateId === 'office.wall-whiteboard')
+    const coffeeFrames = Boolean(options.idleCoffee || simulation.idleCoffee)
+    const supportsCoffee = (id: string) => ['office.coffee.hold', 'office.coffee.sip'].every(actionId =>
+      ['left', 'right'].every(view => manifests.get(id)?.capabilities.variants.some(variant => variant.actionId === actionId && variant.view === view && variant.poseId === 'standing')))
     super({
       ...options, runtime,
       onStep: options.simulation ? undefined : elapsedMs => { simulation.tick(elapsedMs); simulation.demoSource?.tick(elapsedMs) },
       dispatchCommand: command => runtime.submit(command),
-      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, workEffects: true }) : createOfficePresentation(() => artwork.enabled),
+      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, workEffects: true, coffeeEffects: coffeeFrames, supportsCoffee }) : createOfficePresentation(() => artwork.enabled, coffeeFrames, supportsCoffee),
       animations: options.animations ?? new AnimationRegistry<Container>().register(new FrameAdapter(manifest => characterAssets.acquire(manifest.asset.id, manifest.source.uri))),
       resolveAppearance: async id => {
-        const manifest = await (options.resolveAppearance ? options.resolveAppearance(id) : resolveOfficeAppearance(id, { energeticWork: referenceOffice }))
+        const manifest = await (options.resolveAppearance ? options.resolveAppearance(id) : resolveOfficeAppearance(id, { energeticWork: referenceOffice, coffeeFrames }))
         manifests.set(id, manifest)
         return manifest
       },
@@ -66,6 +71,7 @@ export class OfficeScene extends SceneView {
     })
     this.artwork = artwork; this.ownsRuntime = !options.runtime && !options.simulation
     this.simulation = simulation
+    this.ownsSimulation = !options.simulation
     this.unsubscribeSimulation = simulation.subscribe(() => {
       options.onDemoChange?.(simulation.isDemoRunning)
       if (simulation.error) options.onDraftChange?.(simulation.error)
@@ -73,12 +79,21 @@ export class OfficeScene extends SceneView {
   }
   protected override onDestroy() {
     this.unsubscribeSimulation()
+    if (this.ownsSimulation) this.simulation.dispose()
     if (this.ownsRuntime) {
       try { if (this.runtime.isEditing) this.cancelEditing() }
       finally { this.runtime.dispose() }
     }
   }
   protected override beforeEditing() { this.setDemo(false) }
+  async prepareIdleForEditing() { await this.simulation.idleCoffee?.prepareEditing() }
+  override beginEditing() {
+    try { super.beginEditing() }
+    catch (error) { this.simulation.idleCoffee?.cancelEditingPreparation(); throw error }
+  }
+  get canIdleCoffee() { return Boolean(this.simulation.idleCoffee) }
+  get idleCoffeeEnabled() { return this.simulation.idleCoffee?.isEnabled ?? false }
+  setIdleCoffee(enabled: boolean) { this.simulation.idleCoffee?.setEnabled(enabled) }
   getAgents() { return projectAgents(this.runtime) }
   requestDeskVisit(visitor: number, host: number, message: string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, [host], () => message)) }
   requestDeskVisitTour(visitor: number, hosts: number[], message?: (no: number, name: string) => string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, hosts, message ?? ((_, name) => `${name}，请接手下一步。`))) }

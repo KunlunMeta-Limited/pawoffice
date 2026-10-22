@@ -19,6 +19,8 @@ export function bindOfficeFrames(source: CharacterManifest, uri: string): FrameA
   for (const view of ['front', 'back', 'left', 'right'] as const) {
     add('core.idle', 'standing', view, `idle.${view}`)
     add('core.walk', 'standing', view, `walk.${view}`)
+    add('office.coffee.hold', 'standing', view, `coffee.hold.${view}`)
+    add('office.coffee.sip', 'standing', view, `coffee.sip.${view}`)
     add('core.idle', 'seated', view, view === 'back' ? 'sit.back' : `talk.seated-${view}`)
   }
   add('core.sit-down', 'transition', 'back', 'sit-down.back')

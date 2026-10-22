@@ -1,0 +1,16 @@
+{
+  "source": "source-sheet.png",
+  "transform": { "scale": 0.589, "left": 20, "top": 51 },
+  "sequence": [
+    { "frame": 1, "durationMs": 1000, "phase": "端杯" },
+    { "frame": 2, "durationMs": 150, "phase": "屈肘举杯" },
+    { "frame": 3, "durationMs": 150, "phase": "靠近嘴部" },
+    { "frame": 4, "durationMs": 170, "phase": "杯沿接触嘴部" },
+    { "frame": 5, "durationMs": 400, "phase": "倾杯喝一口" },
+    { "frame": 4, "durationMs": 150, "phase": "回正杯子" },
+    { "frame": 6, "durationMs": 170, "phase": "移开杯子" },
+    { "frame": 7, "durationMs": 170, "phase": "放下" },
+    { "frame": 2, "durationMs": 150, "phase": "放下" },
+    { "frame": 1, "durationMs": 1000, "phase": "恢复端杯" }
+  ]
+}

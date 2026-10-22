@@ -26,7 +26,7 @@
     "integration-chat-example": "node integration/clients/chat-server.mjs",
     "docs:capture": "npm run build && node scripts/capture-readme.mjs",
     "characters:build": "node scripts/characters/build.mjs",
-    "assets:build": "npm run characters:build && node scripts/build-office-assets.mjs && node scripts/build-visual-manifests.mjs && node scripts/build-asset-catalogs.mjs && npm run assets:classroom && npm run assets:farm",
+    "assets:build": "npm run characters:build && node scripts/build-office-coffee-frames.mjs && node scripts/build-office-assets.mjs && node scripts/build-visual-manifests.mjs && node scripts/build-asset-catalogs.mjs && npm run assets:classroom && npm run assets:farm",
     "assets:export": "node scripts/export-office-assets.mjs",
     "assets:export:pack": "node scripts/assets/export-pack.mjs",
     "dev:isolated": "npm run packages:build && npm run dev --workspace @pawoffice/example-isolated-scene --",

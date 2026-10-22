@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>陈书 · 咖啡帧动画候选 v1</title>
+<style>
+  * { box-sizing: border-box }
+  body { margin: 0; padding: 28px; background: #e9e5df; color: #27312f; font: 15px/1.6 system-ui, sans-serif }
+  main { max-width: 1000px; margin: auto }
+  h1 { font-size: 24px; margin: 0 0 8px }
+  p { margin: 8px 0 20px }
+  .badge { font-size: 13px; border-radius: 6px; padding: 4px 8px; background: #fff0c7 }
+  .stage { display: flex; flex-wrap: wrap; gap: 20px }
+  figure { margin: 0; padding: 20px; background: #faf8f5; border-radius: 12px; flex: 1; min-width: 260px; text-align: center }
+  .viewport { height: 384px; display: flex; align-items: center; justify-content: center; background: repeating-conic-gradient(#edeae6 0% 25%,#f7f5f2 0% 50%) 0/20px 20px }
+  .viewport img { width: 256px; height: 384px; object-fit: contain }
+  #scene { width: 77px; height: 115px }
+  figcaption { padding-top: 10px }
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 22px 0 }
+  button, select { padding: 8px 14px; border: 1px solid #bbb; border-radius: 6px; background: white; color: inherit; cursor: pointer }
+  input { min-width: 240px; flex: 1 }
+  #phase { min-width: 180px }
+  #frames { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px }
+  #frames button { padding: 8px; background: #faf8f5 }
+  #frames button[aria-pressed=true] { outline: 2px solid #52796f }
+  #frames img { width: 100%; max-height: 240px; object-fit: contain }
+  @media(max-width:600px) { body { padding: 16px } #frames { grid-template-columns: repeat(2,1fr) } }
+</style>
+<main>
+  <p><a href="../coffee-v1/preview.html">← 查看全部六个角色</a></p>
+  <h1>陈书 · 咖啡动作 <span class="badge">已接入功能分支，待实景验收</span></h1>
+  <p>观察肩—肘—手腕的连接、手握杯子、杯沿与嘴部的接触，以及倾杯动作。可暂停并逐帧检查。</p>
+  <div class="stage">
+    <figure><div class="viewport"><img id="large" src="frames/right/001.png" alt="咖啡动作放大预览"></div><figcaption>标准画布预览（256 × 384）</figcaption></figure>
+    <figure><div class="viewport"><img id="scene" src="frames/right/001.png" alt="办公室显示尺寸预览"></div><figcaption>办公室显示尺寸（参考高度 84）</figcaption></figure>
+  </div>
+  <div class="controls">
+    <button id="play">暂停</button><button id="previous">上一帧</button><button id="next">下一帧</button>
+    <label>速度 <select id="speed"><option value="0.5">0.5 倍</option><option value="1" selected>1 倍</option><option value="1.5">1.5 倍</option></select></label>
+    <input id="timeline" type="range" min="0" max="3510" value="0" aria-label="动画时间">
+    <output id="phase"></output>
+  </div>
+  <div id="frames"></div>
+  <p>采用同一倍率，按脚底和鞋子站位配准完整人物，未拉伸局部肢体。当前为右侧候选动作；可返回总览查看全部角色。</p>
+</main>
+<script type="module">
+  const entries = [
+    [1,1000,'端杯'],[2,150,'屈肘举杯'],[3,150,'靠近嘴部'],[4,170,'杯沿接触嘴部'],
+    [5,400,'倾杯喝一口'],[4,150,'回正杯子'],[6,170,'移开杯子'],[7,170,'放下'],[2,150,'放下'],[1,1000,'恢复端杯'],
+  ];
+  const total = entries.reduce((sum, item) => sum + item[1], 0);
+  const large = document.querySelector('#large'), scene = document.querySelector('#scene');
+  const timeline = document.querySelector('#timeline'), play = document.querySelector('#play');
+  let elapsed = 0, playing = true, last = performance.now();
+  timeline.max = total - 1;
+  const url = n => `frames/right/${String(n).padStart(3,'0')}.png`;
+  for (let n = 1; n <= 8; n++) {
+    const button = document.createElement('button');
+    const img = document.createElement('img'); img.src = url(n); img.alt = `原始第 ${n} 帧`;
+    button.append(img, document.createTextNode(`第 ${n} 帧`));
+    button.dataset.frame = n; button.setAttribute('aria-pressed','false');
+    button.addEventListener('click', () => {
+      pause();
+      const index = entries.findIndex(item => item[0] === n);
+      if (index >= 0) { elapsed = entries.slice(0,index).reduce((sum,item)=>sum+item[1],0); render() }
+      else show(n, `原始第 ${n} 帧（循环使用第 1 帧收尾）`);
+    });
+    document.querySelector('#frames').append(button);
+  }
+  function pause() { playing = false; play.textContent = '播放' }
+  function currentIndex() {
+    let t = elapsed;
+    for (let i=0;i<entries.length;i++) { if(t < entries[i][1]) return i; t-=entries[i][1] }
+    return 0;
+  }
+  function show(n, phase) {
+    large.src = scene.src = url(n);
+    document.querySelector('#phase').textContent = `第 ${n} 帧 · ${phase}`;
+    document.querySelectorAll('[data-frame]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.frame)===n)));
+  }
+  function render() { const item=entries[currentIndex()]; show(item[0],item[2]); timeline.value=elapsed }
+  function step(delta) { pause(); const i=(currentIndex()+delta+entries.length)%entries.length; elapsed=entries.slice(0,i).reduce((s,item)=>s+item[1],0); render() }
+  document.querySelector('#previous').addEventListener('click',()=>step(-1));
+  document.querySelector('#next').addEventListener('click',()=>step(1));
+  timeline.addEventListener('input',()=>{ pause(); elapsed=Number(timeline.value); render() });
+  play.addEventListener('click',()=>{ playing=!playing; play.textContent=playing?'暂停':'播放'; last=performance.now() });
+  function tick(now) { if(playing) { elapsed=(elapsed+(now-last)*Number(document.querySelector('#speed').value))%total; render() } last=now; requestAnimationFrame(tick) }
+  render(); requestAnimationFrame(tick);
+</script>
+</html>

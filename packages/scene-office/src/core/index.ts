@@ -8,5 +8,7 @@ export const officeScenePack: ScenePack = {
   supportsPose: supportsOfficePose,
 }
 export * from './pack.ts'
+export { IDLE_COFFEE, IDLE_RETURN, COFFEE_HOLD, COFFEE_SIP } from './idleCoffee.ts'
+export { OfficeIdleCoffee } from './OfficeIdleCoffee.ts'
 export { referenceOfficeScenePack, createReferenceOfficeWorld } from './referenceOffice.ts'
 export { describeOfficeScene } from './integration.ts'

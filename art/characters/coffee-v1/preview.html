@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全部角色 · 咖啡动作候选</title>
+<style>
+  * { box-sizing: border-box }
+  body { margin: 0; padding: 28px; background: #e9e5df; color: #27312f; font: 15px/1.6 system-ui,sans-serif }
+  main { max-width: 1080px; margin: auto }
+  h1 { margin: 0; font-size: 26px }
+  p { margin: 10px 0 24px }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 6px; background: #fff0c7; font-size: 13px; vertical-align: middle }
+  .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 18px }
+  article { background: #faf8f5; border-radius: 12px; padding: 18px; text-align: center }
+  img { width: 100%; height: 300px; object-fit: contain }
+  h2 { font-size: 18px; margin: 4px 0 10px }
+  a { display: inline-block; padding: 7px 20px; background: #41675d; color: white; text-decoration: none; border-radius: 7px }
+  small { display: block; color: #68716c; margin-top: 10px }
+  @media(max-width:760px) { .grid { grid-template-columns: repeat(2,1fr) } body { padding: 16px } img { height: 240px } }
+  @media(max-width:430px) { .grid { grid-template-columns: 1fr } }
+</style>
+<main>
+  <h1>全部角色 · 喝咖啡 <span class="badge">已接入功能分支，待实景验收</span></h1>
+  <p>每位角色八张完整人物透明帧，展示端杯、屈肘举杯、倾杯喝一口与放下。点击“逐帧查看”可暂停、切换速度和对照独立帧。</p>
+  <div class="grid">
+    <article><img src="../office-lead-coffee-v1/preview.gif" alt="王明喝咖啡动画"><h2>王明</h2><a href="../office-lead-coffee-v1/preview.html">逐帧查看</a><small>浅棕短发 · 米白卫衣</small></article>
+    <article><img src="../code-agent-coffee-v1/preview.gif" alt="李研喝咖啡动画"><h2>李研</h2><a href="../code-agent-coffee-v1/preview.html">逐帧查看</a><small>马尾 · 绿色上衣</small></article>
+    <article><img src="../file-agent-coffee-v1/preview.gif" alt="周理喝咖啡动画"><h2>周理</h2><a href="../file-agent-coffee-v1/preview.html">逐帧查看</a><small>圆框眼镜 · 黑色卫衣</small></article>
+    <article><img src="../app-agent-coffee-v1/preview.gif" alt="陈书喝咖啡动画"><h2>陈书</h2><a href="../app-agent-coffee-v1/preview.html">逐帧查看</a><small>红棕长发 · 蓝色牛仔裤</small></article>
+    <article><img src="../review-agent-coffee-v1/preview.gif" alt="刘市喝咖啡动画"><h2>刘市</h2><a href="../review-agent-coffee-v1/preview.html">逐帧查看</a><small>深灰围裙 · 米白长袖</small></article>
+    <article><img src="../data-agent-coffee-v1/preview.gif" alt="赵审喝咖啡动画"><h2>赵审</h2><a href="../data-agent-coffee-v1/preview.html">逐帧查看</a><small>前一轮样片 · 蓝色外套</small></article>
+  </div>
+  <p>六个角色的侧面帧已接入真实办公室，左侧使用镜像；仍有少量生成轮廓差异，需实景验收。正/背视图尚未绘制。当前页面仅供对照原帧。</p>
+</main>
+</html>

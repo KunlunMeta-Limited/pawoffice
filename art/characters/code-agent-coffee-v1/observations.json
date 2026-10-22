@@ -1,0 +1,71 @@
+{
+  "characterId": "code-agent",
+  "label": "李研",
+  "status": "candidate-unreviewed",
+  "observations": [
+    {
+      "frame": 1,
+      "left": 42,
+      "right": 210,
+      "top": 66,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 2,
+      "left": 40,
+      "right": 212,
+      "top": 65,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 3,
+      "left": 39,
+      "right": 212,
+      "top": 65,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 4,
+      "left": 40,
+      "right": 212,
+      "top": 65,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 5,
+      "left": 38,
+      "right": 212,
+      "top": 66,
+      "footY": 343,
+      "edgeClipped": false
+    },
+    {
+      "frame": 6,
+      "left": 39,
+      "right": 212,
+      "top": 65,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 7,
+      "left": 39,
+      "right": 212,
+      "top": 64,
+      "footY": 342,
+      "edgeClipped": false
+    },
+    {
+      "frame": 8,
+      "left": 40,
+      "right": 212,
+      "top": 65,
+      "footY": 342,
+      "edgeClipped": false
+    }
+  ]
+}

@@ -184,6 +184,24 @@ test('one office projects only the selected conversation while retaining backgro
   assert.equal(board().taskBoard, undefined)
 })
 
+test('idle coffee respects unfinished work in background conversations', async t => {
+  const data = snapshot()
+  data.conversations[1] = conversation('b', 'completed')
+  const runtime = createOfficeRuntime({ sceneId: 'team', referenceLayout: true })
+  const session = new OfficeTeamSession(runtime, new PushOfficeDataSource(data))
+  t.after(() => { session.stop(); session.simulation.dispose(); runtime.dispose() })
+  await session.start()
+  session.chat.select('b'); await session.refresh()
+  assert.equal(session.getSnapshot().dashboard.tasks[0].status, 'completed')
+  assert.equal(runtime.readActors().find(actor => actor.id === 'office-lead').presentation.status, 'idle')
+  for (let i = 0; i < 1000; i++) session.simulation.tick(50)
+  const coffee = runtime.snapshot().records.filter(record => record.command.type === 'activity.start'
+    && record.command.capability === 'office.idle-coffee')
+  assert(coffee.length > 0, 'other idle colleagues should still take coffee breaks')
+  assert(coffee.every(record => record.command.participants.every(person => person.entityId !== 'office-lead')),
+    'the colleague with unfinished work in conversation a must remain available')
+})
+
 test('a restored conversation selection is applied before the first scene projection', async t => {
   const source = new PushOfficeDataSource(snapshot()), runtime = createOfficeRuntime({ sceneId: 'team', referenceLayout: true })
   const session = new OfficeTeamSession(runtime, source, { chatPersistence: { read: async () => ({ version: 2, teamId: 'team', selectedId: 'b', conversations: [

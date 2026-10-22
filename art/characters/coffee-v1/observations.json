@@ -1,0 +1,357 @@
+[
+  {
+    "characterId": "office-lead",
+    "label": "王明",
+    "status": "candidate-unreviewed",
+    "observations": [
+      {
+        "frame": 1,
+        "left": 52,
+        "right": 203,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 2,
+        "left": 52,
+        "right": 202,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 3,
+        "left": 51,
+        "right": 202,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 4,
+        "left": 52,
+        "right": 203,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 5,
+        "left": 49,
+        "right": 203,
+        "top": 67,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 6,
+        "left": 49,
+        "right": 204,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 7,
+        "left": 51,
+        "right": 204,
+        "top": 67,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 8,
+        "left": 51,
+        "right": 205,
+        "top": 67,
+        "footY": 342,
+        "edgeClipped": false
+      }
+    ]
+  },
+  {
+    "characterId": "code-agent",
+    "label": "李研",
+    "status": "candidate-unreviewed",
+    "observations": [
+      {
+        "frame": 1,
+        "left": 42,
+        "right": 210,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 2,
+        "left": 40,
+        "right": 212,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 3,
+        "left": 39,
+        "right": 212,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 4,
+        "left": 40,
+        "right": 212,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 5,
+        "left": 38,
+        "right": 212,
+        "top": 66,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 6,
+        "left": 39,
+        "right": 212,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 7,
+        "left": 39,
+        "right": 212,
+        "top": 64,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 8,
+        "left": 40,
+        "right": 212,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      }
+    ]
+  },
+  {
+    "characterId": "file-agent",
+    "label": "周理",
+    "status": "candidate-unreviewed",
+    "observations": [
+      {
+        "frame": 1,
+        "left": 50,
+        "right": 202,
+        "top": 65,
+        "footY": 344,
+        "edgeClipped": false
+      },
+      {
+        "frame": 2,
+        "left": 49,
+        "right": 201,
+        "top": 64,
+        "footY": 344,
+        "edgeClipped": false
+      },
+      {
+        "frame": 3,
+        "left": 50,
+        "right": 203,
+        "top": 64,
+        "footY": 344,
+        "edgeClipped": false
+      },
+      {
+        "frame": 4,
+        "left": 48,
+        "right": 200,
+        "top": 65,
+        "footY": 344,
+        "edgeClipped": false
+      },
+      {
+        "frame": 5,
+        "left": 50,
+        "right": 205,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 6,
+        "left": 49,
+        "right": 203,
+        "top": 64,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 7,
+        "left": 49,
+        "right": 202,
+        "top": 64,
+        "footY": 344,
+        "edgeClipped": false
+      },
+      {
+        "frame": 8,
+        "left": 49,
+        "right": 203,
+        "top": 64,
+        "footY": 343,
+        "edgeClipped": false
+      }
+    ]
+  },
+  {
+    "characterId": "app-agent",
+    "label": "陈书",
+    "status": "candidate-unreviewed",
+    "observations": [
+      {
+        "frame": 1,
+        "left": 43,
+        "right": 210,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 2,
+        "left": 42,
+        "right": 211,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 3,
+        "left": 43,
+        "right": 212,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 4,
+        "left": 42,
+        "right": 211,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 5,
+        "left": 42,
+        "right": 212,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 6,
+        "left": 42,
+        "right": 212,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 7,
+        "left": 43,
+        "right": 211,
+        "top": 65,
+        "footY": 342,
+        "edgeClipped": false
+      },
+      {
+        "frame": 8,
+        "left": 42,
+        "right": 210,
+        "top": 66,
+        "footY": 342,
+        "edgeClipped": false
+      }
+    ]
+  },
+  {
+    "characterId": "review-agent",
+    "label": "刘市",
+    "status": "candidate-unreviewed",
+    "observations": [
+      {
+        "frame": 1,
+        "left": 47,
+        "right": 203,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 2,
+        "left": 48,
+        "right": 203,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 3,
+        "left": 48,
+        "right": 204,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 4,
+        "left": 48,
+        "right": 205,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 5,
+        "left": 47,
+        "right": 207,
+        "top": 65,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 6,
+        "left": 47,
+        "right": 207,
+        "top": 66,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 7,
+        "left": 48,
+        "right": 204,
+        "top": 66,
+        "footY": 343,
+        "edgeClipped": false
+      },
+      {
+        "frame": 8,
+        "left": 48,
+        "right": 204,
+        "top": 66,
+        "footY": 343,
+        "edgeClipped": false
+      }
+    ]
+  }
+]

@@ -1,0 +1,278 @@
+{
+  "errors": [],
+  "overviewImages": [
+    {
+      "width": 256,
+      "height": 384
+    },
+    {
+      "width": 256,
+      "height": 384
+    },
+    {
+      "width": 256,
+      "height": 384
+    },
+    {
+      "width": 256,
+      "height": 384
+    },
+    {
+      "width": 256,
+      "height": 384
+    },
+    {
+      "width": 256,
+      "height": 384
+    }
+  ],
+  "results": [
+    {
+      "id": "office-lead",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    },
+    {
+      "id": "code-agent",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    },
+    {
+      "id": "file-agent",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    },
+    {
+      "id": "app-agent",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    },
+    {
+      "id": "review-agent",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    },
+    {
+      "id": "data-agent",
+      "images": [
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ],
+        [
+          256,
+          384
+        ]
+      ],
+      "sip": "第 5 帧 · 倾杯喝一口",
+      "previous": "第 4 帧 · 杯沿接触嘴部",
+      "next": "第 5 帧 · 倾杯喝一口",
+      "playback": "advanced from sip to withdrawal"
+    }
+  ],
+  "scope": "preview loading and controls; not character admission or visual approval"
+}
