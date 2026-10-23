@@ -6,10 +6,9 @@ import type { DecisionRequest, DecisionSnapshot } from '../../application/decisi
 import { DecisionDeadline } from './DecisionDeadline.tsx'
 import './OfficeDecisionPanel.css'
 
-export function OfficeDecisionPanel({ snapshot, onResolve, onShowRecords, onReset, preview = false, hidden = false, openToken = 0 }: {
+export function OfficeDecisionPanel({ snapshot, onResolve, onReset, preview = false, hidden = false, openToken = 0 }: {
   snapshot: DecisionSnapshot
   onResolve: (decisionId: string, choiceId: string, customText?: string) => void
-  onShowRecords: () => void
   onReset: () => void
   preview?: boolean
   hidden?: boolean
@@ -29,7 +28,6 @@ export function OfficeDecisionPanel({ snapshot, onResolve, onShowRecords, onRese
         <CircleHelp size={17} /><strong>待你决定</strong><span>{snapshot.pending.length}</span><span className="office-decision-pending-title">{current.title}</span><ArrowRight size={15} />
       </button> : <div className="office-decision-receipt" role="status">
         <Check size={16} /><span>已记录：{last!.label}</span>
-        <button type="button" onClick={onShowRecords}>查看记录<ArrowRight size={13} /></button>
         {preview && <button type="button" className="office-decision-replay" title="重新演示" aria-label="重新演示" onClick={() => { setCollapsed(false); onReset() }}><RotateCcw size={15} /></button>}
       </div>}
   </aside>

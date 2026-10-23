@@ -29,7 +29,6 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
   const decisions = { ...allDecisions, pending: allDecisions.pending.filter(item => item.conversationId === entry.id),
     submittingId: allDecisions.submittingIds?.find(id => allDecisions.pending.some(item => item.id === id && item.conversationId === entry.id)),
     error: allDecisions.pending.some(item => item.id === allDecisions.errorDecisionId && item.conversationId === entry.id) ? allDecisions.error : null,
-    records: allDecisions.records.filter(item => item.request.conversationId === entry.id),
     receipt: allDecisions.receipt?.request.conversationId === entry.id ? allDecisions.receipt : null }
   const draft = chat.draft
   const setDraft = (value: string) => session.setDraft(value)
@@ -72,13 +71,13 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     <section id={panelId} className="office-chat-panel" aria-label="办公室对话" aria-hidden={!expanded} inert={!expanded}>
       <ConversationTabs workspace={workspace} state={workspaceState} decisions={allDecisions} menuOpen={conversationMenuOpen} onMenuOpenChange={setConversationMenuOpen} menuId={conversationMenuId} onCollapse={collapse} panelId={panelId} />
       <div className="office-chat-body">
-      <ChatTranscript ref={transcript} session={session} chat={chat} records={decisions.records} expanded={expanded} leaderName={leaderName} preview={decisionPreview} storageError={workspaceState.storageError} onAtBottomChange={setAtBottom}
+      <ChatTranscript ref={transcript} session={session} chat={chat} expanded={expanded} leaderName={leaderName} storageError={workspaceState.storageError} onAtBottomChange={setAtBottom}
         onEdit={() => { setDraft(chat.messages.findLast(message => message.role === 'user')?.content ?? ''); textarea.current?.focus() }} />
       </div>
       {!atBottom && <button type="button" className="office-chat-latest" title="回到最新消息" aria-label="回到最新消息" onClick={bottom}><ArrowDown size={17} /></button>}
     </section>
     <OfficeDecisionPanel preview={decisionPreview} hidden={expanded} openToken={decisionOpenToken} snapshot={decisions} onResolve={(decisionId, choiceId, customText) => { void decisionSession.choose(decisionSession.teamId, decisionId, choiceId, customText) }}
-      onShowRecords={() => { setAtBottom(true); onExpandedChange(true) }} onReset={() => decisionSession.reset()} />
+      onReset={() => decisionSession.reset()} />
     <form ref={composer} className="office-chat-composer" data-busy={busy} aria-label="发送消息" onSubmit={event => { event.preventDefault(); submit() }}>
       <button type="button" className="office-chat-history is-session" aria-label={expanded ? `切换会话：${entry.title}` : '展开对话'} title={entry.title} aria-expanded={expanded && conversationMenuOpen} aria-controls={expanded ? conversationMenuId : panelId} onClick={() => { if (expanded) setConversationMenuOpen(true); else onExpandedChange(true) }}><MessageCircle size={15} /><span>{entry.title}</span></button>
       <textarea ref={textarea} value={draft} rows={1} maxLength={4000} disabled={!chat.ready} aria-label="给办公室发送消息" placeholder={expanded ? '继续当前会话，或安排办公室成员执行任务…' : '和办公室聊一聊…'} onClick={() => onExpandedChange(true)} onChange={event => setDraft(event.target.value)} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={event => {
