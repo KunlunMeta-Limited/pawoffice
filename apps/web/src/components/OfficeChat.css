@@ -11,7 +11,7 @@
 .office-chat-transcript { position: absolute; inset: 0; min-width: 0; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 var(--chat-gutter); }
 .office-chat-virtual-list { position: relative; width: 100%; }
 .office-chat-row { position: absolute; top: 0; left: 0; width: 100%; padding-bottom: 22px; display: flow-root; }
-.office-chat-row > :is(.office-chat-message, .office-decision-record, .office-chat-error) { margin-bottom: 0; }
+.office-chat-row > :is(.office-chat-message, .office-chat-error) { margin-bottom: 0; }
 .office-chat-history-page { position: absolute; z-index: 1; top: 5px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; color: #8a968e; font-size: 12px; }
 .office-chat-history-page button { display: flex; align-items: center; gap: 6px; border: 1px solid #e4ece6; border-radius: 7px; background: #fff; color: #668470; padding: 7px 10px; font-size: 12px; }
 .office-chat-empty { display: flex; min-height: 160px; height: 70%; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }

@@ -3,14 +3,13 @@ import type { Ref } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Check, ChevronUp, Copy, LoaderCircle, MessageCircle, RefreshCw } from 'lucide-react'
 import type { ChatSession, ChatSnapshot } from '../chat/ChatSession.ts'
-import type { DecisionRecord } from '../application/decisions/DecisionSession.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
 
 export type ChatTranscriptHandle = { toBottom: () => void }
 
-export function ChatTranscript({ ref, session, chat, records, expanded, leaderName, preview, storageError, onAtBottomChange, onEdit }: {
-  ref: Ref<ChatTranscriptHandle>; session: ChatSession; chat: ChatSnapshot; records: DecisionRecord[]; expanded: boolean
-  leaderName: string; preview: boolean; storageError: string | null; onAtBottomChange: (value: boolean) => void; onEdit: () => void
+export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit }: {
+  ref: Ref<ChatTranscriptHandle>; session: ChatSession; chat: ChatSnapshot; expanded: boolean
+  leaderName: string; storageError: string | null; onAtBottomChange: (value: boolean) => void; onEdit: () => void
 }) {
   'use no memo'
   const scroll = useRef<HTMLDivElement>(null), lastScrollTop = useRef(0)
@@ -19,11 +18,10 @@ export function ChatTranscript({ ref, session, chat, records, expanded, leaderNa
   useEffect(() => () => clearTimeout(copyTimer.current), [])
   const rows = useMemo(() => [
     ...chat.messages.map(message => ({ id: message.id, kind: 'message' as const, message })),
-    ...records.map(record => ({ id: record.id, kind: 'decision' as const, record })),
-    ...(!chat.messages.length && !records.length ? [{ id: '@empty', kind: 'empty' as const }] : []),
+    ...(!chat.messages.length ? [{ id: '@empty', kind: 'empty' as const }] : []),
     ...(chat.syncing || chat.historyError || chat.error ? [{ id: '@status', kind: 'status' as const }] : []),
     ...(chat.storageError || storageError ? [{ id: '@storage', kind: 'storage' as const }] : []),
-  ], [chat, records, storageError])
+  ], [chat, storageError])
   // eslint-disable-next-line react-hooks/incompatible-library -- Keep this mutable virtualizer local to the non-memoized transcript.
   const virtualizer = useVirtualizer({
     count: rows.length, getScrollElement: () => scroll.current, getItemKey: index => rows[index].id,
@@ -60,7 +58,6 @@ export function ChatTranscript({ ref, session, chat, records, expanded, leaderNa
               </div>
             </div>
           </article>}
-          {row.kind === 'decision' && <article className="office-decision-record" aria-label="决策记录"><header><Check size={13} /><span>{row.record.request.requester.name} · 待你决定</span>{preview && <small>本地演示</small>}</header><p>{row.record.request.title}</p><strong><Check size={14} />{row.record.label}</strong></article>}
           {row.kind === 'empty' && <div className="office-chat-empty"><MessageCircle size={30} /><h2>今天一起做点什么？</h2></div>}
           {row.kind === 'status' && <div className="office-chat-error" role={chat.syncing ? 'status' : 'alert'}><span>{chat.syncing ? '正在同步聊天记录…' : chat.historyError || chat.error}</span>{!chat.syncing && (session.source.history ? <button type="button" onClick={() => { void session.synchronize(true) }}><RefreshCw size={14} />重新同步</button> : <button type="button" onClick={onEdit}>重新编辑</button>)}</div>}
           {row.kind === 'storage' && <div className="office-chat-error" role="alert">{chat.storageError || storageError}</div>}
