@@ -108,7 +108,7 @@ export function OfficeTeamWorkspace({ initialTeams, createTeam, chatSource, layo
   }
   return <OfficeApp dataSource={activeSession.source} session={activeSession} chatSource={chatSource} decisionOpenToken={decisionOpenToken}
     teamSelection={{ teams: teamOptions, activeId, focusedDecisionTeamId, select, openDecisions, create,
-      resolveDecision: (teamId, decisionId, choiceId) => { void sessions.get(teamId)?.decisions.choose(teamId, decisionId, choiceId) } }} layout={layout} />
+      resolveDecision: (teamId, decisionId, choiceId, customText) => { void sessions.get(teamId)?.decisions.choose(teamId, decisionId, choiceId, customText) } }} layout={layout} />
 }
 
 function DemoApp() {

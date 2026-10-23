@@ -259,12 +259,15 @@ export class OfficeIntegrationSession {
       createdAt: timing.expiresAt - request.timeoutMs, expiresAt: timing.expiresAt, deadline: timing.deadline }
     const reason = office.session.decisions.enqueueError(entry)
     if (reason) throw new IntegrationFault(reason, reason === 'DECISION_DUPLICATE' ? '菜单 ID 已使用' : reason === 'DECISION_EXPIRED' ? '菜单已过期' : '菜单等待队列已满', reason === 'DECISION_QUEUE_FULL' ? 503 : 409)
-    const accepted = office.session.decisions.enqueue(entry, async choiceId => {
+    const accepted = office.session.decisions.enqueue(entry, async (choiceId, customText) => {
       this.submitting.add(token)
       try {
-        const label = decision.kind === 'choice' ? decision.options.find(option => option.id === choiceId)!.label
+        const custom = choiceId === 'custom' ? customText?.trim() : undefined
+        const label = choiceId === 'custom' ? '其他'
+          : decision.kind === 'choice' ? decision.options.find(option => option.id === choiceId)!.label
           : choiceId === 'confirm' ? decision.confirmLabel : decision.rejectLabel
-        await this.respond(delivery, 200, 'User selected', { teamId: office.id, conversationId: request.conversationId, decisionId: decision.id, choiceId, label })
+        await this.respond(delivery, 200, 'User selected', { teamId: office.id, conversationId: request.conversationId, decisionId: decision.id, choiceId, label,
+          ...(custom ? { customText: custom } : {}) })
         this.bindings.delete(token)
       } catch (error) {
         if (error && typeof error === 'object' && 'status' in error && error.status === 410) {

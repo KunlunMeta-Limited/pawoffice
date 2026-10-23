@@ -38,9 +38,16 @@ export class OfficeRequests {
     if (response.code === 200 && request.type === 'decision.request') {
       const result = officeDecisionResultSchema.parse(response.data)
       if (result.teamId !== request.teamId || result.conversationId !== request.conversationId || result.decisionId !== request.decision.id) return 'invalid'
+      if (request.decision.kind === 'choice' && result.choiceId === 'custom') {
+        if (!request.decision.allowCustom || !result.customText) return 'invalid'
+        entry.finish({ code: 200, msg: 'User selected', data: { teamId: request.teamId, conversationId: request.conversationId, decisionId: request.decision.id,
+          choiceId: 'custom', label: '其他', customText: result.customText } })
+        return 'accepted'
+      }
       const label = request.decision.kind === 'choice' ? request.decision.options.find(option => option.id === result.choiceId)?.label
         : result.choiceId === 'confirm' ? request.decision.confirmLabel : result.choiceId === 'reject' ? request.decision.rejectLabel : undefined
       if (!label) return 'invalid'
+      if (request.decision.kind === 'choice' && result.customText !== undefined) return 'invalid'
       entry.finish({ code: 200, msg: 'User selected', data: { teamId: request.teamId, conversationId: request.conversationId, decisionId: request.decision.id, choiceId: result.choiceId, label } })
     } else {
       const result = response
