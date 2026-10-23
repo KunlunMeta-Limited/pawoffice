@@ -76,7 +76,7 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
       </div>
       {!atBottom && <button type="button" className="office-chat-latest" title="回到最新消息" aria-label="回到最新消息" onClick={bottom}><ArrowDown size={17} /></button>}
     </section>
-    <OfficeDecisionPanel preview={decisionPreview} hidden={expanded} openToken={decisionOpenToken} snapshot={decisions} onResolve={(decisionId, choiceId, customText) => { void decisionSession.choose(decisionSession.teamId, decisionId, choiceId, customText) }}
+    <OfficeDecisionPanel preview={decisionPreview} openToken={decisionOpenToken} snapshot={decisions} onResolve={(decisionId, choiceId, customText) => { void decisionSession.choose(decisionSession.teamId, decisionId, choiceId, customText) }}
       onReset={() => decisionSession.reset()} />
     <form ref={composer} className="office-chat-composer" data-busy={busy} aria-label="发送消息" onSubmit={event => { event.preventDefault(); submit() }}>
       <button type="button" className="office-chat-history is-session" aria-label={expanded ? `切换会话：${entry.title}` : '展开对话'} title={entry.title} aria-expanded={expanded && conversationMenuOpen} aria-controls={expanded ? conversationMenuId : panelId} onClick={() => { if (expanded) setConversationMenuOpen(true); else onExpandedChange(true) }}><MessageCircle size={15} /><span>{entry.title}</span></button>

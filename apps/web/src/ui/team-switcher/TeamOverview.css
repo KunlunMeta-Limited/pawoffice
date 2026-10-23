@@ -158,7 +158,7 @@
   .team-picker-footer { font-size: 10px; }
 }
 @media (max-width: 900px), (max-height: 900px) {
-  .office-main:has(.team-decision-notice[data-actionable=true]) .office-decision { display: none; }
+  .office-main:has(.team-decision-notice[data-actionable=true]) .office-chat[data-expanded=false] .office-decision { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .team-decision-notice, .team-decision-notice-spinner { animation: none; }
