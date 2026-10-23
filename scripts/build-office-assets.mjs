@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
 const root = fileURLToPath(new URL('../public/assets/office/', import.meta.url))
+export const OFFICE_WORK_EFFECT_SOURCE = fileURLToPath(new URL('../art/office/work-crafting-v1/spritesheet-white-cloud-core.png', import.meta.url))
 export const OFFICE_IMAGES = ['office', 'desk', 'chair', 'workstation-trial-v1/desk', 'workstation-trial-v1/chair', 'workstation-trial-v1/computer', 'reference-v1/room-whiteboard-v3', 'reference-v1/conference-table', 'reference-v1/desk-accessories', 'effects/work-crafting-lite-v1']
 
 export async function buildOfficeCraftingAtlas(source) {
@@ -32,7 +33,7 @@ export async function buildOfficeAssets(directory = root) {
   for (const name of OFFICE_IMAGES) {
     const png = path.join(directory, `${name}.png`)
     const artSource = name === 'effects/work-crafting-lite-v1' && path.resolve(directory) === path.resolve(root)
-      ? fileURLToPath(new URL('../art/office/work-crafting-v1/spritesheet-small-tools-white-smoke.png', import.meta.url)) : png
+      ? OFFICE_WORK_EFFECT_SOURCE : png
     const source = await readFile(artSource)
     const original = artSource !== png ? await buildOfficeCraftingAtlas(source) : source
     if (artSource !== png) await publish(png, original)
