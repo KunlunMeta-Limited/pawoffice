@@ -243,8 +243,10 @@ test('choice menus submit custom text and keep the radio selection and input mut
   await panel.getByRole('radio', { name: '完整验收' }).check()
   await submit.click()
   expect((await disabledPending).data.choiceId).toBe('full')
+  await expect(panel.getByRole('heading', { name: '只允许预设方案' })).toBeHidden()
   const standardPending = backend.post<{ choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
     decision: { id: 'standard-choice', kind: 'choice', title: '选择验收范围', options } })
+  await expect(panel.getByRole('heading', { name: '选择验收范围' })).toBeVisible()
   await expect(submit).toBeDisabled()
   await expect(input).toHaveCount(0)
   await panel.getByRole('radio', { name: '完整验收' }).check()
@@ -261,9 +263,11 @@ test('choice menus submit custom text and keep the radio selection and input mut
   const standard = await standardPending
   expect(standard.data).toEqual(expect.objectContaining({ choiceId: 'smoke', label: '快速验收' }))
   expect(standard.data).not.toHaveProperty('customText')
+  await expect(panel.getByRole('heading', { name: '选择验收范围' })).toBeHidden()
 
   const customPending = backend.post<{ choiceId: string; label: string; customText?: string }>({ conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 15000,
-    decision: { id: 'custom-choice', kind: 'choice', title: '选择验收范围', allowCustom: true, options } })
+    decision: { id: 'custom-choice', kind: 'choice', title: '补充验收需求', allowCustom: true, options } })
+  await expect(panel.getByRole('heading', { name: '补充验收需求' })).toBeVisible()
   await expect(submit).toBeDisabled()
   await other.check()
   await expect(input).toHaveValue('')

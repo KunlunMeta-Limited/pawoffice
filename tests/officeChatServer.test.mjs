@@ -123,20 +123,37 @@ test('invalid, null-containing, oversized and truncated upstream events produce 
   }
 })
 
-test('chat timeout cancels upstream before headers and after streaming has started', async t => {
-  for (const started of [false, true]) {
+test('history and cancel deadlines abort upstream before headers and during response bodies', async t => {
+  for (const type of ['history', 'cancel']) for (const started of [false, true]) {
     const { app, base, upstreamUrl } = await setup(t, (_request, response) => {
-      if (started) { response.writeHead(200, { 'Content-Type': 'application/x-ndjson' }); response.write('{"type":"status","phase":"thinking"}\n') }
-    }, { chatTimeoutMs: 50 })
+      if (started) { response.writeHead(200, { 'Content-Type': 'application/json' }); response.write('{') }
+    }, { chatControlTimeoutMs: 50 })
     await initialize(app, upstreamUrl)
-    const response = await chat(base)
-    if (started) {
-      const received = events(await response.text())
-      assert.equal(received.at(-1).type, 'error'); assert.match(received.at(-1).message, /超时/)
-    } else {
-      assert.equal(response.status, 504)
-      assert.equal((await response.json()).data.reasonCode, 'CHAT_TIMEOUT')
-    }
+    const { version, teamId, conversationId, turnId } = payload
+    const response = await chat(base, { body: JSON.stringify({ version, teamId, conversationId, type,
+      ...(type === 'history' ? { cursor: '', limit: 20 } : { turnId }) }), signal: AbortSignal.timeout(2000) })
+    assert.equal(response.status, 504)
+    assert.equal((await response.json()).data.reasonCode, 'CHAT_TIMEOUT')
+  }
+})
+
+test('send and resume streams outlive control deadlines before headers and between events', async t => {
+  for (const type of ['send', 'resume']) for (const started of [false, true]) {
+    const first = type === 'send' ? { type: 'status', phase: 'thinking' } : { type: 'snapshot', text: '', state: 'pending' }
+    const { app, base, upstreamUrl } = await setup(t, async (_request, response) => {
+      if (started) { response.writeHead(200, { 'Content-Type': 'application/x-ndjson' }); response.write(`${JSON.stringify(first)}\n`) }
+      await new Promise(resolve => setTimeout(resolve, 100))
+      if (!started) { response.writeHead(200, { 'Content-Type': 'application/x-ndjson' }); response.write(`${JSON.stringify(first)}\n`) }
+      response.end('{"type":"delta","text":"Long answer"}\n{"type":"done"}\n')
+    }, { chatControlTimeoutMs: 20 })
+    await initialize(app, upstreamUrl)
+    const { version, teamId, conversationId, turnId } = payload
+    const response = await chat(base, { body: JSON.stringify(type === 'send' ? payload : { version, teamId, conversationId, turnId, type }),
+      signal: AbortSignal.timeout(2000) })
+    assert.equal(response.status, 200)
+    const received = events(await response.text())
+    assert.equal(received[0].type, first.type)
+    assert.deepEqual(received.slice(1), [{ type: 'delta', text: 'Long answer' }, { type: 'done' }])
   }
 })
 

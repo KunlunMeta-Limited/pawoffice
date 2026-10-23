@@ -65,15 +65,24 @@ test('failed, empty and truncated responses never remain busy', async () => {
   }
 })
 
-test('timeout stops busy even when the source ignores cancellation', async () => {
-  let resume
+test('long-running generation stays busy until the source completes', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let resume, signal
   const wait = new Promise(resolve => { resume = resolve })
-  const session = new ChatSession('team-a', { kind: 'test', async *stream() { await wait; yield { type: 'done' } } }, { timeoutMs: 15 })
-  const pending = session.send('timeout')
-  await new Promise(resolve => setTimeout(resolve, 30))
-  assert.equal(session.getSnapshot().phase, 'idle')
-  assert.match(session.getSnapshot().error, /超时/)
+  const session = new ChatSession('team-a', { kind: 'test', async *stream(_request, incoming) {
+    signal = incoming
+    await wait; yield { type: 'delta', text: 'long answer' }; yield { type: 'done' }
+  } })
+  t.after(() => { session.dispose(); resume() })
+  const pending = session.send('long question')
+  t.mock.timers.tick(180001)
+  assert.equal(session.getSnapshot().phase, 'thinking')
+  assert.equal(session.getSnapshot().error, null)
+  assert.equal(signal.aborted, false)
   resume(); await pending
+  assert.equal(session.getSnapshot().phase, 'idle')
+  assert.equal(session.getSnapshot().messages.at(-1).content, 'long answer')
+  assert.equal(session.getSnapshot().messages.at(-1).state, 'complete')
 })
 
 test('HTTP chat handles split UTF-8 and final NDJSON line without a newline', async () => {
