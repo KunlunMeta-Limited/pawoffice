@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "characters": {
+    "office-lead": {
+      "frameSha256": "927f4e7bf55b07412165807207242cee9bf2b0cd1fbc9b2536cf3fd39d0a5c1f",
+      "mouth": { "x": 168, "y": 184, "view": "right", "scale": 0.85, "rotation": 0 }
+    },
+    "code-agent": {
+      "frameSha256": "4a10d5e6a5689f0f87ba7b38dd4846bd5b57541e5f59b0d6cbe5c9fa147d5f99",
+      "mouth": { "x": 181, "y": 181, "view": "right", "scale": 0.85, "rotation": 0 }
+    },
+    "file-agent": {
+      "frameSha256": "7da9a0694b81011761aa7eff82cf5baf8b611d3624b90c6ba5309b5c72a94a66",
+      "mouth": { "x": 166, "y": 180, "view": "right", "scale": 0.85, "rotation": 0 }
+    },
+    "app-agent": {
+      "frameSha256": "f4918ab3aafa97d0feb5f86ddff0b2860b2ff76ca11a84bfdbff819bc714429f",
+      "mouth": { "x": 178, "y": 181, "view": "right", "scale": 0.85, "rotation": 0 }
+    },
+    "review-agent": {
+      "frameSha256": "dfc554036692e7073551d4ce889c31593c537781ce8b1e4b6943ecdafdbce19b",
+      "mouth": { "x": 168, "y": 185, "view": "right", "scale": 0.85, "rotation": 0 }
+    },
+    "data-agent": {
+      "frameSha256": "7d32c655b05d66b540862e102874e175e5378f3f7d722bf14e80d0d194816fe8",
+      "mouth": { "x": 179, "y": 175, "view": "right", "scale": 0.85, "rotation": 0 }
+    }
+  }
+}

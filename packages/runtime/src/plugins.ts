@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ActivityPlan, ObjectStateChange, Template, World } from './model.ts'
+import type { ActivityPlan, ObjectStateChange, Point, Template, World } from './model.ts'
 import { SceneFault } from '@pawoffice/protocol'
 import { jsonObjectSchema } from '@pawoffice/protocol/schema'
 import { isCell, furnitureCells, sameCell } from './map/furnitureGrid.ts'
@@ -28,9 +28,12 @@ export type Capability = {
   /** Pure state proposals, validated and committed together before releasing activity claims. */
   complete?(context: PluginContext, params: unknown): ObjectStateChange[]
 }
+/** Fixed background locations, independent of movable furniture and saved layouts. */
+export type SceneLandmark = { id: string; anchors: Record<string, Point>; resources?: Record<string, number> }
 export type ScenePlugin = {
   id: string; name: string; version: string; apiVersion: 1; dependencies?: string[]
   templates?: Template[]; capabilities?: Capability[]
+  landmarks?: SceneLandmark[]
   stateSchemas?: Record<string, z.ZodType>
   /** Scene-owned structural invariants, independent of editable geometry. */
   validateWorld?(world: World): void
@@ -48,6 +51,13 @@ export class PluginHost {
     const templateIds = plugin.templates?.map(t => t.id) ?? []
     if (new Set(ids).size !== ids.length || ids.some(id => existing.includes(id)) || new Set(templateIds).size !== templateIds.length || templateIds.some(id => templates.includes(id))) throw new SceneFault('PLUGIN_CONFLICT', plugin.id)
     plugin.templates?.forEach(validateTemplate)
+    const landmarks = [...this.entries.values()].flatMap(e => e.plugin.landmarks ?? [])
+    const landmarkIds = plugin.landmarks?.map(l => l.id) ?? []
+    if (new Set(landmarkIds).size !== landmarkIds.length || landmarkIds.some(id => landmarks.some(l => l.id === id))) throw new SceneFault('PLUGIN_CONFLICT', plugin.id)
+    for (const landmark of plugin.landmarks ?? []) {
+      if (!landmark.id || Object.values(landmark.anchors).some(point => !isCell(point))
+        || Object.values(landmark.resources ?? {}).some(capacity => !Number.isInteger(capacity) || capacity < 1)) throw new SceneFault('INVALID_TEMPLATE', landmark.id)
+    }
     for (const template of plugin.templates ?? []) if (template.initialState !== undefined) {
       jsonObjectSchema.parse(template.initialState)
       plugin.stateSchemas?.[template.id]?.parse(template.initialState)
@@ -70,6 +80,9 @@ export class PluginHost {
     }
     throw new SceneFault('MISSING_TEMPLATE', id)
   }
+
+  landmarks() { return structuredClone([...this.entries.values()].filter(e => e.enabled).flatMap(e => e.plugin.landmarks ?? [])) }
+  landmark(id: string, anchor: string) { return this.landmarks().find(landmark => landmark.id === id)?.anchors[anchor] }
 
   validateState(templateId: string, state: unknown): Record<string, unknown> {
     for (const { plugin, enabled } of this.entries.values()) {
