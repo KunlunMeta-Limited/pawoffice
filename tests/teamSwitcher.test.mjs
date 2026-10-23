@@ -23,13 +23,15 @@ test('local demo teams have independent workspaces, roles and task actions', asy
   assert.equal(teams[0].source, source)
   const snapshots = await Promise.all(teams.map(team => team.source.getSnapshot()))
   assert.deepEqual(snapshots.map(snapshot => snapshot.workspace.id), teams.map(team => team.id))
-  assert.equal(snapshots[1].employees.find(employee => employee.id === 'app-agent').role, '内容撰写')
-  assert.equal(snapshots[2].employees.find(employee => employee.id === 'review-agent').role, '经营分析')
-  await teams[1].source.execute({ type: 'task.complete', taskId: 'article' })
-  assert.equal((await teams[1].source.getSnapshot()).tasks.find(task => task.id === 'article').status, 'completed')
+  assert.equal(snapshots[1].employees.find(employee => employee.id === 'app-agent').role, '详情设计')
+  assert.equal(snapshots[2].employees.find(employee => employee.id === 'review-agent').role, '转化分析')
+  teams[1].source.beginDispatch()
+  teams[1].source.acceptAssignment('app-agent')
+  await teams[1].source.execute({ type: 'task.complete', taskId: 'visual-detail' })
+  assert.equal((await teams[1].source.getSnapshot()).tasks.find(task => task.id === 'visual-detail').status, 'completed')
   assert.deepEqual(await teams[0].source.getSnapshot(), snapshots[0])
   assert.deepEqual(await teams[2].source.getSnapshot(), snapshots[2])
-  await assert.rejects(teams[2].source.execute({ type: 'task.complete', taskId: 'article' }), /任务不存在/)
+  await assert.rejects(teams[2].source.execute({ type: 'task.complete', taskId: 'visual-detail' }), /任务不存在/)
 })
 
 test('remote data sources do not acquire local example teams', () => {
@@ -40,7 +42,7 @@ test('team switcher is controlled by its host and does not expose a picker for o
   const teams = createDemoOfficeTeams(new ExampleOfficeDataSource())
   const selection = { teams, activeId: teams[1].id, select() {} }
   const multiple = renderToStaticMarkup(createElement(TeamSwitcher, { selection, fallbackName: 'fallback' }))
-  assert.match(multiple, /aria-label="团队空间，当前团队：内容运营团队"/)
+  assert.match(multiple, /aria-label="团队空间，当前团队：商品视觉团队"/)
   assert.match(multiple, /aria-expanded="false"/)
   assert(!multiple.includes('runtime-current-team'))
   assert(!multiple.includes('团队切换样式'))
@@ -52,7 +54,7 @@ test('team switcher is controlled by its host and does not expose a picker for o
   assert(!fallback.includes('情报监测团队'))
 })
 
-test('the team entry lives inside the office scene instead of the sidebar', async () => {
+test('the directory stays scene-owned while its entry can move to the member header', async () => {
   const shell = await readFile(new URL('../apps/web/src/ui/OfficeShell.tsx', import.meta.url), 'utf8')
   assert(!shell.includes('TeamSwitcher'))
   assert(!shell.includes('runtime-workspace-name'))
@@ -61,6 +63,9 @@ test('the team entry lives inside the office scene instead of the sidebar', asyn
   const workspace = await readFile(new URL('../apps/web/src/components/RuntimeWorkspace.tsx', import.meta.url), 'utf8')
   assert(workspace.indexOf('<OfficeCanvas') < workspace.indexOf('<OfficeSceneControls'))
   assert.match(workspace, /teamSelection=\{teamSelection\}/)
+  const switcher = await readFile(new URL('../apps/web/src/ui/TeamSwitcher.tsx', import.meta.url), 'utf8')
+  assert.match(switcher, /createPortal\(entry, triggerTarget\)/)
+  assert.match(switcher, /<TeamDecisionNotice/)
 })
 
 test('all team sessions are hosted independently of the active view', async () => {
@@ -80,8 +85,8 @@ test('background decisions expose a compact action card with explicit team owner
   const html = renderToStaticMarkup(createElement(TeamSwitcher, { selection: { teams, activeId: teams[0].id, select() {}, openDecisions() {}, resolveDecision() {} } }))
   assert(html.includes('3 项待确认'))
   assert(html.includes('team-decision-count'))
-  assert(html.includes('role="region" aria-label="内容运营团队待决定提示"'))
-  assert(html.includes('进入内容运营团队办公室'))
+  assert(html.includes('role="region" aria-label="商品视觉团队待决定提示"'))
+  assert(html.includes('进入商品视觉团队办公室'))
   assert(html.includes('确认发布'))
   assert(html.includes('暂不发布'))
   assert(html.includes('data-actionable="true"'))
@@ -89,7 +94,7 @@ test('background decisions expose a compact action card with explicit team owner
   assert(html.includes('aria-label="问题剩余有效时间"'))
   assert(html.includes('aria-valuetext="30 秒"'))
   assert(!html.includes('office-decision-card'))
-  assert(!html.includes('进入登录模块开发办公室'))
+  assert(!html.includes('进入电商运营团队办公室'))
 })
 
 test('background choices show radio options, disabled initial submit and team-local errors', () => {

@@ -8,7 +8,7 @@ import { relayMessageSchema } from '@pawoffice/protocol/relay'
 import { mapDocumentSchema, mapEditSchema, mapOperationSchema } from '@pawoffice/protocol/map'
 import { chatEventSchema, chatRequestSchema, chatOperationSchema, chatHistoryPageSchema, chatCancelResultSchema } from '@pawoffice/protocol/chat'
 import { officeRequestSchema, officeSnapshotSchema, officeReplySchema, officeDeliverySchema, officeSyncSchema, officeSyncStartSchema, officeSyncCompleteSchema,
-  officeClosedSchema, officeUiActionSchema, officeUiPresentationSchema, officeErrorResultSchema, officeSuccessResultSchema } from '@pawoffice/protocol/office-integration'
+  officeClosedSchema, officeUiActionSchema, officeUiPresentationSchema, officeErrorResultSchema, officeSuccessResultSchema, officeLayoutSyncSchema } from '@pawoffice/protocol/office-integration'
 import { whiteboardTaskBoardSchema } from '@pawoffice/protocol/office-ui'
 import { createSceneRuntime } from '@pawoffice/runtime/createSceneRuntime'
 import { SseMessageTransport } from '@pawoffice/runtime/adapters/sse'
@@ -51,7 +51,8 @@ test('every value position in all request, response and event variants rejects a
   const fixtures = [], add = (schema, ...values) => values.forEach(value => fixtures.push([schema, value]))
   const state = snapshot()
   add(officeRequestSchema,
-    { type: 'offices.initialize', offices: [state], chat: { url: 'https://backend.example/chat' } }, { type: 'office.snapshot', teamId: 'audit', snapshot: state },
+    { type: 'offices.initialize', offices: [state], chat: { url: 'https://backend.example/chat' }, layoutId: 'members' }, { type: 'office.snapshot', teamId: 'audit', snapshot: state },
+    { type: 'office.layout.read' }, { type: 'office.layout.set', layoutId: 'members' },
     { type: 'office.read', teamId: 'audit' }, { type: 'office.capabilities' }, { type: 'ui.next', timeoutMs: 1000 },
     { type: 'ui.respond', interactionId: 'interaction', presentation: dialog },
     { type: 'ui.respond', interactionId: 'interaction', presentation: { target: 'whiteboard', snapshot: state } },
@@ -78,6 +79,7 @@ test('every value position in all request, response and event variants rejects a
   const actions = [{ conversationId: 'main', id: 'action', teamId: 'audit', action: 'actor.inspect', actorId: 'actor' },
     { conversationId: 'main', id: 'delete-action', teamId: 'audit', action: 'conversation.delete' },
     { conversationId: 'main', id: 'action', teamId: 'audit', action: 'employee.inspect', employeeId: 'dev' },
+    { conversationId: 'main', id: 'action', teamId: 'audit', action: 'employee.create', name: '新成员', role: '', sceneActorId: 'actor' },
     ...['task.start', 'task.block', 'task.complete'].map(action => ({ conversationId: 'main', id: 'action', teamId: 'audit', action, taskId: 'task' })),
     { conversationId: 'main', id: 'action', teamId: 'audit', action: 'task.assign', taskId: 'task', assigneeId: 'dev' },
     { conversationId: 'main', id: 'action', teamId: 'audit', action: 'dialog.action', interactionId: 'interaction', optionId: 'ok' }]
@@ -93,16 +95,19 @@ test('every value position in all request, response and event variants rejects a
       roles: [{ role: 'actor', min: 0, max: 1 }], rules: ['示例'] } }] }
   const ui = { slots: [{ id: 'dialog', content: 'detail-v1', persistent: false, update: 'ui.respond' }], actions: ['actor.inspect'],
     actionSchema: { type: 'object' }, presentationSchema: { type: 'object' }, whiteboardSchema: { type: 'object' } }
+  const layout = { currentLayoutId: 'classic', revision: 0, layouts: [{ id: 'classic', name: '经典布局', dataMessageType: 'office.snapshot', dataSchema: { type: 'object' } }] }
   add(officeSuccessResultSchema,
-    { offices: [{ id: 'audit', name: '办公室', seq: 1, runtimeReady: false, taskCount: 0 }], actors: [{ id: 'actor', name: '人物' }], supportedMessages: ['office.read'], sceneCommandProtocol: '2.0', ui },
+    layout,
+    { ...layout, offices: [{ id: 'audit', name: '办公室', seq: 1, runtimeReady: false, taskCount: 0 }], actors: [{ id: 'actor', name: '人物' }], supportedMessages: ['office.read'], sceneCommandProtocol: '2.0', ui },
     { snapshot: state, scene, pendingDecisions: ['menu'] },
-    { scene, ui, requests: { type: 'object' }, responses: { success: { type: 'object' }, error: { type: 'object' } } })
+    { ...layout, scene, ui, requests: { type: 'object' }, responses: { success: { type: 'object' }, error: { type: 'object' } } })
   const fault = { reasonCode: 'INVALID_MESSAGE', details: { expected: '', values: [{ label: '', count: -1 }] }, issues: [{ path: ['tasks', 0], message: '' }] }
   add(officeErrorResultSchema, fault)
   add(officeReplySchema, { responseToken: 'token', result: { code: 400, msg: '', data: fault } }, { responseToken: 'token', result: { code: 200, msg: '', data: { actions: [] } } })
   add(officeDeliverySchema, { type: 'office.request', responseToken: 'token', remainingMs: 10000, request: { type: 'offices.initialize', offices: [state] } })
   add(officeSyncSchema, { type: 'office.sync', snapshot: state })
-  add(officeSyncStartSchema, { type: 'office.sync.start', stateId: 'server-instance' })
+  add(officeSyncStartSchema, { type: 'office.sync.start', stateId: 'server-instance', layout: { currentLayoutId: 'classic', revision: 0 } })
+  add(officeLayoutSyncSchema, { type: 'office.layout.sync', layout: { currentLayoutId: 'members', revision: 1 } })
   add(officeSyncCompleteSchema, { type: 'office.sync.complete', offices: [{ teamId: 'audit', seq: 1 }] })
   add(officeClosedSchema, { type: 'office.request.closed', responseToken: 'token' })
   add(chatRequestSchema, { version: '1.0', type: 'send', turnId: 'turn', teamId: 'audit', conversationId: 'conversation', messages: [{ role: 'user', content: '' }, { role: 'assistant', content: '' }] })

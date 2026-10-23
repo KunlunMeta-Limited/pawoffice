@@ -20,7 +20,7 @@ PawOffice 服务端 -- SSE 消息 --> PawOffice 浏览器页面
 
 ## 完整调用流程
 
-以下流程以服务器部署、浏览器页面在线为例。外部业务后端发送的 `office.capabilities`、`offices.initialize`、`office.snapshot`、`ui.next`、`ui.respond` 和 `decision.request`，均为 `POST /api/pawoffice/messages` 请求体中的 `type`。
+以下流程以服务器部署、浏览器页面在线为例。外部业务后端发送的 `office.capabilities`、`office.layout.read`、`office.layout.set`、`offices.initialize`、`office.snapshot`、`ui.next`、`ui.respond` 和 `decision.request`，均为 `POST /api/pawoffice/messages` 请求体中的 `type`。
 
 图中的 `/api/pawoffice/events`、`/api/pawoffice/reply` 和 `/api/pawoffice/ui` 由 PawOffice 浏览器代码调用。各操作的字段定义见后续章节。
 
@@ -36,8 +36,8 @@ sequenceDiagram
     S-->>B: 发送已缓存的最新办公室状态
 
     Note over E,B: 二、创建或初始化办公室
-    E->>S: office.capabilities：查询人物、行为和展示规范
-    S-->>E: 返回能力及字段定义
+    E->>S: office.capabilities：查询人物、行为、页面布局和展示规范
+    S-->>E: 返回当前布局、可选布局、能力及字段定义
     alt 用户从空状态新建办公室
         E->>S: ui.next：等待用户操作
         B->>S: POST /api/pawoffice/ui，office.create + name
@@ -48,7 +48,7 @@ sequenceDiagram
         S-->>B: SSE同步新办公室，原创建请求返回快照
         B->>B: 创建运行时，进入新办公室
     else 后端主动同步已有工作空间
-        E->>S: offices.initialize：提交办公室数据及可选聊天地址
+        E->>S: offices.initialize：提交办公室数据、可选layoutId及聊天地址
         S-->>B: SSE发送初始化数据
         B->>B: 创建各办公室运行时并展示
         B->>S: POST /api/pawoffice/reply，报告初始化结果
@@ -221,12 +221,89 @@ Content-Type: application/json
 | `office.snapshot` | 取得浏览器应用结果后返回 `200` 和 `applied`；已缓存但未等待浏览器确认时返回 `202` 和 `cached`；较旧状态返回 `200` 和 `ignored`；相同版本、相同内容可重试同步 |
 | `office.read` | 返回办公室目录，或等待在线页面返回指定办公室的状态 |
 | `office.capabilities` | 服务端立即返回人物、物品、行为及 UI 的 JSON Schema，初始化前也可查询 |
+| `office.layout.read` | 服务端立即返回当前页面布局及可选布局目录，初始化前也可查询 |
+| `office.layout.set` | 缓存布局选择并通知页面；取得在线页面接受结果返回 `200`，未取得页面确认返回 `202` |
 | `ui.next` | 领取一个用户操作；等待时间内没有操作则返回 `data.actions: []` |
 | `ui.respond` | 服务端接收指定用户操作的展示结果后返回 |
 | `decision.request` | 等待用户选择后返回；到期返回 `408` |
 | `{teamId, command}` | 指令发送到在线页面连接后返回 `200`；播放由浏览器随后执行 |
 
-初始化、状态更新和状态查询等待浏览器处理的默认时限为 10 秒。菜单等待时限默认 60 秒，`timeoutMs` 可设为 1000–300000 毫秒。外部业务后端和反向代理的 HTTP 超时应大于相应等待时限，例如为最长菜单配置 310 秒。
+初始化、状态更新、布局切换和状态查询等待浏览器处理的默认时限为 10 秒。菜单等待时限默认 60 秒，`timeoutMs` 可设为 1000–300000 毫秒。外部业务后端和反向代理的 HTTP 超时应大于相应等待时限，例如为最长菜单配置 310 秒。
+
+## 页面布局查询与切换
+
+页面布局决定导航、成员和业务面板的排列，不改变办公室内部地图、人物身份或任务状态。目前提供 `classic`（经典布局）和 `members`（成员布局）。
+
+### 获取当前布局与可选目录
+
+独立查询可在办公室初始化前后调用：
+
+```json
+{ "type": "office.layout.read" }
+```
+
+`office.layout.read` 的 `data`、`offices.initialize` 的响应 `data` 和 `office.capabilities` 的响应 `data` 都包含以下同名字段：
+
+| 字段 | 类型 | 含义 |
+| --- | --- | --- |
+| `currentLayoutId` | 字符串 | 当前选择的页面布局 ID |
+| `revision` | 非负整数 | PawOffice 服务端生成的布局版本，用于自身状态同步；外部后端无需生成或提交 |
+| `layouts` | 对象数组 | 当前可选布局目录 |
+| `layouts[].id` | 字符串 | 可供选择的布局 ID |
+| `layouts[].name` | 字符串 | 布局显示名称 |
+| `layouts[].dataMessageType` | 字符串 | 该布局接收业务数据的操作类型，目前均为 `office.snapshot` |
+| `layouts[].dataSchema` | 对象 | 该布局业务快照的完整 JSON Schema，包括必需字段、可选字段和默认值 |
+
+`office.read` 不指定 `teamId` 时返回的办公室目录也包含这些布局字段。目录由同一份前端协议定义生成，各查询入口与初始化结果保持一致。
+
+### 初始化指定与运行中切换
+
+初始化时可增加 `layoutId`：
+
+```json
+{ "type": "offices.initialize", "offices": [], "layoutId": "members" }
+```
+
+此处 `offices: []` 表示不增加办公室，也不删除现有办公室。省略 `layoutId` 保留当前选择；服务实例首次启动时默认为 `classic`。
+
+运行中单独切换，不需要重新初始化办公室或重新投递任务：
+
+```json
+{ "type": "office.layout.set", "layoutId": "classic" }
+```
+
+切换结果的 `data` 与 `office.layout.read` 使用相同结构。`200` 表示至少一个在线页面已接受该布局选择，不代表全部浏览器已经完成绘制；`202` 表示选择已缓存，页面上线或重连时恢复。请求重复指定同一布局不会增加布局版本。无效 ID 返回 `400`，不改变已有选择。
+
+```mermaid
+sequenceDiagram
+    participant E as 外部业务后端
+    participant S as PawOffice 服务端
+    participant B as PawOffice 浏览器
+    E->>S: office.layout.read
+    S-->>E: currentLayoutId、revision、layouts及数据Schema
+    E->>S: offices.initialize，可选layoutId
+    S-->>B: SSE同步布局选择和办公室数据
+    B->>S: 初始化结果
+    S-->>E: 当前布局、布局目录和办公室目录
+    E->>S: office.layout.set，指定另一个layoutId
+    S-->>B: SSE同步最新布局版本
+    B->>B: 替换页面界面，保留办公室运行时与会话
+    B->>S: 布局选择已接受
+    S-->>E: 当前布局和可选目录
+    E->>S: office.snapshot，继续更新业务数据
+    S-->>B: 更新任务和白板，不改变布局选择
+```
+
+### 状态范围与数据投递
+
+- 布局选择属于整个 PawOffice 服务实例，不属于某个 `teamId` 或会话。同一实例连接的浏览器页面共用选择；页面按钮切换也会更新服务端状态，因此后端查询可以看到用户的选择。
+- 连接模式下，服务端状态优先于浏览器保存的布局偏好与 `?shell=` 参数。纯静态演示没有外部控制，仍使用本地偏好。`?layout=scene` 是仅展示场景的页面入口，不属于可选布局 ID。
+- 目前两套布局都投影同一份办公室业务快照。后端继续使用 `office.snapshot` 投递，不需要按布局保存两份任务、成员或白板数据。布局目录分别提供各自的数据 Schema；以后增加专属数据要求时，应更新对应定义。
+- 业务数据更新与布局选择是两个操作，`office.snapshot` 不接受 `layoutId`。向当前未显示的办公室更新数据不会切换页面布局。
+- 切换布局不销毁办公室运行时、不取消人物活动，也不清除聊天记录、输入草稿或正在生成的回复。
+- 服务端只在内存中保存最新布局选择，不保存切换历史。重连和新页面使用最新选择；服务端重启后恢复默认，外部后端可在重新初始化时指定布局。
+
+`/api/pawoffice/layout` 是 PawOffice 浏览器按钮使用的同源内部接口，无需外部项目调用；外部后端的查询、初始化和切换继续共用 `/api/pawoffice/messages`。
 
 ## 1. 初始化办公室
 
@@ -237,6 +314,7 @@ Content-Type: application/json
 ```json
 {
   "type": "offices.initialize",
+  "layoutId": "members",
   "chat": {
     "url": "https://your-host.example/chat"
   },
@@ -291,13 +369,14 @@ Content-Type: application/json
 ```
 
 - `workspace.id` 是办公室的稳定 ID，其他操作的 `teamId` 引用该值。
+- `layoutId` 可选，选择整个页面的布局；省略时保留已有选择。可选值和数据要求通过 `office.layout.read` 查询，切换不会重建办公室。
 - `chat` 可选，为本 PawOffice 服务实例注册聊天接口；`url` 为服务端可访问的完整 HTTP(S) 地址。省略 `chat` 保留已有配置，`chat: { "url": "" }` 停用服务。可使用 `offices: []` 单独更换聊天地址，后续聊天立即生效；配置独立于快照 `seq`，服务端重启后须重新注册。地址只保存在 PawOffice 服务端，不广播给浏览器。详见[聊天接入文档](./chat-integration.md)。
 - `conversations[].id` 是办公室内唯一的会话 ID，`title` 是标签显示名称。聊天请求、审批请求及用户操作使用 `conversationId` 引用该 ID。
 - `conversations[].employees` 是会话的业务成员列表，可代表员工、功能或智能体。成员 `id` 在该会话内唯一；`sceneActorId` 指定负责展示该成员的场景人物。多个成员可以绑定同一人物，不同会话可有不同的绑定关系。
 - 每个办公室提供固定六个人物及对应工位、外观。可绑定人物通过 `office.capabilities` 的 `data.scene.actors`，或初始化结果的 `data.actors` 查询。
 - 初始化按 `workspace.id` 新增或更新办公室。请求未列出的办公室保留；此操作不提供删除办公室功能。一个服务实例最多管理 100 个办公室。
 - 新增办公室时，其他办公室继续执行各自活动。更新已有办公室使用完整快照和 `seq` 规则，见下文“恢复与顺序”。
-- 返回的 `data` 包含 `offices`、`actors`、`supportedMessages`、`sceneCommandProtocol` 和 `ui`。每项 `offices` 含 `id`、`name`、`seq`、`runtimeReady`、`taskCount`。
+- 返回的 `data` 包含 `offices`、`actors`、`supportedMessages`、`sceneCommandProtocol`、`ui`，以及 `currentLayoutId`、`revision` 和 `layouts`。每项 `offices` 含 `id`、`name`、`seq`、`runtimeReady`、`taskCount`。
 - `runtimeReady: true` 表示浏览器已创建该办公室的逻辑运行环境；图片资源按需加载。返回 `202` 时，目录中的 `runtimeReady` 为 `false`，表示此响应尚未取得浏览器就绪确认；即使页面实际在线，也应按未确认处理。
 
 ## 2. 更新任务与展示状态
@@ -579,6 +658,7 @@ sequenceDiagram
 | `office.create` | `name`：办公室名称，1–40 字；`teamId`、`conversationId` 固定为空字符串，初始化前即可使用 |
 | `actor.inspect` | `actorId`：场景人物 ID |
 | `employee.inspect` | `employeeId`：业务成员 ID |
+| `employee.create` | `name`：成员姓名，1–80 字；`role`：职责，最多 80 字，可为空字符串；`sceneActorId`：空闲工位对应的场景人物 ID |
 | `task.start`、`task.block`、`task.complete` | `taskId`：任务 ID |
 | `task.assign` | `taskId`、`assigneeId`：任务及新负责人 ID |
 | `dialog.action` | `interactionId`：原详情请求 ID；`optionId`：详情按钮 ID |
@@ -608,6 +688,10 @@ sequenceDiagram
 `ui.respond` 成功返回 `data: {interactionId, delivered: true}`。用户点击详情按钮会产生新的 `dialog.action` 操作，使用该新操作的 `id` 提交对应展示结果。
 
 详情对话框仅在请求所属会话仍被选中时显示，迟到结果不会覆盖另一个会话。白板展示结果必须携带包含请求所属会话的完整办公室快照；服务端缓存全部会话，浏览器只显示所选会话的数据。
+
+成员布局的“团队成员”标题右侧提供添加入口。房间固定 6 个工位，不扩容；添加成员入口按整个办公室全部会话中的不同成员 `id` 计数，最多 6 位，满员时加号置灰。新增成员只能使用尚未分配给成员的场景人物及工位，不能复用已占用人物；切换会话不会释放工位。服务端同时预留正在添加的名额及工位，防止多个页面并发新增突破上限；超限返回 `409 OFFICE_LIMIT`，工位已占用返回 `409 INVALID_BINDING`。不支持创建第 7 个小人或工位。
+
+外部后端决定是否允许添加，并分配新的业务成员 `id`。允许时，先推送更高 `seq` 的完整 `office.snapshot`，在请求所属会话中加入与请求姓名、职责、人物绑定一致的新成员，再通过 `ui.respond` 返回 `target: "result", success: true`；未同步新增成员直接确认会返回 `409 SNAPSHOT_REQUIRED`。拒绝时返回 `target: "result", success: false, message: "拒绝原因"`，页面保留填写内容。上述人数与空闲工位检查用于 `employee.create` 添加流程，不修改已有业务快照允许多个业务身份映射同一人物的规则。
 
 用户操作最多保留并等待处理 60 秒，超时后页面提示失败，后续 `ui.respond` 返回 `410 UI_REQUEST_EXPIRED`。领取后的操作不会再次返回给其他 `ui.next` 请求。任务按钮的实际业务处理由外部业务后端执行，处理后通过 `office.snapshot` 同步结果。
 
@@ -703,6 +787,8 @@ HTTP `200` 表示指令已发送到至少一个在线页面连接。浏览器负
 | 等于当前 `seq` 且补齐默认值后的内容不同 | 返回 `409 SEQ_CONFLICT` |
 
 PawOffice 服务端在内存中缓存每个办公室的最新完整快照，最多 100 个办公室、合计 8 MiB。浏览器首次连接或 SSE 重连时，服务端发送最新快照；浏览器应用完成后显示已连接。浏览器保存本地快照用于连接前的临时展示，连接后的办公室目录以服务端为准。目录查询只返回当前服务端已初始化的办公室，`runtimeReady: true` 还要求在线页面确认了该办公室的当前版本。
+
+浏览器接收连续快照时，按办公室合并尚未处理的版本，保留最高 `seq`。查询、审批等需要结果的请求仍逐条处理，服务重启和目录同步的顺序不变。接收队列溢出时，浏览器自动重新连接并恢复服务端缓存中的最新状态，无需外部业务后端为此重发初始化或补发历史动画。
 
 PawOffice 服务端重启会清空内存缓存，外部业务后端需要重新发送初始化。浏览器自动识别服务端状态已重建，移除旧目录并同步新的初始化数据；同一服务的正常重连会保留已有运行时。临时动画和待选择菜单只向在线页面发送，不保存为离线待办；刷新页面后不补播历史动画。
 

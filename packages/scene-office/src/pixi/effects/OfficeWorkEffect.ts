@@ -44,7 +44,7 @@ export class OfficeWorkEffectClock {
   }
 }
 
-export const OFFICE_WORK_EFFECT = { columns: 3, rows: 2, cellPixels: 160, opacity: .8,
+export const OFFICE_WORK_EFFECT = { columns: 3, rows: 2, cellPixels: 160, displayPixels: 160, opacity: 1,
   frameDurationsMs: [170, 170, 170, 170, 170, 200] } as const
 
 export function officeWorkEffectFrame(seconds: number) {
@@ -73,7 +73,7 @@ export function createOfficeWorkEffects(atlas: Texture, runtime: SceneReadPort, 
     root.visible = false
     sprite.label = 'office-crafting-frames'
     sprite.anchor.set(.5, .9)
-    sprite.scale.set(138 / cellPixels)
+    sprite.scale.set(OFFICE_WORK_EFFECT.displayPixels / cellPixels)
     root.addChild(sprite)
     return { actorId, root, sprite, clock: new OfficeWorkEffectClock(), phase: index * cycle / actorIds.length }
   })

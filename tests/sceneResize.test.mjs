@@ -153,8 +153,10 @@ test('a custom 30 FPS profile preserves elapsed time and simulation speed while 
   for (let i = 0; i < 60; i++) scene.onTick({ deltaTime: 1 })
   assert.equal(frames.length, 50, 'seated work still uses 20 FPS')
   scene.runtime.isEditing = true; scene.runtime.readEditorWorld = () => data
+  elapsed.length = 0
   for (let i = 0; i < 60; i++) scene.onTick({ deltaTime: 1 })
   assert.equal(frames.length, 110, 'layout editing remains responsive at 60 FPS')
+  assert(elapsed.every(dt => dt === 0), 'editing pauses prop animation without lowering editor responsiveness')
   assert.equal(ticks(), 180)
 })
 

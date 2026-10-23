@@ -8,6 +8,22 @@ const businessReference = z.string().max(100).optional()
 const actorReference = z.union([idSchema, z.literal('')]).optional()
 const timestamp = z.iso.datetime({ offset: true })
 
+export const maxOfficeMembers = 6
+export const officeMemberLimitMessage = `办公室已满，最多 ${maxOfficeMembers} 位成员`
+export function officeMemberOccupancy(conversations: readonly { employees: readonly { id: string; sceneActorId?: string }[] }[]) {
+  const memberIds = new Set<string>(), actorIds = new Set<string>()
+  for (const conversation of conversations) for (const employee of conversation.employees) {
+    memberIds.add(employee.id)
+    if (employee.sceneActorId) actorIds.add(employee.sceneActorId)
+  }
+  return { memberIds, actorIds }
+}
+
+export const officeMemberInputSchema = z.strictObject({
+  name: z.string().trim().min(1).max(80), role: z.string().trim().max(80).default(''), sceneActorId: idSchema,
+})
+export type OfficeMemberInput = z.infer<typeof officeMemberInputSchema>
+
 export const dashboardSnapshotSchema = z.strictObject({
   schemaVersion: z.literal('1.0'),
   conversationId: id.optional(),
@@ -60,6 +76,7 @@ export interface OfficeDataSource {
   getSnapshot(): Promise<DashboardSnapshot>
   getConversations?(): readonly DashboardConversation[]
   selectConversation?(id: string): void
+  createEmployee?(input: OfficeMemberInput): Promise<void>
   subscribe(listener: () => void): () => void
   execute(action: DashboardAction): Promise<void>
 }

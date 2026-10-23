@@ -18,6 +18,7 @@ export class ActorView extends Container {
   private taskBadge = new TaskBadge()
   private speech?: string
   private appearance: Container
+  private selectionRing = new Graphics().ellipse(0, 0, 34, 10).fill({ color: 0x38ba87, alpha: .1 }).stroke({ color: 0x38ba87, alpha: .55, width: 1.5 })
   private animationError?: string
   private visualBounds = new Rectangle()
   private anchoredTask = false
@@ -35,7 +36,8 @@ export class ActorView extends Container {
     } else {
       this.appearance.addChild(new Graphics().circle(0, -.5, .15).fill(0xbfc5c1))
     }
-    this.addChild(this.appearance)
+    this.selectionRing.visible = false
+    this.addChild(this.selectionRing, this.appearance)
     this.overlay.addChild(this.statusLabel, this.taskBadge, this.bubble)
     this.overlay.eventMode = 'passive'
     this.on('pointerover', () => this.taskBadge.setHovered(true))
@@ -44,7 +46,7 @@ export class ActorView extends Container {
     this.update(actor, 0)
   }
   get actionError() { return this.animationError }
-  setSelected(value: boolean) { this.taskBadge.setSelected(value); this.overlay.zIndex = this.taskBadge.isExpanded ? Number.MAX_SAFE_INTEGER : this.zIndex }
+  setSelected(value: boolean) { this.selectionRing.visible = value; this.taskBadge.setSelected(value); this.overlay.zIndex = this.taskBadge.isExpanded ? Number.MAX_SAFE_INTEGER : this.zIndex }
   getVisualBounds() { return this.visualBounds }
   getTaskOcclusionBounds() {
     if (!this.anchoredTask || !this.taskBadge.visible) return undefined
@@ -63,6 +65,7 @@ export class ActorView extends Container {
     this.position.set(actor.position.x, actor.position.y); this.zIndex = actor.depth
     this.overlay.position.copyFrom(this.position)
     this.appearance.scale.set(actor.displayHeight)
+    this.selectionRing.scale.set(actor.displayHeight / 126)
     if (this.visual && this.lease) {
       try { this.visual.sample(this.presenter.sample(actor, this.lease.manifest, dt)); this.animationError = undefined }
       catch (error) { this.animationError = error instanceof Error ? error.message : String(error) }

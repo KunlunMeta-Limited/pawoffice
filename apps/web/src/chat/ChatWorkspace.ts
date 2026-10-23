@@ -72,7 +72,7 @@ export class ChatWorkspace {
   }
   private add(id: string, title: string, local: boolean, archive?: ChatArchive) {
     const initial: ChatArchive = archive ?? { version: 1, teamId: this.teamId, conversationId: id, draft: '', activeTurnId: '',
-      messages: (this.source instanceof PreviewChatSource && this.teamId === 'office-1' ? this.source.initialHistory(id) : []).map(message => ({ ...message, id: crypto.randomUUID(), state: 'complete' as const })) }
+      messages: (this.source instanceof PreviewChatSource ? this.source.initialHistory(id, this.teamId) : []).map(message => ({ ...message, id: crypto.randomUUID(), state: 'complete' as const })) }
     this.archives.set(id, initial)
     const session = new ChatSession(this.teamId, this.source, { conversationId: id, syncOnRestore: false, persistence: {
       read: async () => initial,

@@ -9,6 +9,8 @@ import { seatPixels } from '../projection.ts'
 import { TRIAL_COMPUTER, TRIAL_MONITOR_RIGHT, trialComputerPlacement } from '../workstationSurface.ts'
 import { WORKSTATION_DESK_OFFSET_Y, WORKSTATION_SEAT_Y } from '../workstationArtwork.ts'
 import { getReferenceOfficeTexture } from '../assets/loadReferenceOfficeAssets.ts'
+import { getWorkstationTrialTextures } from '../assets/loadWorkstationTrialAssets.ts'
+import { createOfficeMonitorScreen, officeMonitorWorking } from '../effects/OfficeMonitorScreen.ts'
 import { renderWhiteboardPreview, WHITEBOARD_PREVIEW_LAYOUT } from '../../taskBoard.ts'
 import { whiteboardTaskBoard, WhiteboardProgress } from '../../whiteboard.ts'
 import type { WhiteboardTaskBoardData } from '../../whiteboard.ts'
@@ -45,6 +47,7 @@ export const referenceWorkstationView: PropViewFactory = prop => {
   const seat = (p: Prop) => seatPixels({ x: p.position.x + 1, y: p.position.y + 2 })
   const asDesk = (p: Prop) => { const s = seat(p); return { id: p.id, x: s.x, y: s.y - WORKSTATION_SEAT_Y, seatX: s.x, seatY: s.y } }
   const desk = new DeskEntity(asDesk(prop)), accessories = new Container()
+  const screen = getWorkstationTrialTextures() ? createOfficeMonitorScreen(prop.id) : undefined
   const texture = getReferenceOfficeTexture('desk-accessories')
   const sprites = new Map<string, Sprite>(), crops: Texture[] = []
   if (texture) {
@@ -61,16 +64,21 @@ export const referenceWorkstationView: PropViewFactory = prop => {
   const parts = [desk.shadowGfx, desk.deskLayer, desk.chairLayer, desk.occupiedIndicator, desk.deskFrontLayer]
   desk.deskLayer.hitArea = new Rectangle(-55, -12, 110, 80)
   let placedX = NaN, placedY = NaN
-  return { roots: [...parts, accessories], hitTarget: desk.deskLayer,
+  return { roots: [...parts, ...(screen ? [screen.root] : []), accessories], hitTarget: desk.deskLayer,
     getWorkSurface: workSurface,
     update(p, _template, actors) {
       prop = p
       desk.setOccupied(actors.some(a => a.furniture?.propId === p.id && a.furniture.seated && !a.furniture.transitioning))
+      screen?.setWorking(actors.some(actor => officeMonitorWorking(actor, p.id)))
       if (placedX === p.position.x && placedY === p.position.y) return
       placedX = p.position.x; placedY = p.position.y
       desk.setArtwork('trial'); desk.setDesk(asDesk(p)); desk.updateDepthZ()
       const s = seat(p)
       for (const part of parts) { part.position.set(s.x + (part.x - s.x) * SCALE, s.y + (part.y - s.y) * SCALE); part.scale.set(SCALE) }
+      if (screen) {
+        screen.root.position.copyFrom(desk.deskLayer.position); screen.root.scale.copyFrom(desk.deskLayer.scale)
+        screen.root.zIndex = desk.deskLayer.zIndex + .05
+      }
       accessories.position.set(s.x, s.y); accessories.zIndex = desk.deskLayer.zIndex + .1
       for (const part of referenceAccessoryPlacements(workSurface())) {
         const sprite = sprites.get(part.id)
@@ -78,7 +86,7 @@ export const referenceWorkstationView: PropViewFactory = prop => {
         sprite.width = part.width; sprite.scale.y = sprite.scale.x
         sprite.position.set(part.x - s.x, part.y - s.y)
       }
-    } }
+    }, updateFrame(dt) { screen?.updateFrame(dt) } }
 }
 
 const conferenceTableView: PropViewFactory = () => {

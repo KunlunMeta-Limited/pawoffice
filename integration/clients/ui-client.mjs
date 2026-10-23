@@ -29,6 +29,16 @@ try {
       await post({ type: 'ui.respond', interactionId: action.id, presentation: { target: 'result', success: true, message: '会话已删除' } })
       continue
     }
+    if (action.action === 'employee.create') {
+      const { snapshot } = await post({ type: 'office.read', teamId: action.teamId })
+      const conversation = snapshot.conversations.find(item => item.id === action.conversationId)
+      if (!conversation) throw new Error('添加成员的会话不存在')
+      conversation.employees.push({ id: crypto.randomUUID(), name: action.name, role: action.role, sceneActorId: action.sceneActorId, online: true })
+      snapshot.seq++
+      await post({ type: 'office.snapshot', teamId: action.teamId, snapshot })
+      await post({ type: 'ui.respond', interactionId: action.id, presentation: { target: 'result', success: true, message: '成员已添加' } })
+      continue
+    }
     await post({ type: 'ui.respond', interactionId: action.id, presentation: { target: 'dialog', content: {
       template: 'detail-v1', title: action.action === 'dialog.action' ? '操作已提交' : '成员与任务详情',
       description: action.action === 'dialog.action' ? '登录模块已提交审核，等待审核人员处理。' : '登录接口与权限校验已完成，请检查异常场景与联调结果后提交审核。',

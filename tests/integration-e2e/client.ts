@@ -13,7 +13,9 @@ export type OfficeSnapshot = {
   }[]
 }
 export type UserAction = { id: string; teamId: string; conversationId: string; action: string; name?: string; actorId?: string; employeeId?: string; taskId?: string; interactionId?: string; optionId?: string }
-export type Capabilities = { scene: { actors: { id: string; name: string; position: { x: number; y: number } }[];
+export type LayoutInfo = { currentLayoutId: 'classic' | 'members'; revision: number;
+  layouts: { id: 'classic' | 'members'; name: string; dataMessageType: string; dataSchema: object }[] }
+export type Capabilities = LayoutInfo & { scene: { actors: { id: string; name: string; position: { x: number; y: number } }[];
   capabilities: { id: string }[] }; ui: object; requests: object; responses: object }
 export type OfficeRead = { snapshot: OfficeSnapshot; scene: Capabilities['scene']; pendingDecisions: string[] }
 

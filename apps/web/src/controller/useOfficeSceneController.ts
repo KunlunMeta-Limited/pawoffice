@@ -18,11 +18,13 @@ type AgentMenuState = {
   pickingTarget: boolean
 }
 
-export function useOfficeSceneController(runtime: SceneRuntime, covered = false, simulation?: OfficeSimulation, dashboard: DashboardSnapshot | null = null, onInspect?: (actorId: string) => void, suppliedWhiteboardProgress?: WhiteboardProgress) {
+export function useOfficeSceneController(runtime: SceneRuntime, covered = false, simulation?: OfficeSimulation, dashboard: DashboardSnapshot | null = null, onInspect?: (actorId: string) => void, suppliedWhiteboardProgress?: WhiteboardProgress, onSelectActor?: (actorId: string) => boolean) {
   useSyncExternalStore(runtime.subscribe, runtime.getRevision)
   const [host] = useState(() => new SceneHost())
   const whiteboardProgress = useMemo(() => { void runtime; return suppliedWhiteboardProgress ?? new WhiteboardProgress() }, [runtime, suppliedWhiteboardProgress])
   const sceneRef = useRef<OfficeScene | null>(null)
+  const selectionHandler = useRef(onSelectActor)
+  useEffect(() => { selectionHandler.current = onSelectActor }, [onSelectActor])
   const tasks = useMemo(() => officeActorTasks(dashboard), [dashboard])
   const tasksRef = useRef(tasks)
   useEffect(() => { tasksRef.current = tasks }, [tasks])
@@ -43,6 +45,7 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
     setMenu(null); setWhiteboardId(null); setNotice(simulation?.error ?? null); setDemo(simulation?.isDemoRunning ?? false)
 
     const handleAgentClick = (event: OfficeAgentClick) => {
+      if (selectionHandler.current?.(event.agent.id)) { setMenu(null); return }
       if (onInspect) { onInspect(event.agent.id); return }
       const rect = element.getBoundingClientRect()
       const menuWidth = 260

@@ -5,10 +5,42 @@ Its twelve-frame authoring source is retained for editing only, not loaded by th
 browser. This is a scene effect, not a character pack or a new backend action.
 It replaces the procedural floating-icon prototype.
 
-## White Cloud Core (Current)
+## Soft White Clouds (Current)
+
+- Edited with the built-in ImageGen tool on 2026-10-23.
+- Active source: `spritesheet-white-cloud-soft.png`, 1448 x 1086 RGBA,
+  twelve frames in a 4 x 3 grid of 362-pixel cells.
+- Shape edit output: `exec-57348979-600f-4b73-a8e5-f8eadaf867c0`.
+- Edge cleanup output: `exec-b28c0db7-91f3-419a-90ee-4be548532463`.
+- No dark contour, detached outer bubbles, tools or tall outward plumes.
+  Only the connected white central mound and subtle pale internal shading remain.
+- The 1447 x 1087 output was normalized to the existing grid. Each intact
+  cluster was cropped with a 6-pixel gutter, centered, and registered to the
+  same y=330 solid baseline. No cloud shape was stretched individually.
+- Solid bounds used before adding the gutter (left, top, right, bottom):
+  [77,239,303,349], [74,207,319,352], [55,216,304,355], [64,227,306,353],
+  [68,203,308,347], [77,215,318,343], [63,214,305,345], [69,219,305,345],
+  [74,186,312,330], [77,207,328,326], [63,224,301,327], [68,220,311,329].
+- Runtime sprite envelope: 160 world pixels. The compact artwork is displayed
+  at its atlas size so the white cloud remains visible on both sides of a seated
+  worker, without restoring detached outer puffs.
+- Six small atlas frames, timings, seat offset and behind-worker sorting are
+  unchanged. Steady work uses 100% opacity, with only the entry/exit fade retained.
+  No runtime filter, blur pass or particle system is added.
+- The prior core sheet remains as an editing reference, not a published input.
+
+Shape edit prompt:
+
+Use case: precise-object-edit. Edit the attached transparent cloud animation spritesheet for an office game. Keep a strict FOUR COLUMN by THREE ROW grid, 12 frames in row-major order, matching the reference canvas aspect ratio 4:3. Every equal-sized cell must contain one SMALL COMPACT horizontally clustered white puff at the same position, gently morphing between sequential frames, looping smoothly. Change only the cloud artwork as follows: remove EVERY dark gray/black outline and stroke, remove outer dark rims, remove dark shadows; remove ALL detached satellite puffs, side droplets, tall trails, and expanding wisps. Only a restrained central low mound of 4-6 connected round soft white cloud lobes. Clean bright white, subtle very pale gray internal volume only; no contour lines. NO gray cartoon ink, NO beige, NO tools, NO pencil/ruler/notebook, NO sparkle, NO glow. Keep each cluster tight in the lower-central area of its cell: horizontal center 50%, base at about 87% of cell height, visible cloud width about 62% of cell width and height about 25% of cell height, leaving generous clear space all around. Nothing can touch cell boundaries. All frames registered to same baseline and center, only gentle in-place puffs, NOT upward/outward expansion. Background must be actual transparent alpha, not checkerboard, black or white. No grid lines, frames, labels or text. Prefer exact 1448 by 1086 pixels like the reference.
+
+Final cleanup prompt:
+
+Precise cleanup edit of this sprite sheet. Preserve the FOUR COLUMNS, THREE ROWS, all 12 existing white cloud clusters and their registration in the equal grid. CRITICAL: remove every single white speckle, dust fleck, scribble, halo, stray pixel noise and mist that is OUTSIDE the twelve connected main cloud shapes. The transparent space must be completely empty and clean. It must look like clean exported game sprites, not a paper scan. Remove the thin gray/black outer contour line too: cloud silhouettes have NO stroke, NO dark rim, NO shadow. Main clouds should be pure clean white with only very subtle pale neutral shading internally. Keep clouds SMALL, low and compact, centered horizontally and toward the bottom of each equal cell, all at the same baseline; no detached bubbles. Do NOT add particles or smoke spreading outward. Completely transparent alpha background, no black or checkerboard background, no text or grid lines. Keep the 4:3 sheet aspect and aim for 1448x1086.
+
+## White Cloud Core (Previous)
 
 - Synced from PixOffice on 2026-10-23 without regenerating or repainting pixels.
-- Active source: `spritesheet-white-cloud-core.png`, 1448 x 1086 RGBA,
+- Previous source: `spritesheet-white-cloud-core.png`, 1448 x 1086 RGBA,
   twelve frames in a 4 x 3 grid of 362-pixel cells.
 - Generated edits used the built-in ImageGen tool on 2026-10-22.
 - Cloud-core output ID: `exec-d8d33ee5-f6f0-44bd-9365-42e4c6dd262f`.
@@ -23,9 +55,8 @@ It replaces the procedural floating-icon prototype.
   [752,1095], [1137,1443], [30,368], [371,714], [756,1085], [1147,1435].
   Intact clusters are centered with transparent padding, without scaling;
   every cell shares a 330-pixel baseline and transparent footer.
-- Runtime dimensions, six-frame timing, 80% opacity, seat offset and depth
-  ordering are unchanged. Only this current authoring sheet is kept in the
-  working tree. Retired sheets mentioned below are recoverable from Git history;
+- This previous iteration kept the six-frame timing, 80% opacity, seat offset
+  and depth ordering. Older sheets mentioned below are recoverable from Git history;
   their generation IDs and prompts remain here for provenance.
 
 Cloud-core edit prompt:
@@ -48,7 +79,7 @@ Use case: precise-object-edit. This is an approved twelve-frame WHITE CLOUD CORE
 - All six workers share one atlas and six frame textures, with independent clocks
   and staggered playback phases. Demo and connected offices use the same rules;
   only running work emits the effect, not idle, blocked or queued tasks.
-- Current phases: compact white puffs, gentle swelling and outward puffs,
+- Current phases: compact white puffs, gentle in-place swelling,
   followed by contraction back to the compact cloud. Historical sources
   contain stationery and tall curls; the active sheet contains white cores only.
 - Runtime selection: source frames 1, 3, 5, 7, 9, 12, downscaled to 160 x 160.
@@ -58,7 +89,7 @@ Use case: precise-object-edit. This is an approved twelve-frame WHITE CLOUD CORE
   scale and anchor. No per-frame bounds fitting or tool transform animation.
 - Scene offset: 32 world pixels above the seat anchor, while depth sorting stays
   tied to the seat so smoke remains behind the worker.
-- Render opacity: 80% for the smoke sprite, multiplied by its existing fade-in,
+- Render opacity: 100% for the smoke sprite, multiplied by its existing fade-in,
   interruption and completion envelope. No filter or extra layer is required;
   frame count and playback timing are unchanged.
 - Characters: each appearance's existing `work.typing-back` whole-image frames, with
@@ -68,7 +99,7 @@ Use case: precise-object-edit. This is an approved twelve-frame WHITE CLOUD CORE
   the effect. A completed task plays the short contracting tail and fades.
 
 `scripts/build-office-assets.mjs` selects and downsizes the keyframes from
-`spritesheet-white-cloud-core.png`, then builds
+`spritesheet-white-cloud-soft.png`, then builds
 `effects/work-crafting-lite-v1.png` and its lossless WebP in the generated public
 directory. Both public copies are ignored. The original and this prompt record
 remain tracked. The browser never requests the original high-resolution sheet.

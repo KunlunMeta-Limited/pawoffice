@@ -222,6 +222,11 @@ export class SceneView {
     }
   }
 
+  selectActor(id?: string) {
+    this.selectedActorId = id && this.runtime.readActors().some(actor => actor.id === id) ? id : undefined
+    this.refresh()
+  }
+
   beginEditing() {
     this.requireActions()
     this.beforeEditing()
@@ -364,7 +369,7 @@ export class SceneView {
         // Carry scheduling overshoot without adding it to animation time again.
         this.renderBudget = fps === 60 ? 0 : Math.max(0, this.renderBudget - Math.floor((this.renderBudget + 1e-6) * fps) / fps)
         this.syncActors(elapsed)
-        for (const view of this.propViews.values()) view.updateFrame?.(elapsed)
+        for (const view of this.propViews.values()) view.updateFrame?.(this.runtime.isEditing ? 0 : elapsed)
         this.app?.render()
       }
     } else { this.renderElapsed = 0; this.renderBudget = 0 }

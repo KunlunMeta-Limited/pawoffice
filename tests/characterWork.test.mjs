@@ -27,6 +27,11 @@ test('all six focus activities keep typing for a minute and restore external pre
     const started = runtime.submit(focus(actor.id))
     assert.equal(started.status, 'completed'); activities.push(started.activityId)
   }
+  for (let i = 0; i < 10 && runtime.readActivePhases().some(phase => !phase.ready); i++) {
+    now += 50; runtime.tick(50)
+  }
+  assert.equal(runtime.readActivePhases().length, 6)
+  assert(runtime.readActivePhases().every(phase => phase.ready && phase.phaseIndex === phase.phaseCount - 1))
   for (const actor of presentation.projectActors(runtime)) models.get(actor.id).present(actor, 0)
   for (let elapsed = 50; elapsed <= 60000; elapsed += 50) {
     now += 50; runtime.tick(50)
@@ -84,6 +89,12 @@ test('remote working status loops complete typing frames without a focus activit
 test('reusing a render snapshot preserves active focus work instead of treating it as an editor preview', t => {
   const runtime = createOfficeRuntime(); t.after(() => runtime.dispose())
   runtime.submit(focus('office-lead')); runtime.tick(50)
+  const pending = runtime.readActivePhases()[0]
+  assert.equal(pending.phaseIndex, pending.phaseCount - 1)
+  assert.equal(pending.ready, false)
+  assert.equal(presentation.projectActors(runtime, runtime.readWorld())[0].intent.actionId, 'core.idle')
+  runtime.tick(50)
+  assert.equal(runtime.readActivePhases()[0].ready, true)
   const projected = presentation.projectActors(runtime, runtime.readWorld())[0]
   assert.equal(projected.intent.actionId, 'office.type')
   assert.equal(projected.title, 'Work: office-lead')

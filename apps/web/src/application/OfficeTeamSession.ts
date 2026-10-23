@@ -1,6 +1,6 @@
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
-import type { DashboardAction, DashboardSnapshot, OfficeDataSource } from '@pawoffice/protocol/dashboard'
-import { parseDashboardSnapshot } from '@pawoffice/protocol/dashboard'
+import type { DashboardAction, DashboardSnapshot, OfficeDataSource, OfficeMemberInput } from '@pawoffice/protocol/dashboard'
+import { maxOfficeMembers, officeMemberInputSchema, officeMemberLimitMessage, officeMemberOccupancy, parseDashboardSnapshot } from '@pawoffice/protocol/dashboard'
 import { DashboardSceneBridge } from '../dashboard/sceneBridge.ts'
 import { OfficeDemoSource } from '../dashboard/OfficeDemoSource.ts'
 import { OfficeSimulation, advanceOfficeSimulations } from './OfficeSimulation.ts'
@@ -15,6 +15,7 @@ import type { ChatWorkspacePersistence } from '../chat/persistence.ts'
 import { OfficeUiSession } from './OfficeUiSession.ts'
 import type { OfficeUiAction, OfficeUiPresentation } from '@pawoffice/protocol/office-integration'
 import { whiteboardTaskBoard, WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
+import { CommerceOfficeDataSource } from '../dashboard/CommerceOfficeDataSource.ts'
 
 export type OfficeTeamState = {
   dashboard: DashboardSnapshot | null
@@ -50,6 +51,7 @@ export class OfficeTeamSession {
   private actions = new Map<string, Promise<void>>()
   private decisionPreviewKind?: DecisionRequest['kind']
   private selectedConversationId = ''
+  private creatingEmployee = false
 
   constructor(runtime: SceneRuntime, source: OfficeDataSource, options: { simulation?: OfficeSimulation; transport?: OfficeTeamTransport; decisionPreview?: boolean; chatSource?: OfficeChatSource; chatPersistence?: ChatWorkspacePersistence; requestUi?: (action: OfficeUiAction) => Promise<OfficeUiPresentation> } = {}) {
     if (source.kind !== 'example' && options.simulation?.canDemo) throw new Error('真实数据团队不能使用演示数据源')
@@ -62,7 +64,9 @@ export class OfficeTeamSession {
         .filter(request => request.kind === this.decisionPreviewKind)
         .map(request => ({ ...request, conversationId: this.chat.getSnapshot().selectedId }))
     })
-    this.chat = new ChatWorkspace(runtime.sceneId, options.chatSource ?? new PreviewChatSource(), {
+    const suppliedChatSource = options.chatSource ?? new PreviewChatSource()
+    const chatSource = source instanceof CommerceOfficeDataSource && suppliedChatSource instanceof PreviewChatSource ? new PreviewChatSource(request => source.reply(request)) : suppliedChatSource
+    this.chat = new ChatWorkspace(runtime.sceneId, chatSource, {
       persistence: options.chatPersistence,
       onRemoved: id => this.decisions.removeConversation(id),
       requestDelete: source.kind === 'example' ? undefined : async conversationId => {
@@ -72,7 +76,7 @@ export class OfficeTeamSession {
       },
     })
     this.ui = new OfficeUiSession(runtime.sceneId, options.requestUi, () => this.chat.getSnapshot().selectedId)
-    this.simulation = options.simulation ?? new OfficeSimulation(runtime, source.kind === 'example' ? new OfficeDemoSource(runtime) : undefined, {
+    this.simulation = options.simulation ?? new OfficeSimulation(runtime, source.kind === 'example' ? new OfficeDemoSource(runtime, { automatic: !(source instanceof CommerceOfficeDataSource) }) : undefined, {
       idleCoffee: { canIdle: id => {
         const dashboard = this.state?.dashboard
         if (!dashboard || !this.active) return false
@@ -100,6 +104,32 @@ export class OfficeTeamSession {
 
   getSnapshot = () => this.state
   get isStarted() { return this.active }
+  get canCreateEmployee() { return this.ui.enabled || Boolean(this.source.createEmployee) }
+  get memberCreation() {
+    if (!this.state.dashboard) return { blockedReason: '成员数据尚未就绪', availableActorIds: [] }
+    const occupancy = officeMemberOccupancy(this.source.getConversations?.() ?? [this.state.dashboard])
+    const availableActorIds = this.runtime.readActors().filter(actor => actor.homeId && !occupancy.actorIds.has(actor.id)).map(actor => actor.id)
+    return { blockedReason: occupancy.memberIds.size >= maxOfficeMembers || !availableActorIds.length ? officeMemberLimitMessage : '', availableActorIds }
+  }
+  createEmployee = async (input: OfficeMemberInput) => {
+    if (this.creatingEmployee) throw new Error('正在添加成员，请稍候')
+    const member = officeMemberInputSchema.parse(input)
+    const conversationId = this.selectedConversationId
+    if (!conversationId || !this.active) throw new Error('当前会话未就绪')
+    if (!this.runtime.readActors().some(actor => actor.id === member.sceneActorId)) throw new Error('绑定的人物不存在')
+    const capacity = this.memberCreation
+    if (capacity.blockedReason) throw new Error(capacity.blockedReason)
+    if (!capacity.availableActorIds.includes(member.sceneActorId)) throw new Error('这个人物和工位已有成员，请选择空闲工位')
+    this.creatingEmployee = true
+    try {
+      if (this.ui.enabled) {
+        const result = await this.ui.request({ action: 'employee.create', ...member })
+        if (result?.target !== 'result' || !result.success) throw new Error('后端未确认添加成员')
+      } else if (this.source.createEmployee) await this.source.createEmployee(member)
+      else throw new Error('当前数据源不支持添加成员')
+      await this.refresh()
+    } finally { this.creatingEmployee = false }
+  }
   showDecisionPreview(kind: DecisionRequest['kind']) {
     if (!this.decisionPreviewEnabled) return
     this.decisionPreviewKind = kind

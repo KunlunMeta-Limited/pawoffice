@@ -8,15 +8,17 @@ import { idSchema, commandSchema, batchSchema } from '@pawoffice/protocol'
 import { assertProtocolObject, parseProtocolObject, ProtocolValueFault, responseEnvelopeSchema, stringifyProtocolObject } from '@pawoffice/protocol/schema'
 import { maxRelayEventBytes, maxRelayMessageBytes, maxRelayTeams, relayMessageSchema, relayPaths } from '@pawoffice/protocol/relay'
 import { MessageRelay } from './relay.ts'
-import { officeIntegrationPaths, officeMessageSchema, officeReplySchema, officeWorkspaceTopic, officeCapabilities, officeUiActionSchema, describeOfficeUi, officeSupportedMessages, officeErrorResultSchema, officeWorkspaceResultSchema } from '@pawoffice/protocol/office-integration'
+import { officeIntegrationPaths, officeMessageSchema, officeReplySchema, officeWorkspaceTopic, officeCapabilities, officeUiActionSchema, describeOfficeUi, officeSupportedMessages, officeErrorResultSchema, officeWorkspaceResultSchema, officeLayoutSetSchema } from '@pawoffice/protocol/office-integration'
 import { createSceneRuntime } from '@pawoffice/runtime/createSceneRuntime'
 import { referenceOfficeScenePack, describeOfficeScene } from '@pawoffice/scene-office/core'
 import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 import { OfficeRequests } from './officeRequests.ts'
 import { OfficeState, OfficeStateFault } from './officeState.ts'
+import { OfficeLayouts } from './officeLayouts.ts'
 import { OfficeUi } from './officeUi.ts'
 import { registerOfficeChat } from './officeChat.ts'
 import { chatPath } from '@pawoffice/protocol/chat'
+import { maxOfficeMembers, officeMemberLimitMessage, officeMemberOccupancy } from '@pawoffice/protocol/dashboard'
 
 export const DEMO_API_KEY = 'pawoffice-demo-key'
 export const defaultStaticRoot = fileURLToPath(new URL('../../dist/', import.meta.url))
@@ -53,14 +55,16 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     return payload
   })
   const relay = new MessageRelay()
-  const state = new OfficeState(), ui = new OfficeUi(), stateId = randomUUID()
+  const state = new OfficeState(), ui = new OfficeUi(), stateId = randomUUID(), layouts = new OfficeLayouts()
+  const memberCreations = new Map<string, { teamId: string; actorId: string; previousIds: Set<string> }>()
   const discovery = createSceneRuntime(referenceOfficeScenePack)
   const capabilities = officeCapabilities(describeOfficeScene(discovery)); discovery.dispose()
-  const workspace = (ready: { id: string; seq: number; runtimeReady: boolean }[] = []) => ({ offices: state.list().map(snapshot => ({ id: snapshot.workspace.id, name: snapshot.workspace.name, seq: snapshot.seq,
+  const workspace = (ready: { id: string; seq: number; runtimeReady: boolean }[] = []) => ({ ...layouts.describe(), offices: state.list().map(snapshot => ({ id: snapshot.workspace.id, name: snapshot.workspace.name, seq: snapshot.seq,
     runtimeReady: ready.some(office => office.id === snapshot.workspace.id && office.seq === snapshot.seq && office.runtimeReady), taskCount: snapshot.conversations.reduce((sum, conversation) => sum + conversation.tasks.length, 0) })), actors: OFFICE_ROSTER.map(({ id, name }) => ({ id, name })),
     supportedMessages: [...officeSupportedMessages], sceneCommandProtocol: '2.0', ui: describeOfficeUi() })
   const publishSnapshot = (snapshot: ReturnType<OfficeState['list']>[number]) => relay.publish(officeWorkspaceTopic,
     eventFrame({ type: 'office.sync', snapshot }))
+  const publishLayout = () => relay.publish(officeWorkspaceTopic, eventFrame({ type: 'office.layout.sync', layout: layouts.read() }))
   const officeRequests = new OfficeRequests((message, responseToken) => {
     if (message.type !== 'decision.request') return
     relay.publish(officeWorkspaceTopic, eventFrame({ type: 'office.request.closed', responseToken }))
@@ -105,7 +109,12 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       if (!business.success) return reply.code(400).send(envelope(400, 'Invalid business message', { reasonCode: 'INVALID_MESSAGE', issues: business.error.issues }))
       const message = business.data
       let data = message
-      if (data.type === 'office.capabilities') return envelope(200, 'OK', capabilities)
+      if (data.type === 'office.capabilities') return envelope(200, 'OK', { ...capabilities, ...layouts.describe() })
+      if (data.type === 'office.layout.read') return envelope(200, 'OK', layouts.describe())
+      if (data.type === 'office.layout.set') {
+        layouts.select(data.layoutId); publishLayout()
+        if (!relay.hasReceiver(officeWorkspaceTopic)) return reply.code(202).send(envelope(202, 'Layout cached; no online page can confirm application', layouts.describe()))
+      }
       if (data.type === 'office.read' && !data.teamId && (!state.list().length || !relay.hasReceiver(officeWorkspaceTopic))) return envelope(200, 'OK', workspace())
       if (data.type === 'office.read' && data.teamId && !state.get(data.teamId)) throw new OfficeStateFault(404, 'OFFICE_NOT_INITIALIZED', '办公室未初始化')
       if (data.type === 'decision.request') {
@@ -140,6 +149,20 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
             throw new OfficeStateFault(409, 'SNAPSHOT_REQUIRED', '请先推送不含该会话的办公室快照，再确认删除')
           }
         }
+        if (action.action === 'employee.create') {
+          if (data.presentation.target !== 'result') throw new OfficeStateFault(400, 'INVALID_MESSAGE', '添加成员须返回 result 处理结果')
+          const previousIds = memberCreations.get(action.id)?.previousIds
+          const snapshot = state.get(action.teamId), occupancy = officeMemberOccupancy(snapshot?.conversations ?? [])
+          const conversation = snapshot?.conversations.find(item => item.id === action.conversationId)
+          if (data.presentation.success && occupancy.memberIds.size > maxOfficeMembers) throw new OfficeStateFault(409, 'OFFICE_LIMIT', officeMemberLimitMessage)
+          if (data.presentation.success && !conversation?.employees.some(employee => previousIds && !previousIds.has(employee.id)
+            && employee.name === action.name && employee.role === action.role && employee.sceneActorId === action.sceneActorId)) {
+            throw new OfficeStateFault(409, 'SNAPSHOT_REQUIRED', '请先推送包含新增成员的办公室快照，再确认添加')
+          }
+          if (data.presentation.success && new Set(snapshot?.conversations.flatMap(item => item.employees.filter(employee => employee.sceneActorId === action.sceneActorId).map(employee => employee.id))).size > 1) {
+            throw new OfficeStateFault(409, 'INVALID_BINDING', '新增成员必须使用空闲工位')
+          }
+        }
         if (data.presentation.target === 'whiteboard') {
           if (data.presentation.snapshot.workspace.id !== action.teamId) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '白板快照与用户请求不属于同一办公室')
           if (!data.presentation.snapshot.conversations.some(item => item.id === action.conversationId)) throw new OfficeStateFault(400, 'CONVERSATION_NOT_FOUND', '白板快照缺少用户请求所属会话')
@@ -154,6 +177,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
         const update = state.apply(data.type === 'offices.initialize' ? data.offices : [data.snapshot], data.type === 'office.snapshot')
         if (data.type === 'offices.initialize') {
           if (data.chat) chat.configure(data.chat)
+          if (data.layoutId) { layouts.select(data.layoutId); publishLayout() }
           data = { type: 'offices.initialize', offices: data.offices }
         }
         if (data.type === 'office.snapshot' && update.results[0].reasonCode === 'STALE_SEQ') return envelope(200, 'Snapshot ignored', update.results[0])
@@ -164,6 +188,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       }
       const pending = officeRequests.open(message)
       if (!pending) {
+        if (data.type === 'office.layout.set') return reply.code(202).send(envelope(202, 'Layout cached and published; browser result was not awaited', layouts.describe()))
         if (data.type === 'offices.initialize' || data.type === 'office.snapshot') {
           const snapshots = data.type === 'offices.initialize' ? data.offices : [data.snapshot]
           snapshots.forEach(publishSnapshot)
@@ -183,7 +208,8 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       reply.raw.off('close', abort)
       if (reply.raw.destroyed) return reply
       const result = response.code === 200 && (data.type === 'offices.initialize' || data.type === 'office.read' && !data.teamId)
-        ? workspace(officeWorkspaceResultSchema.parse(response.data).offices) : response.data
+        ? workspace(officeWorkspaceResultSchema.parse(response.data).offices)
+        : response.code === 200 && data.type === 'office.layout.set' ? layouts.describe() : response.data
       return reply.code(response.code).send(envelope(response.code, response.msg, result))
     }
     const message = parsed.data
@@ -211,15 +237,34 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       const conversation = snapshot.conversations.find(item => item.id === action.conversationId)
       if (!conversation) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '操作所属会话不存在')
       if (action.action === 'actor.inspect' && !OFFICE_ROSTER.some(actor => actor.id === action.actorId)) throw new OfficeStateFault(404, 'ACTOR_NOT_FOUND', '人物不存在')
+      if (action.action === 'employee.create') {
+        if (!OFFICE_ROSTER.some(actor => actor.id === action.sceneActorId)) throw new OfficeStateFault(400, 'INVALID_BINDING', '绑定的人物不存在')
+        const occupancy = officeMemberOccupancy(snapshot.conversations)
+        const reserved = [...memberCreations.values()].filter(item => item.teamId === action.teamId)
+        if (occupancy.memberIds.size + reserved.length >= maxOfficeMembers) throw new OfficeStateFault(409, 'OFFICE_LIMIT', officeMemberLimitMessage)
+        if (occupancy.actorIds.has(action.sceneActorId) || reserved.some(item => item.actorId === action.sceneActorId)) throw new OfficeStateFault(409, 'INVALID_BINDING', '这个人物和工位已有成员，请选择空闲工位')
+      }
       if (action.action === 'employee.inspect' && !conversation.employees.some(employee => employee.id === action.employeeId)
         || 'taskId' in action && !conversation.tasks.some(task => task.id === action.taskId)
         || action.action === 'task.assign' && !conversation.employees.some(employee => employee.id === action.assigneeId)) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '用户操作引用的数据不存在')
     }
     const pending = ui.open(action), abort = () => pending.cancel()
+    if (action.action === 'employee.create') memberCreations.set(action.id, { teamId: action.teamId, actorId: action.sceneActorId,
+      previousIds: officeMemberOccupancy(state.get(action.teamId)?.conversations ?? []).memberIds })
     reply.raw.on('close', abort)
-    const result = await pending.response; reply.raw.off('close', abort)
+    let result: Awaited<typeof pending.response>
+    try { result = await pending.response }
+    finally { reply.raw.off('close', abort); memberCreations.delete(action.id) }
     if (reply.raw.destroyed) return reply
     return reply.code(result.code).send(envelope(result.code, result.code === 200 ? 'OK' : 'UI request ended', result.presentation ?? { reasonCode: result.reasonCode }))
+  })
+
+  app.post(officeIntegrationPaths.layout, async (request, reply) => {
+    if (!sameOrigin(request)) return reply.code(403).send(envelope(403, 'Use a same-origin browser connection'))
+    const parsed = officeLayoutSetSchema.safeParse(request.body)
+    if (!parsed.success) return reply.code(400).send(envelope(400, 'Invalid page layout', { reasonCode: 'INVALID_MESSAGE', issues: parsed.error.issues }))
+    layouts.select(parsed.data.layoutId); publishLayout()
+    return envelope(200, 'Layout selected', layouts.describe())
   })
 
   // Browsers return business results using a one-use token, never the backend API key.
@@ -259,7 +304,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     heartbeat.unref()
     stream.on('close', () => { detach(); clearInterval(heartbeat) })
     if (workspace) {
-      send(eventFrame({ type: 'office.sync.start', stateId }))
+      send(eventFrame({ type: 'office.sync.start', stateId, layout: layouts.read() }))
       const snapshots = state.list()
       for (const snapshot of snapshots) {
         if (!send(eventFrame({ type: 'office.sync', snapshot }))) break

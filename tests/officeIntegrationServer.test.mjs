@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createPawOfficeServer, DEMO_API_KEY } from '../server/dist/app.js'
-import { describeOfficeUi } from '@pawoffice/protocol/office-integration'
+import { describeOfficeUi, describeOfficeLayouts } from '@pawoffice/protocol/office-integration'
 
-const workspace = () => ({ offices: [], actors: [], supportedMessages: [], sceneCommandProtocol: '2.0', ui: describeOfficeUi() })
+const workspace = () => ({ ...describeOfficeLayouts(), offices: [], actors: [], supportedMessages: [], sceneCommandProtocol: '2.0', ui: describeOfficeUi() })
 
 const message = data => data
 const state = id => ({ schemaVersion: '1.0', seq: 1, workspace: { id, name: id }, conversations: [{ id: 'main', title: '主会话' }] })
@@ -100,6 +100,18 @@ test('business requests reject the removed envelope field instead of maintaining
   const result = await post(app, { ...message({ type: 'office.capabilities' }), requestId: 'retired' })
   assert.equal(result.statusCode, 400)
   assert.deepEqual(Object.keys(result.json()).sort(), ['code', 'data', 'msg'])
+})
+
+test('public capability discovery includes visitor and host requirements for coffee actions', async t => {
+  const { app } = await setup(t)
+  const result = await post(app, { type: 'office.capabilities' })
+  assert.equal(result.statusCode, 200)
+  const operations = result.json().data.scene.capabilities
+  const coffee = operations.find(operation => operation.id === 'office.idle-coffee')
+  assert.deepEqual(coffee.participants.roles, [{ role: 'visitor', min: 1, max: 1 }, { role: 'host', min: 0, max: 1 }])
+  assert(coffee.participants.rules.some(rule => rule.includes('visit') && rule.includes('window')))
+  assert.deepEqual(operations.find(operation => operation.id === 'office.idle-return').participants.roles,
+    [{ role: 'visitor', min: 1, max: 1 }])
 })
 
 test('an empty parallel page cannot reject an operation handled by an initialized page', async t => {

@@ -50,6 +50,7 @@ test('changing a scene host container preserves the renderer DOM and ignores sta
 test('application shells cannot construct renderers, load scene assemblies or import scene controllers at runtime', async () => {
   const files = [
     'apps/web/src/ui/OfficeShell.tsx',
+    'apps/web/src/ui/MemberOfficeShell.tsx',
     'examples/classroom/src/ui/ClassroomShell.tsx',
     'examples/farm/src/ui/FarmShell.tsx',
     'examples/dimetric/src/studio/ui/StudioShell.tsx',

@@ -76,6 +76,24 @@ export class ChatSession {
     else if (this.activeTurnId && this.source.resume) void this.resume(this.activeTurnId)
   }
   setDraft(draft: string) { if (this.snapshot.ready) this.update({ ...this.snapshot, draft: draft.slice(0, 4000) }) }
+  previewExchange(id: string, question: string, answer: string): Promise<void> {
+    if (!this.snapshot.ready) return this.ready.then(() => this.previewExchange(id, question, answer))
+    if (this.source.kind !== 'preview') throw new Error('真实聊天不能写入演示记录')
+    const prefix = `commerce-demo:${id}`
+    const messages = this.snapshot.messages.filter(message => !message.id.startsWith(`${prefix}:`))
+    const index = messages.findIndex(message => message.state === 'pending')
+    const pair: ChatMessage[] = [{ id: `${prefix}:user`, role: 'user', content: question, state: 'complete' },
+      { id: `${prefix}:assistant`, role: 'assistant', content: answer, state: 'complete' }]
+    messages.splice(index >= 0 ? index - 1 : messages.length, 0, ...pair)
+    this.update({ ...this.snapshot, messages })
+    return Promise.resolve()
+  }
+  clearPreviewExchanges(): Promise<void> {
+    if (!this.snapshot.ready) return this.ready.then(() => this.clearPreviewExchanges())
+    if (this.source.kind !== 'preview') return Promise.resolve()
+    this.update({ ...this.snapshot, messages: this.snapshot.messages.filter(message => !message.id.startsWith('commerce-demo:')) })
+    return Promise.resolve()
+  }
   flush = (): Promise<void> => {
     clearTimeout(this.saveTimer); this.saveTimer = undefined
     if (this.saving) return this.saving

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { before, after, test } from 'node:test'
-import { Assets, Texture, TextureSource } from 'pixi.js'
+import { Assets, DOMAdapter, Texture, TextureSource } from 'pixi.js'
 import { createTestServer } from './helpers/vite.mjs'
 
 let server, views, surface, transformWorkSurface
@@ -28,6 +28,8 @@ test('all decorative bases stay inside the actual tabletop and translate with th
 })
 
 test('workstation accessories use separate cropped contact bases, not the transparent atlas bottom', async t => {
+  t.mock.method(DOMAdapter.get(), 'createCanvas', (width, height) => ({ width, height,
+    getContext: () => ({ fillRect() {}, fillText() {} }) }))
   const textures = new Map()
   t.mock.method(Assets, 'load', async alias => {
     const texture = new Texture({ source: new TextureSource({ width: alias.includes('desk-accessories') ? 2079 : 2000, height: alias.includes('desk-accessories') ? 756 : 1500 }) })

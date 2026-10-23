@@ -150,6 +150,7 @@ test('initialization retries include identical offices, add new offices and excl
   await app.inject({ method: 'POST', url: '/api/pawoffice/reply', payload: { responseToken: delivery.responseToken, result: { code: 200, msg: 'Initialized', data: {
     offices: [current, other, added].map(item => ({ id: item.workspace.id, name: item.workspace.name, runtimeReady: true, seq: item.seq, taskCount: 1 })),
     actors: directory.scene.actors.map(({ id, name }) => ({ id, name })), supportedMessages: [], sceneCommandProtocol: '2.0', ui: directory.ui,
+    currentLayoutId: directory.currentLayoutId, revision: directory.revision, layouts: directory.layouts,
   } } } })
   assert.equal((await pending).statusCode, 200)
 })

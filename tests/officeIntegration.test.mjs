@@ -14,10 +14,22 @@ before(async () => {
 })
 after(() => server?.close())
 const flush = async () => { for (let i = 0; i < 80; i++) await Promise.resolve() }
+async function waitFor(predicate, message) {
+  for (let i = 0; i < 200; i++) { if (predicate()) return; await delay(1) }
+  assert.fail(message)
+}
+function holdRefresh(t, session) {
+  let release
+  const held = new Promise(resolve => { release = resolve }), refresh = session.refresh.bind(session)
+  t.mock.method(session, 'refresh', async () => { await held; return refresh() })
+  t.after(() => release())
+  return release
+}
 const snapshot = (id = 'team-a') => ({ schemaVersion: '1.0', seq: 1, workspace: { id, name: id }, conversations: [{ id: 'main', title: '主会话', whiteboard: { template: 'task-board-v1', title: '', status: 'queued', steps: [] }, employees: [
   { id: 'coding', sceneActorId: 'office-lead', name: '开发功能' }, { id: 'testing', sceneActorId: 'office-lead', name: '测试功能' },
 ], tasks: [{ id: 'task-one', title: '登录开发', assigneeId: 'coding', status: 'running', progress: 25, summary: '实现接口', updatedAt: '2026-10-18T10:00:00Z' }], events: [] }] })
 const delivery = (id, request, remainingMs = 10000) => ({ type: 'office.request', responseToken: `reply-${id}`, remainingMs, request })
+const syncStart = stateId => ({ type: 'office.sync.start', stateId, layout: { currentLayoutId: 'classic', revision: 0 } })
 
 async function setup(t, overrides = {}) {
   const connections = [], replies = [], runtimes = []
@@ -66,6 +78,113 @@ async function connectedBrowser(t, app, base, overrides = {}) {
   return { ...linked, receipts, close }
 }
 
+test('backend layout selection initializes and switches connected pages without recreating business sessions', { timeout: 10000 }, async t => {
+  const app = await createPawOfficeServer(), base = await app.listen({ host: '127.0.0.1', port: 0 })
+  t.after(() => app.close())
+  const first = await connectedBrowser(t, app, base), second = await connectedBrowser(t, app, base)
+  const post = payload => app.inject({ method: 'POST', url: '/api/pawoffice/messages', headers: { authorization: `Bearer ${DEMO_API_KEY}` }, payload })
+  const initialized = await post({ type: 'offices.initialize', offices: [snapshot()], layoutId: 'members' })
+  assert.equal(initialized.statusCode, 200)
+  assert.equal(initialized.json().data.currentLayoutId, 'members')
+  await waitFor(() => second.integration.getSnapshot().offices.length === 1, 'second page did not initialize')
+  const office = first.integration.getSnapshot().offices[0], runtime = office.session.runtime, chat = office.session.chat
+  await chat.ready; await chat.selected.ready
+  chat.selected.setDraft('保留中的草稿')
+  const chatSession = chat.selected, sceneId = runtime.sceneId
+  runtime.submit({ protocolVersion: '2.0', sceneId, commandId: 'layout-does-not-interrupt', type: 'activity.start', capability: 'scene.say',
+    participants: [{ entityId: 'office-lead', role: 'actor' }], params: { text: '继续执行', durationMs: 30000 } })
+  const changed = await post({ type: 'office.layout.set', layoutId: 'classic' })
+  assert.equal(changed.statusCode, 200)
+  assert.equal(changed.json().data.currentLayoutId, 'classic')
+  await waitFor(() => second.integration.getSnapshot().layout.currentLayoutId === 'classic', 'other page did not switch')
+  assert.equal(first.integration.getSnapshot().offices[0].session, office.session)
+  assert.equal(first.integration.getSnapshot().offices[0].session.runtime, runtime)
+  assert.equal(runtime.getRecord('layout-does-not-interrupt').status, 'running')
+  assert.equal(chat.selected, chatSession); assert.equal(chatSession.getSnapshot().draft, '保留中的草稿')
+  const next = snapshot(); next.seq = 2; next.conversations[0].tasks[0].status = 'completed'
+  assert.equal((await post({ type: 'office.snapshot', teamId: 'team-a', snapshot: next })).statusCode, 200)
+  assert.equal(first.integration.getSnapshot().layout.currentLayoutId, 'classic')
+  const switchedInBrowser = await app.inject({ method: 'POST', url: '/api/pawoffice/layout', payload: { type: 'office.layout.set', layoutId: 'members' } })
+  assert.equal(switchedInBrowser.statusCode, 200)
+  await waitFor(() => first.integration.getSnapshot().layout.currentLayoutId === 'members' && second.integration.getSnapshot().layout.currentLayoutId === 'members', 'browser choice was not shared')
+  assert.equal((await post({ type: 'office.layout.read' })).json().data.currentLayoutId, 'members')
+  assert.equal(first.integration.getSnapshot().offices[0].source.readSnapshot().seq, 2)
+})
+
+test('a late joining page restores an offline layout selection without an office initialization request', { timeout: 5000 }, async t => {
+  const app = await createPawOfficeServer(), base = await app.listen({ host: '127.0.0.1', port: 0 })
+  t.after(() => app.close())
+  const post = payload => app.inject({ method: 'POST', url: '/api/pawoffice/messages', headers: { authorization: `Bearer ${DEMO_API_KEY}` }, payload })
+  assert.equal((await post({ type: 'office.layout.set', layoutId: 'members' })).statusCode, 202)
+  const browser = await connectedBrowser(t, app, base)
+  assert.deepEqual(browser.integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 1 })
+  assert.equal(browser.integration.getSnapshot().offices.length, 0)
+  assert.equal((await post({ type: 'office.layout.set', layoutId: 'classic' })).statusCode, 200)
+  assert.equal(browser.integration.getSnapshot().layout.currentLayoutId, 'classic')
+})
+
+test('layout ordering, cache recovery and server replacement use server-owned revisions', async t => {
+  const values = new Map(), storage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) }
+  const { integration } = await setup(t, { storage })
+  integration.receive(syncStart('server-a')); await flush()
+  integration.receive({ type: 'office.layout.sync', layout: { currentLayoutId: 'members', revision: 3 } })
+  integration.receive({ type: 'office.layout.sync', layout: { currentLayoutId: 'classic', revision: 2 } })
+  await flush()
+  assert.deepEqual(integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 3 })
+  integration.stop()
+  const restored = await setup(t, { storage })
+  assert.deepEqual(restored.integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 3 })
+  restored.integration.receive(syncStart('server-b')); await flush()
+  assert.deepEqual(restored.integration.getSnapshot().layout, { currentLayoutId: 'classic', revision: 0 })
+})
+
+test('a delayed browser selection response cannot overwrite a newer backend selection', async t => {
+  let finish, calls = 0
+  const { integration } = await setup(t, { changeLayout: () => { calls++; return new Promise(resolve => { finish = resolve }) } })
+  const pending = integration.selectLayout('members')
+  assert.equal(integration.getSnapshot().layoutBusy, true)
+  await integration.selectLayout('classic'); assert.equal(calls, 1)
+  integration.receive({ type: 'office.layout.sync', layout: { currentLayoutId: 'classic', revision: 2 } }); await flush()
+  finish({ currentLayoutId: 'members', revision: 1 }); await pending
+  assert.deepEqual(integration.getSnapshot().layout, { currentLayoutId: 'classic', revision: 2 })
+  assert.equal(integration.getSnapshot().layoutBusy, false)
+  assert.equal(integration.getSnapshot().error, null)
+})
+
+test('failed layout changes keep the previous selection and release the busy state', async t => {
+  const { integration } = await setup(t, { changeLayout: async () => { throw new Error('network unavailable') } })
+  await integration.selectLayout('members')
+  assert.equal(integration.getSnapshot().layout.currentLayoutId, 'classic')
+  assert.equal(integration.getSnapshot().layoutBusy, false)
+  assert.match(integration.getSnapshot().error, /network unavailable/)
+})
+
+test('a layout response from a replaced server cannot overwrite the new server selection', async t => {
+  const finishes = []
+  const { integration } = await setup(t, { changeLayout: () => new Promise(resolve => { finishes.push(resolve) }) })
+  integration.receive(syncStart('old-server')); await flush()
+  const pending = integration.selectLayout('members')
+  integration.receive(syncStart('new-server')); await flush()
+  const next = integration.selectLayout('members')
+  finishes[0]({ currentLayoutId: 'members', revision: 10 }); await pending
+  assert.deepEqual(integration.getSnapshot().layout, { currentLayoutId: 'classic', revision: 0 })
+  assert.equal(integration.getSnapshot().layoutBusy, true, 'an old completion must not clear a new request busy state')
+  finishes[1]({ currentLayoutId: 'members', revision: 1 }); await next
+  assert.deepEqual(integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 1 })
+  assert.equal(integration.getSnapshot().layoutBusy, false)
+})
+
+test('conflicting layout versions trigger recovery and accept the authoritative reconnect selection', async t => {
+  const { integration, connections } = await setup(t)
+  integration.receive(syncStart('same-server')); await flush()
+  integration.receive({ type: 'office.layout.sync', layout: { currentLayoutId: 'members', revision: 1 } }); await flush()
+  integration.receive({ type: 'office.layout.sync', layout: { currentLayoutId: 'classic', revision: 1 } }); await flush()
+  assert.equal(connections.length, 2)
+  connections[1].onMessage({ ...syncStart('same-server'), layout: { currentLayoutId: 'classic', revision: 1 } }); await flush()
+  assert.deepEqual(integration.getSnapshot().layout, { currentLayoutId: 'classic', revision: 1 })
+  assert.equal(integration.getSnapshot().error, null)
+})
+
 test('parallel office pages apply state without treating a closed duplicate reply as a page error', { timeout: 5000 }, async t => {
   const app = await createPawOfficeServer(), base = await app.listen({ host: '127.0.0.1', port: 0 })
   t.after(() => app.close())
@@ -110,18 +229,134 @@ test('server restart replaces cached office ownership and accepts a fresh sequen
 test('normal reconnection preserves live runtimes while server directory reconciliation removes absent cache entries', async t => {
   const { integration, connections, send } = await setup(t)
   connections[0].onStatus('已连接')
-  integration.receive({ type: 'office.sync.start', stateId: 'same-server' }); await flush()
+  integration.receive(syncStart('same-server')); await flush()
   await send('init', { type: 'offices.initialize', offices: [snapshot(), snapshot('extra')] })
   const runtime = integration.getSnapshot().offices[0].session.runtime
   runtime.submit({ protocolVersion: '2.0', sceneId: 'team-a', commandId: 'during-reconnect', type: 'activity.start', capability: 'scene.say',
     participants: [{ entityId: 'office-lead', role: 'actor' }], params: { text: '继续工作', durationMs: 30000 } })
-  integration.receive({ type: 'office.sync.start', stateId: 'same-server' })
+  integration.receive(syncStart('same-server'))
   integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(snapshot()) })
   integration.receive({ type: 'office.sync.complete', offices: [{ teamId: 'team-a', seq: 1 }] })
   await flush()
   assert.equal(integration.getSnapshot().offices.length, 1)
   assert.equal(integration.getSnapshot().offices[0].session.runtime, runtime)
   assert.equal(runtime.getRecord('during-reconnect').status, 'running')
+})
+
+test('a slow page coalesces hundreds of snapshots per office and keeps the latest completed state', async t => {
+  const { integration, connections, send } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot(), snapshot('team-b')] })
+  const [a, b] = integration.getSnapshot().offices, release = holdRefresh(t, a.session), seen = []
+  t.after(a.source.subscribe(() => seen.push(a.source.readSnapshot().seq)))
+  const sync = (seq, id = 'team-a', complete = false) => {
+    const value = snapshot(id); value.seq = seq
+    if (complete) value.conversations[0].tasks[0].status = 'completed'
+    integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(value) })
+  }
+  sync(2); await flush()
+  for (let seq = 3; seq <= 400; seq++) sync(seq, 'team-a', seq === 400)
+  sync(13, 'team-b', true); sync(399); sync(400, 'team-a', true)
+  release()
+  await waitFor(() => a.source.readSnapshot().seq === 400 && b.source.readSnapshot().seq === 13, 'latest office snapshots were lost')
+  await flush()
+  assert.equal(a.source.readSnapshot().conversations[0].tasks[0].status, 'completed')
+  assert.equal(b.source.readSnapshot().conversations[0].tasks[0].status, 'completed')
+  assert(seen.includes(400) && seen.every(seq => seq === 2 || seq === 400), `intermediate states were not coalesced: ${seen}`)
+  assert.equal(connections.length, 1, 'ordinary snapshot bursts do not need another connection')
+  assert.equal(integration.getSnapshot().error, null)
+})
+
+test('snapshot coalescing cannot move a later state ahead of a queued business read', async t => {
+  const { integration, replies, send } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const sync = seq => { const value = snapshot(); value.seq = seq; integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(value) }) }
+  sync(2)
+  integration.receive(delivery('between', { type: 'office.read', teamId: 'team-a' }))
+  sync(3)
+  await waitFor(() => replies.some(reply => reply.responseToken === 'reply-between'), 'business read was not answered')
+  assert.equal(replies.find(reply => reply.responseToken === 'reply-between').result.data.snapshot.seq, 2)
+  await waitFor(() => integration.getSnapshot().offices[0].source.readSnapshot().seq === 3, 'later snapshot was lost')
+})
+
+test('server restart boundaries prevent a pending old snapshot from swallowing a fresh lower sequence', async t => {
+  const { integration, connections, send } = await setup(t)
+  connections[0].onStatus('已连接')
+  integration.receive(syncStart('old-server')); await flush()
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const oldRuntime = integration.getSnapshot().offices[0].session.runtime
+  const previous = snapshot(); previous.seq = 10
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(previous) })
+  integration.receive(syncStart('new-server'))
+  const fresh = snapshot(); fresh.conversations[0].tasks[0].title = '重新初始化的任务'
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(fresh) })
+  integration.receive({ type: 'office.sync.complete', offices: [{ teamId: 'team-a', seq: 1 }] })
+  await waitFor(() => integration.getSnapshot().connection === '已连接'
+    && integration.getSnapshot().offices[0]?.session.runtime !== oldRuntime
+    && integration.getSnapshot().offices[0]?.source.readSnapshot().seq === 1, 'fresh server did not finish synchronization')
+  const office = integration.getSnapshot().offices[0]
+  assert.notEqual(office.session.runtime, oldRuntime)
+  assert.equal(office.source.readSnapshot().seq, 1)
+  assert.equal(office.source.readSnapshot().conversations[0].tasks[0].title, '重新初始化的任务')
+})
+
+for (const type of ['office.sync', 'office.snapshot', 'offices.initialize']) test(`${type} overflow automatically reconnects and restores cached completion without backend retries`, async t => {
+  const { integration, connections, replies, send } = await setup(t)
+  connections[0].onStatus('已连接')
+  integration.receive(syncStart('same-server')); await flush()
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const office = integration.getSnapshot().offices[0], release = holdRefresh(t, office.session)
+  const update = snapshot(); update.seq = 2
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(update) }); await flush()
+  for (let i = 0; i < 127; i++) integration.receive(delivery(`busy-${i}`, { type: 'office.read', teamId: 'team-a' }))
+  const completed = snapshot(); completed.seq = 150; completed.conversations[0].tasks[0].status = 'completed'
+  if (type === 'office.sync') integration.receive({ type, snapshot: schemas.officeSnapshotSchema.parse(completed) })
+  else integration.receive(delivery('overflow', type === 'office.snapshot'
+    ? { type, teamId: 'team-a', snapshot: completed } : { type, offices: [completed] }))
+  assert.equal(integration.getSnapshot().connection, '等待恢复最新状态')
+  release()
+  await waitFor(() => connections.length === 2, 'queue overflow did not reconnect')
+  const current = connections[1]
+  current.onStatus('已连接')
+  current.onMessage(syncStart('same-server'))
+  current.onMessage({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(completed) })
+  current.onMessage({ type: 'office.sync.complete', offices: [{ teamId: 'team-a', seq: 150 }] })
+  connections[0].onMessage(syncStart('stale-connection'))
+  await waitFor(() => integration.getSnapshot().connection === '已连接', 'recovered connection was not ready')
+  assert.equal(integration.getSnapshot().offices[0].session.runtime, office.session.runtime)
+  assert.equal(office.source.readSnapshot().seq, 150)
+  assert.equal(office.source.readSnapshot().conversations[0].tasks[0].status, 'completed')
+  assert.equal(integration.getSnapshot().error, null)
+  assert.equal(connections.length, 2)
+  if (type !== 'office.sync') {
+    const rejected = replies.find(reply => reply.responseToken === 'reply-overflow')
+    assert.equal(rejected.result.code, 503)
+    assert.equal(rejected.result.data.reasonCode, 'BUSINESS_QUEUE_FULL')
+  }
+})
+
+test('stopping a page cancels a pending overflow recovery instead of opening another connection', async t => {
+  const { integration, connections, send } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const release = holdRefresh(t, integration.getSnapshot().offices[0].session)
+  const update = snapshot(); update.seq = 2
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(update) }); await flush()
+  for (let i = 0; i < 128; i++) integration.receive({ type: 'office.sync.complete', offices: [{ teamId: 'team-a', seq: 2 }] })
+  assert.equal(integration.getSnapshot().connection, '等待恢复最新状态')
+  integration.stop(); release()
+  await delay(5); await flush()
+  assert.equal(connections.length, 1)
+})
+
+test('conflicting equal-seq snapshots trigger recovery rather than silently replacing a pending snapshot', async t => {
+  const { integration, connections, send } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const first = snapshot(); first.seq = 2
+  const conflict = structuredClone(first); conflict.conversations[0].tasks[0].title = '冲突内容'
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(first) })
+  integration.receive({ type: 'office.sync', snapshot: schemas.officeSnapshotSchema.parse(conflict) })
+  await waitFor(() => connections.length === 2, 'conflicting snapshots did not trigger recovery')
+  assert.equal(integration.getSnapshot().offices[0].source.readSnapshot().conversations[0].tasks[0].title, '登录开发')
+  assert.match(integration.getSnapshot().error, /相同 seq/)
 })
 
 for (const offset of [-120000, 120000]) test(`business requests and menu expiry tolerate a browser wall-clock offset of ${offset}ms`, async t => {

@@ -46,6 +46,8 @@ export const officeIdleCoffee: ScenePlugin = {
   landmarks: [{ id: SESSION, anchors: {}, resources: { visitor: 1 } }],
   capabilities: [
     { id: IDLE_COFFEE, name: '咖啡休息', params: paramsSchema,
+      participants: { min: 1, max: 2, roles: [{ role: 'visitor', min: 1, max: 1 }, { role: 'host', min: 0, max: 1 }],
+        rules: ['参与者必须绑定工位、安全入座且处于空闲状态', 'visit 模式需要一位 host；window 模式不能包含 host', '访问者喝咖啡时不发言；window 模式的 speaker 只能为 none'] },
       build(context, raw) {
         const params = paramsSchema.parse(raw), visitor = person(context, 'visitor')
         const host = params.mode === 'visit' ? person(context, 'host') : undefined
@@ -78,6 +80,7 @@ export const officeIdleCoffee: ScenePlugin = {
           phases: [...phases, home(visitor)] }
       } },
     { id: IDLE_RETURN, name: '结束休息回座', params: z.strictObject({}),
+      participants: { min: 1, max: 1, roles: [{ role: 'visitor', min: 1, max: 1 }], rules: ['参与者必须绑定工位'] },
       build(context) {
         const visitor = person(context, 'visitor')
         if (context.participants.length !== 1) throw new SceneFault('INVALID_PARTICIPANTS', '仅访问者需要回座')

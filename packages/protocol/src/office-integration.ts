@@ -1,10 +1,10 @@
 import { z } from 'zod'
 import { idSchema, jsonObjectSchema } from './schema.ts'
-import { dashboardSnapshotSchema, validateDashboardSnapshot } from './dashboard.ts'
+import { dashboardSnapshotSchema, officeMemberInputSchema, validateDashboardSnapshot } from './dashboard.ts'
 import { whiteboardTaskBoardSchema, officeUiManifest, emptyWhiteboard } from './office-ui.ts'
 import { officeChatConfigSchema } from './chat.ts'
 
-export const officeIntegrationPaths = { reply: '/api/pawoffice/reply', ui: '/api/pawoffice/ui' } as const
+export const officeIntegrationPaths = { reply: '/api/pawoffice/reply', ui: '/api/pawoffice/ui', layout: '/api/pawoffice/layout' } as const
 // Internal SSE subscription topic for the complete office workspace.
 export const officeWorkspaceTopic = '@pawoffice/workspace'
 export const maxDecisionCustomText = 1000
@@ -35,12 +35,30 @@ export const officeSnapshotSchema = z.strictObject({ schemaVersion: z.literal('1
   if (new Set(snapshot.conversations.map(item => item.id)).size !== snapshot.conversations.length) context.addIssue({ code: 'custom', path: ['conversations'], message: '会话 ID 重复' })
 })
 export type OfficeSnapshot = z.infer<typeof officeSnapshotSchema>
+export const officeLayoutIdSchema = z.enum(['classic', 'members'])
+export type OfficeLayoutId = z.infer<typeof officeLayoutIdSchema>
+export const officeLayoutStateSchema = z.strictObject({ currentLayoutId: officeLayoutIdSchema, revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) })
+export type OfficeLayoutState = z.infer<typeof officeLayoutStateSchema>
+export const defaultOfficeLayout: OfficeLayoutState = Object.freeze({ currentLayoutId: 'classic', revision: 0 })
+export const officeLayoutInfoSchema = officeLayoutStateSchema.safeExtend({ layouts: z.array(z.strictObject({
+  id: officeLayoutIdSchema, name: z.string().min(1), dataMessageType: z.literal('office.snapshot'), dataSchema: jsonObjectSchema,
+})).min(1).max(officeLayoutIdSchema.options.length) }).superRefine((value, context) => {
+  if (new Set(value.layouts.map(layout => layout.id)).size !== value.layouts.length) context.addIssue({ code: 'custom', path: ['layouts'], message: '布局 ID 不得重复' })
+  if (!value.layouts.some(layout => layout.id === value.currentLayoutId)) context.addIssue({ code: 'custom', path: ['currentLayoutId'], message: '当前布局不在可选目录中' })
+})
+export const officeLayoutSetSchema = z.strictObject({ type: z.literal('office.layout.set'), layoutId: officeLayoutIdSchema })
+const layoutDefinitions = [
+  { id: 'classic' as const, name: '经典布局', dataMessageType: 'office.snapshot' as const, dataSchema: z.toJSONSchema(officeSnapshotSchema, { io: 'input' }) },
+  { id: 'members' as const, name: '成员布局', dataMessageType: 'office.snapshot' as const, dataSchema: z.toJSONSchema(officeSnapshotSchema, { io: 'input' }) },
+]
+export function describeOfficeLayouts(state: OfficeLayoutState = defaultOfficeLayout) { return { ...state, layouts: layoutDefinitions } }
+export const officeLayoutSyncSchema = z.strictObject({ type: z.literal('office.layout.sync'), layout: officeLayoutStateSchema })
 export const officeReasonSchema = z.enum(['INVALID_MESSAGE', 'INVALID_REPLY', 'OFFICE_NOT_INITIALIZED', 'ACTOR_NOT_FOUND', 'INVALID_BINDING',
   'OFFICE_LIMIT', 'CACHE_FULL', 'STALE_SEQ', 'DUPLICATE_SEQ', 'SEQ_CONFLICT', 'REQUEST_TIMEOUT', 'NO_RECEIVER', 'RECEIVER_UNAVAILABLE',
   'BUSINESS_QUEUE_FULL', 'DECISION_DUPLICATE', 'DECISION_EXPIRED', 'DECISION_QUEUE_FULL', 'SERVER_CLOSING', 'CALLER_DISCONNECTED',
   'SCENE_SYNC_FAILED', 'BUSINESS_ERROR', 'UI_REQUEST_EXPIRED', 'UI_QUEUE_FULL', 'UI_WAIT_BUSY', 'UNSUPPORTED_UI_ACTION', 'SNAPSHOT_REQUIRED',
   'AUTH_FAILED', 'FORBIDDEN', 'NOT_FOUND', 'MESSAGE_TOO_LARGE', 'INTERNAL_ERROR', 'REQUEST_CLOSED',
-  'CHAT_NOT_CONFIGURED', 'CHAT_UPSTREAM_ERROR', 'CHAT_TIMEOUT', 'CONVERSATION_NOT_FOUND'])
+  'CHAT_NOT_CONFIGURED', 'CHAT_UPSTREAM_ERROR', 'CHAT_TIMEOUT', 'CONVERSATION_NOT_FOUND', 'LAYOUT_CONFLICT'])
 export const officeErrorResultSchema = z.strictObject({ reasonCode: officeReasonSchema, details: jsonObjectSchema.default({}),
   issues: z.array(jsonObjectSchema).default([]) })
 
@@ -58,6 +76,7 @@ export const officeSceneSchema = z.strictObject({
 const uiManifestSchema = z.strictObject({ slots: z.array(z.strictObject({ id: z.string(), content: z.string(), persistent: z.boolean(), update: z.string() })), actions: z.array(z.string()),
   actionSchema: jsonSchema, presentationSchema: jsonSchema, whiteboardSchema: jsonSchema })
 export const officeWorkspaceResultSchema = z.strictObject({
+  ...officeLayoutInfoSchema.shape,
   offices: z.array(z.strictObject({ id: idSchema, name: z.string(), seq: seqSchema, runtimeReady: z.boolean(), taskCount: z.number().int().nonnegative() })),
   actors: z.array(z.strictObject({ id: idSchema, name: z.string() })), supportedMessages: z.array(z.string()), sceneCommandProtocol: z.literal('2.0'), ui: uiManifestSchema,
 })
@@ -65,8 +84,8 @@ export const officeReadResultSchema = z.strictObject({ snapshot: officeSnapshotS
 export const officeSnapshotResultSchema = z.strictObject({ teamId: idSchema, seq: seqSchema, status: z.enum(['applied', 'cached', 'ignored']), reasonCode: z.enum(['STALE_SEQ', 'DUPLICATE_SEQ']).optional() })
 export const officeDecisionResultSchema = z.strictObject({ teamId: idSchema, conversationId: idSchema, decisionId: idSchema, choiceId: idSchema, label: text,
   customText: z.string().trim().min(1).max(maxDecisionCustomText).optional() })
-export const officeCapabilitiesResultSchema = z.strictObject({ scene: officeSceneSchema, ui: uiManifestSchema, requests: jsonSchema, responses: z.strictObject({ success: jsonSchema, error: jsonSchema }) })
-export const officeSupportedMessages = ['offices.initialize', 'office.snapshot', 'office.read', 'office.capabilities', 'decision.request', 'ui.next', 'ui.respond'] as const
+export const officeCapabilitiesResultSchema = z.strictObject({ ...officeLayoutInfoSchema.shape, scene: officeSceneSchema, ui: uiManifestSchema, requests: jsonSchema, responses: z.strictObject({ success: jsonSchema, error: jsonSchema }) })
+export const officeSupportedMessages = ['offices.initialize', 'office.snapshot', 'office.read', 'office.capabilities', 'office.layout.read', 'office.layout.set', 'decision.request', 'ui.next', 'ui.respond'] as const
 export { officeUiManifest }
 
 const uiBase = { id: idSchema, teamId: idSchema, conversationId: idSchema }
@@ -75,6 +94,7 @@ export const officeUiActionSchema = z.discriminatedUnion('action', [
   z.strictObject({ ...uiBase, action: z.literal('conversation.delete') }),
   z.strictObject({ ...uiBase, action: z.literal('actor.inspect'), actorId: idSchema }),
   z.strictObject({ ...uiBase, action: z.literal('employee.inspect'), employeeId: z.string().min(1).max(100) }),
+  z.strictObject({ ...uiBase, ...officeMemberInputSchema.shape, action: z.literal('employee.create') }),
   ...(['task.start', 'task.block', 'task.complete'] as const).map(action => z.strictObject({ ...uiBase, action: z.literal(action), taskId: z.string().min(1).max(100) })),
   z.strictObject({ ...uiBase, action: z.literal('task.assign'), taskId: z.string().min(1).max(100), assigneeId: z.string().min(1).max(100) }),
   z.strictObject({ ...uiBase, action: z.literal('dialog.action'), interactionId: idSchema, optionId: idSchema }),
@@ -112,7 +132,7 @@ export const officeDecisionSchema = z.discriminatedUnion('kind', [
 })
 
 export const officeRequestSchema = z.discriminatedUnion('type', [
-  z.strictObject({ type: z.literal('offices.initialize'), offices: z.array(officeSnapshotSchema).max(100), chat: officeChatConfigSchema.optional() }).superRefine((request, context) => {
+  z.strictObject({ type: z.literal('offices.initialize'), offices: z.array(officeSnapshotSchema).max(100), chat: officeChatConfigSchema.optional(), layoutId: officeLayoutIdSchema.optional() }).superRefine((request, context) => {
     if (request.offices.some(office => !idSchema.safeParse(office.workspace.id).success)) context.addIssue({ code: 'custom', path: ['offices'], message: '办公室 ID 无效' })
     if (new Set(request.offices.map(office => office.workspace.id)).size !== request.offices.length) {
       context.addIssue({ code: 'custom', path: ['offices'], message: '办公室 ID 不得重复' })
@@ -123,6 +143,8 @@ export const officeRequestSchema = z.discriminatedUnion('type', [
   }),
   z.strictObject({ type: z.literal('office.read'), teamId: optionalId }),
   z.strictObject({ type: z.literal('office.capabilities') }),
+  z.strictObject({ type: z.literal('office.layout.read') }),
+  officeLayoutSetSchema,
   z.strictObject({ type: z.literal('ui.next'), timeoutMs: z.number().int().min(1000).max(30000).default(30000) }),
   z.strictObject({ type: z.literal('ui.respond'), interactionId: idSchema, presentation: officeUiPresentationSchema }),
   z.strictObject({ type: z.literal('decision.request'), teamId: idSchema, conversationId: idSchema, decision: officeDecisionSchema,
@@ -139,13 +161,13 @@ export const officeSyncSchema = z.strictObject({
   type: z.literal('office.sync'), snapshot: officeSnapshotSchema,
 })
 export const officeSyncStartSchema = z.strictObject({
-  type: z.literal('office.sync.start'), stateId: idSchema,
+  type: z.literal('office.sync.start'), stateId: idSchema, layout: officeLayoutStateSchema,
 })
 export const officeSyncCompleteSchema = z.strictObject({
   type: z.literal('office.sync.complete'), offices: z.array(z.strictObject({ teamId: idSchema, seq: seqSchema })).max(100),
 })
 export const officeSuccessResultSchema = z.union([officeWorkspaceResultSchema, officeReadResultSchema, officeSnapshotResultSchema,
-  officeDecisionResultSchema, officeCapabilitiesResultSchema, officeUiNextResultSchema, officeUiRespondResultSchema])
+  officeDecisionResultSchema, officeCapabilitiesResultSchema, officeLayoutInfoSchema, officeUiNextResultSchema, officeUiRespondResultSchema])
 export const officeReplySchema = z.strictObject({ responseToken: idSchema, result: z.strictObject({
   code: z.union([z.literal(200), z.literal(400), z.literal(404), z.literal(409), z.literal(422), z.literal(500), z.literal(503)]),
   msg: z.string().max(500), data: z.union([officeSuccessResultSchema, officeErrorResultSchema]),
@@ -156,13 +178,15 @@ export function officeResultSchema(type: OfficeRequest['type'], teamSpecific = f
     case 'office.snapshot': return officeSnapshotResultSchema
     case 'office.read': return teamSpecific ? officeReadResultSchema : officeWorkspaceResultSchema
     case 'office.capabilities': return officeCapabilitiesResultSchema
+    case 'office.layout.read':
+    case 'office.layout.set': return officeLayoutInfoSchema
     case 'decision.request': return officeDecisionResultSchema
     case 'ui.next': return officeUiNextResultSchema
     case 'ui.respond': return officeUiRespondResultSchema
   }
 }
-export function officeCapabilities(scene: z.infer<typeof officeSceneSchema>) {
-  return officeCapabilitiesResultSchema.parse({ scene, ui: describeOfficeUi(),
+export function officeCapabilities(scene: z.infer<typeof officeSceneSchema>, layout = defaultOfficeLayout) {
+  return officeCapabilitiesResultSchema.parse({ ...describeOfficeLayouts(layout), scene, ui: describeOfficeUi(),
     requests: z.toJSONSchema(officeRequestSchema, { io: 'input' }), responses: {
       success: z.toJSONSchema(officeSuccessResultSchema, { io: 'output' }), error: z.toJSONSchema(officeErrorResultSchema, { io: 'output' }),
     } })

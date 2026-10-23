@@ -35,6 +35,18 @@ function fixture(t, options = {}) {
 const coffeePhase = runtime => runtime.readActivePhases().find(phase => phase.capability === 'office.idle-coffee' && phase.ready && phase.actions.length)
 const home = runtime => runtime.readActors().every(actor => actor.posture === 'seated' && !actor.motion && !actor.step && !actor.seatTransition)
 
+test('coffee discovery declares the same participant roles and conditional mode rules used by execution', t => {
+  const { runtime } = fixture(t)
+  const operations = runtime.describe().plugins.flatMap(plugin => plugin.operations)
+  const coffee = operations.find(operation => operation.id === 'office.idle-coffee')
+  assert.deepEqual(coffee.participants.roles, [{ role: 'visitor', min: 1, max: 1 }, { role: 'host', min: 0, max: 1 }])
+  assert.equal(coffee.participants.min, 1); assert.equal(coffee.participants.max, 2)
+  assert(coffee.participants.rules.some(rule => rule.includes('visit') && rule.includes('window') && rule.includes('host')))
+  const returning = operations.find(operation => operation.id === 'office.idle-return')
+  assert.deepEqual(returning.participants.roles, [{ role: 'visitor', min: 1, max: 1 }])
+  assert.equal(returning.participants.min, 1); assert.equal(returning.participants.max, 1)
+})
+
 test('idle coffee remains opt-in for simulations and standalone presentation packs', t => {
   const runtime = createOfficeRuntime(), simulation = new OfficeSimulation(runtime)
   t.after(() => { simulation.dispose(); runtime.dispose() })

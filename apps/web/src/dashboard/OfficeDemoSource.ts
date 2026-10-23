@@ -13,9 +13,10 @@ export class OfficeDemoSource {
   private commandIds: string[] = []
   private checkedRevision = -1
   private commandsPending = false
+  private readonly options: { automatic?: boolean }
   error: string | null = null
 
-  constructor(runtime: SceneRuntime) { this.runtime = runtime }
+  constructor(runtime: SceneRuntime, options: { automatic?: boolean } = {}) { this.runtime = runtime; this.options = options }
   get isRunning() { return this.enabled }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
 
@@ -29,7 +30,7 @@ export class OfficeDemoSource {
   }
 
   tick(elapsedMs: number) {
-    if (!this.enabled || this.runtime.isEditing) return
+    if (!this.enabled || this.runtime.isEditing || this.options.automatic === false) return
     try {
       const revision = this.runtime.getRevision()
       // Command/phase changes publish revisions; interpolated positions do not.

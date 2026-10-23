@@ -9,6 +9,10 @@ test.describe('static office work effect', () => {
     await page.clock.install()
     await page.goto(`${service.url}/office/`)
     await expect(page.getByRole('button', { name: '开始演示', exact: true })).toBeEnabled({ timeout: 30000 })
+    await page.getByRole('button', { name: '开始演示', exact: true }).click()
+    const workingDetail = page.getByRole('button', { name: /编排商品详情.*进行中/ })
+    for (let elapsed = 0; elapsed < 45000 && !await workingDetail.isVisible(); elapsed += 250) await page.clock.fastForward(250)
+    await expect(workingDetail).toBeVisible()
     const canvas = page.locator('canvas')
     await expect(canvas).toBeVisible()
     const output = await canvas.evaluate((element: HTMLCanvasElement) => {

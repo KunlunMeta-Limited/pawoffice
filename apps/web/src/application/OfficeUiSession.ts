@@ -27,6 +27,7 @@ export class OfficeUiSession {
       const result = await this.send(action)
       if (result.target === 'result' && !result.success) throw new Error(result.message || '后端未完成该操作')
       if (conversationId === this.conversation()) this.update({ dialog: result.target === 'dialog' ? result.content : null, interactionId: action.id })
+      return result
     } catch (error) { if (conversationId === this.conversation()) this.update({ error: error instanceof Error ? error.message : '后端处理失败' }); throw error }
     finally { this.flights.delete(conversationId); if (conversationId === this.conversation()) this.update({ pending: false }) }
   }

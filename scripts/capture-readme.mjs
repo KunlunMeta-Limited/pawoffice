@@ -29,23 +29,20 @@ try {
   await expect(page.getByText(/正在加载办公室/)).toHaveCount(0, { timeout: 30000 })
   await expect(page.locator('.runtime-footer')).toContainText('本地示例')
 
-  // Complete the two timed demo questions before recording the scene.
+  // Resolve both business questions before recording active optimization work.
   const panel = page.getByRole('complementary', { name: '待你决定', exact: true })
-  const completePreview = async () => {
-    await panel.getByRole('button', { name: '暂不提交', exact: true }).click()
-    await expect(panel).toBeHidden({ timeout: 10000 })
-  }
-  const dismissNotices = async () => {
-    while (await page.getByRole('button', { name: /^暂不提醒/ }).count()) await page.getByRole('button', { name: /^暂不提醒/ }).first().click()
-  }
   const start = page.getByRole('button', { name: '开始演示', exact: true })
   await expect(start).toBeEnabled({ timeout: 30000 })
   await start.click()
   await expect(page.getByRole('button', { name: '停止演示', exact: true })).toBeVisible()
-  await expect(panel.getByRole('button', { name: '暂不提交', exact: true })).toBeVisible({ timeout: 20000 })
-  await completePreview()
-  await expect(page.getByRole('button', { name: /^暂不提醒/ }).first()).toBeVisible({ timeout: 20000 })
-  await dismissNotices()
+  await expect(panel.getByRole('button', { name: '确认上架', exact: true })).toBeVisible({ timeout: 45000 })
+  await panel.getByRole('button', { name: '确认上架', exact: true }).click()
+  await expect(panel).toBeHidden({ timeout: 10000 })
+  const strategy = page.getByRole('region', { name: '经营分析团队待决定提示', exact: true })
+  await expect(strategy).toBeVisible({ timeout: 12000 })
+  await strategy.getByRole('radio', { name: /补充尺寸说明/ }).check()
+  await strategy.getByRole('button', { name: '提交选择', exact: true }).click()
+  await expect(strategy).toBeHidden()
   await page.mouse.move(viewport.width - 1, viewport.height - 1)
 
   await page.waitForTimeout(2000)
