@@ -2,6 +2,7 @@ import type { Point, Template, World } from './model.ts'
 
 export interface NavigationTemplates {
   template(id: string): Template
+  landmark?(id: string, anchor: string): Point | undefined
 }
 
 /** Each obstacle reserves one complete cell. */

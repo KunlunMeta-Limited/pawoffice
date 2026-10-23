@@ -68,6 +68,8 @@ async function publish(file, bytes, check) {
 export async function buildOfficeCoffeeFrames({ outputRoot = path.join(root, 'public/characters'), artRoot = path.join(root, 'art/characters'), check = false } = {}) {
   const selection = JSON.parse(await readFile(path.join(artRoot, 'coffee-v1/integration-selection.json'), 'utf8'))
   if (selection.schemaVersion !== 1 || selection.status !== 'selected-for-integration') throw new Error('Coffee artwork must be selected for integration')
+  const speech = JSON.parse(await readFile(path.join(artRoot, 'coffee-v1/speech-attachments.json'), 'utf8'))
+  if (speech.schemaVersion !== 1 || JSON.stringify(Object.keys(speech.characters).sort()) !== JSON.stringify([...COFFEE_CHARACTERS].sort())) throw new Error('Invalid coffee speech attachments')
   const registry = CharacterRegistrySchema.parse(JSON.parse(await readFile(path.join(outputRoot, 'registry.json'), 'utf8')))
   const characters = [], audits = []
   for (const id of COFFEE_CHARACTERS) {
@@ -78,6 +80,9 @@ export async function buildOfficeCoffeeFrames({ outputRoot = path.join(root, 'pu
     const entry = registry.characters.find(character => character.id === id)
     if (!entry) throw new Error(`Missing base office character: ${id}`)
     const base = CharacterManifestSchema.parse(JSON.parse(await readFile(path.join(outputRoot, entry.manifest), 'utf8')))
+    const speechAttachment = speech.characters[id]
+    if (speechAttachment.frameSha256 !== coffee.fingerprint.frames[coffee.animation.frames[0].file]
+      || speechAttachment.mouth.view !== 'right' || !base.mouth?.views.right) throw new Error(`${id}: coffee mouth placement does not match its artwork`)
     const layers = [], frames = { ...base.frames }, keys = new Map()
     for (const [index, input] of coffee.inputs.entries()) {
       const key = `coffee-v1/right/${path.basename(input.file)}`
@@ -91,7 +96,7 @@ export async function buildOfficeCoffeeFrames({ outputRoot = path.join(root, 'pu
     const image = `coffee-${sha(atlas).slice(0, 16)}.webp`
     const first = keys.get(coffee.animation.frames[0].file)
     const clips = { ...base.clips,
-      'coffee.hold.right': { loop: true, frames: [{ frame: first, durationMs: 1000 }] },
+      'coffee.hold.right': { loop: true, frames: [{ frame: first, durationMs: 1000, mouth: speechAttachment.mouth }] },
       // Progress is supplied by the activity. A closed loop also keeps the label
       // socket on the first frame instead of following alpha-bound variations.
       'coffee.sip.right': { loop: true, frames: coffee.animation.frames.map((frame, index, list) => ({ frame: keys.get(frame.file), durationMs: index === 0 || index === list.length - 1 ? 100 : frame.durationMs })) },

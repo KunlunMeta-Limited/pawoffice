@@ -6,13 +6,17 @@ import { createOfficeWorld } from './definition.ts'
 import { builtinPlugins } from './pack.ts'
 import { supportsOfficePose } from './poseSupport.ts'
 import { whiteboardTaskBoardSchema } from '../whiteboard.ts'
+import { coffeeWindowLandmark } from './coffeeLocations.ts'
 
 const task = z.strictObject({ title: z.string().max(160), status: z.enum(['queued', 'running', 'blocked', 'completed', 'failed']), progress: z.number().min(0).max(100).optional() })
 export const referenceOfficeObjects: ScenePlugin = {
   id: 'office.reference-objects', name: '明亮办公室家具', version: '1.0.0', apiVersion: 1, dependencies: ['office.objects'],
+  landmarks: [coffeeWindowLandmark],
   templates: [
     { id: 'office.reference-workstation', name: '宽桌办公工位', view: 'reference-workstation',
-      footprint: { left: 0, top: 0, right: 4, bottom: 3 },
+      // The artwork's back edge leaves a floor row behind each desk. Blocking that
+      // row joined adjacent desks into a wall and isolated the right window aisle.
+      footprint: { left: 0, top: 1, right: 4, bottom: 3 },
       interactions: { seat: { name: '入座工作', anchor: 'seat', approaches: ['seatLeft', 'seatRight'],
         cells: [0, 1, 2, 3].map(x => ({ x, y: 2 })), facing: 'back', posture: 'seated', requiresHome: true } },
       anchors: { seat: { x: 1, y: 2 }, seatStand: { x: 1, y: 2 }, seatEntry: { x: -1, y: 2 }, seatLeft: { x: -1, y: 2 }, seatRight: { x: 4, y: 2 },

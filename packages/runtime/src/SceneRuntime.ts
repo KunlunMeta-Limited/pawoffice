@@ -77,7 +77,7 @@ export class SceneRuntime {
     this.world = worldSchema.parse(options.world)
     for (const plugin of options.plugins) this.plugins.register(plugin)
     this.plugins.validateWorld(this.world)
-    this.navigation = options.createNavigation({ template: id => this.plugins.template(id) })
+    this.navigation = options.createNavigation({ template: id => this.plugins.template(id), landmark: (id, anchor) => this.plugins.landmark(id, anchor) })
     this.supportsPose = options.supportsPose ?? unrestrictedPoses
     this.movement = new MovementController(this.navigation, { template: id => this.plugins.template(id) }, options.seatStepDuration, this.supportsPose)
     this.navigation.validate(this.world)
@@ -97,6 +97,11 @@ export class SceneRuntime {
         if (!template.resources[key]) this.resources.define(`prop:${prop.id}:${key}`)
       }
       for (const key of Object.keys(template.anchors)) this.resources.define(`anchor:${prop.id}:${key}`)
+    }
+    for (const landmark of this.plugins.landmarks()) {
+      if ([...this.world.props, ...this.world.actors].some(entity => entity.id === landmark.id)) throw new SceneFault('DUPLICATE_ENTITY', landmark.id)
+      for (const key of Object.keys(landmark.anchors)) this.resources.define(`anchor:${landmark.id}:${key}`)
+      for (const [key, capacity] of Object.entries(landmark.resources ?? {})) this.resources.define(`landmark:${landmark.id}:${key}`, capacity)
     }
   }
 
@@ -123,7 +128,7 @@ export class SceneRuntime {
       activityId: activity.id, capability: activity.capability, participants: [...activity.participants],
       phaseIndex: activity.phaseIndex, phaseCount: activity.plan.phases.length,
       title: activity.plan.phases[activity.phaseIndex]?.title ?? activity.plan.title,
-      ready: this.phaseReady.has(activity.id),
+      ready: activity.phaseStarted && this.phaseReady.has(activity.id),
       actions: structuredClone(activity.plan.phases[activity.phaseIndex]?.actions ?? []),
       progress: Math.min(1, activity.phaseElapsedMs / Math.max(1, activity.plan.phases[activity.phaseIndex]?.durationMs ?? 1)),
     }))

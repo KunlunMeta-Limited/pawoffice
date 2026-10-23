@@ -22,6 +22,8 @@ test('reference layout has six aligned workstations and a solid conference footp
     assert.deepEqual(world.actors.map(actor => actor.position), [{ x: 6, y: 7 }, { x: 13, y: 13 }, { x: 6, y: 10 }, { x: 13, y: 7 }, { x: 6, y: 13 }, { x: 13, y: 10 }])
     assert.equal(runtime.navigation.segmentClear(world, { x: 6, y: 15 }, { x: 16, y: 15 }), false)
     assert.equal(runtime.template('office.conference-table').footprint.right, 8)
+    assert.equal(runtime.navigation.segmentClear(world, { x: 4, y: 8 }, { x: 18, y: 8 }), true,
+      'the floor behind the middle desks connects both aisles to the right window')
     const presentation = createReferenceOfficePresentation(), actors = presentation.projectActors(runtime)
     assert.deepEqual(presentation.rendering, { antialias: false, idleFPS: 20, motionFPS: 60 })
     assert(actors.every(actor => actor.displayHeight === 126 && actor.label.placement === 'above' && actor.task.status === 'idle'))

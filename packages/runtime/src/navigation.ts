@@ -12,7 +12,11 @@ export class GridNavigation implements NavigationAdapter {
 
   anchor(world: World, targetId: string, anchor: string): Point {
     const prop = world.props.find(p => p.id === targetId)
-    if (!prop) throw new SceneFault('ENTITY_NOT_FOUND', targetId)
+    if (!prop) {
+      const point = this.templates.landmark?.(targetId, anchor)
+      if (point && isCell(point)) return { ...point }
+      throw new SceneFault('ENTITY_NOT_FOUND', targetId)
+    }
     const offset = prop.anchors?.[anchor] ?? this.templates.template(prop.templateId).anchors[anchor]
     if (!offset || !isCell(offset)) throw new SceneFault('ANCHOR_NOT_FOUND', `${targetId}:${anchor}`)
     return addCell(prop.position, offset)

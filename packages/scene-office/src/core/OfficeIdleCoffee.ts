@@ -2,12 +2,14 @@ import type { SceneRuntime } from '@pawoffice/runtime'
 import type { Actor, Point, Snapshot } from '@pawoffice/runtime/model'
 import type { SceneCommand, StartCommand } from '@pawoffice/protocol'
 import { IDLE_COFFEE, IDLE_RETURN } from './idleCoffee.ts'
+import { COFFEE_WINDOW, COFFEE_WINDOW_ANCHORS } from './coffeeLocations.ts'
 
-type Rest = { ids: string[]; returning: boolean }
+type Rest = { ids: string[]; visitorId: string; returning: boolean }
 type Options = { random?: () => number; canIdle?: (id: string) => boolean; delayMs?: number }
+type Turn = { speaker: 'visitor' | 'host' | 'none'; durationMs: number; sip: boolean }
 const distance = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y)
 
-/** Host-clock driven, optional behavior; business commands always take precedence. */
+/** Per-office, host-clock behavior. One visitor owns the whole departure/return cycle. */
 export class OfficeIdleCoffee {
   private readonly runtime: SceneRuntime
   private readonly options: Options
@@ -16,6 +18,7 @@ export class OfficeIdleCoffee {
   private readonly returning = new Set<string>()
   private readonly cooldown = new Map<string, number>()
   private readonly lastRest = new Map<string, number>()
+  private readonly lastPartner = new Map<string, string>()
   private restSequence = 0
   private unsubscribe?: () => void
   private internal = false
@@ -48,7 +51,6 @@ export class OfficeIdleCoffee {
     this.disposed = true; this.returning.clear(); this.unsubscribe?.(); this.unsubscribe = undefined
     this.editingWaiters.splice(0).forEach(resolve => resolve())
   }
-  /** The UI waits for safe seat transitions before starting a map draft. */
   prepareEditing(): Promise<void> {
     this.editingRequested = true
     this.suspend()
@@ -57,18 +59,27 @@ export class OfficeIdleCoffee {
   }
   cancelEditingPreparation() { this.editingRequested = false }
   private delay() { return this.options.delayMs ?? 5000 + this.random() * 10000 }
+  private shuffle<T>(list: readonly T[]): T[] {
+    const result = [...list]
+    for (let i = result.length - 1; i > 0; i--) { const j = Math.floor(this.random() * (i + 1)); [result[i], result[j]] = [result[j], result[i]] }
+    return result
+  }
   private submit(command: SceneCommand) {
     this.internal = true
     try { return this.runtime.submit(command) }
     finally { this.internal = false }
   }
   private base() { return { protocolVersion: '2.0' as const, sceneId: this.runtime.sceneId, commandId: `coffee-${crypto.randomUUID()}` } }
+  private retire(commandId: string, rest: Rest) {
+    this.managed.delete(commandId)
+    // The seated host never joins the return queue, even if their business state changes.
+    this.returning.add(rest.visitorId)
+    rest.ids.forEach(id => this.cooldown.set(id, this.delay()))
+  }
   private interrupt(ids?: Set<string>, includeReturns = false) {
     for (const [commandId, rest] of [...this.managed]) {
       if (rest.returning && !includeReturns || ids && !rest.ids.some(id => ids.has(id))) continue
-      // Retire before stopping: status notifications must not recursively stop this activity.
-      this.managed.delete(commandId)
-      rest.ids.forEach(id => { this.returning.add(id); this.cooldown.set(id, this.delay()) })
+      this.retire(commandId, rest)
       const record = this.runtime.getRecord(commandId)
       if (record?.status === 'queued') this.submit({ ...this.base(), type: 'command.cancel', targetCommandId: commandId })
       else if (record?.status === 'running') this.submit({ ...this.base(), type: 'activity.stop', activityId: commandId })
@@ -77,8 +88,9 @@ export class OfficeIdleCoffee {
   private before(command: SceneCommand) {
     if (this.internal) return
     if (command.type === 'activity.start') {
+      // Another coffee request must wait for the shared slot, never evict its current visitor.
+      if ([IDLE_COFFEE, IDLE_RETURN].includes(command.capability)) return
       const ids = new Set(command.participants.map(p => p.entityId))
-      // Stop all chats to free aisles, and release return trips owned by requested participants.
       this.interrupt()
       this.interrupt(ids, true)
       ids.forEach(id => this.cooldown.set(id, this.delay()))
@@ -107,13 +119,13 @@ export class OfficeIdleCoffee {
     const snapshot = this.runtime.snapshot()
     if (snapshot.persistenceError) { this.interrupt(); return }
     const actors = new Map(snapshot.world.actors.map(actor => [actor.id, actor]))
-    for (const id of this.cooldown.keys()) if (!actors.has(id)) { this.cooldown.delete(id); this.lastRest.delete(id) }
+    for (const id of this.cooldown.keys()) if (!actors.has(id)) {
+      this.cooldown.delete(id); this.lastRest.delete(id); this.lastPartner.delete(id)
+    }
     for (const [commandId, rest] of [...this.managed]) {
       const record = this.runtime.getRecord(commandId)
-      if (!record || !['queued', 'running'].includes(record.status)) {
-        this.managed.delete(commandId)
-        rest.ids.forEach(id => { this.returning.add(id); this.cooldown.set(id, this.delay()) })
-      } else if (!rest.returning && rest.ids.some(id => actors.get(id)?.presentation.status !== 'idle' || this.options.canIdle?.(id) === false)) {
+      if (!record || !['queued', 'running'].includes(record.status)) this.retire(commandId, rest)
+      else if (!rest.returning && rest.ids.some(id => actors.get(id)?.presentation.status !== 'idle' || this.options.canIdle?.(id) === false)) {
         this.interrupt(new Set(rest.ids))
       }
     }
@@ -124,89 +136,94 @@ export class OfficeIdleCoffee {
     for (const record of snapshot.records) if (record.status === 'queued' && record.command.type === 'activity.start') {
       record.command.participants.forEach(p => busy.add(p.entityId))
     }
-    // Recover each colleague independently; a business activity can keep another one busy.
     for (const id of [...this.returning]) {
       const actor = actors.get(id)
       if (!actor || this.atHome(actor, snapshot)) { this.returning.delete(id); continue }
       if (busy.has(id) || actor.motion || actor.step || actor.seatTransition) continue
       this.returning.delete(id)
-      this.start([id], true, {})
+      this.start(id, true, {})
       busy.add(id)
     }
     if (!this.managed.size && !this.returning.size && this.editingWaiters.length) {
       this.editingWaiters.splice(0).forEach(resolve => resolve())
     }
-    if (!this.enabled || this.suspended || this.editingRequested || this.returning.size) return
-    // Stagger arrivals: avoid sending several groups through the same seat corridors at once.
-    if (snapshot.activities.some(activity => this.managed.has(activity.id) && (!activity.phaseStarted
-      || !activity.plan.phases[activity.phaseIndex]?.actions?.length))) return
-    const available = snapshot.world.actors.filter(actor => actor.homeId && actor.presentation.status === 'idle'
-      && !busy.has(actor.id) && !actor.motion && !actor.step && !actor.seatTransition && !actor.speech && !actor.expression
+    if (!this.enabled || this.suspended || this.editingRequested || this.returning.size || this.managed.size) return
+    if (snapshot.activities.some(activity => activity.status === 'active' && [IDLE_COFFEE, IDLE_RETURN].includes(activity.capability))) return
+    // Count true idle colleagues before filtering temporary motion, speech and resource locks.
+    // An unavailable colleague must not turn a multi-person office into a lone-window break.
+    const idleActors = snapshot.world.actors.filter(actor => actor.homeId && actor.presentation.status === 'idle'
       && this.options.canIdle?.(actor.id) !== false)
+    const available = idleActors.filter(actor => !busy.has(actor.id) && !actor.motion && !actor.step
+      && !actor.seatTransition && !actor.speech && !actor.expression && this.atHome(actor, snapshot))
     for (const actor of available) if (!this.cooldown.has(actor.id)) this.cooldown.set(actor.id, this.delay())
-    const ready = available.filter(actor => this.cooldown.get(actor.id) === 0)
-    if (!ready.length) return
-    // Fisher–Yates makes every eligible colleague and station reachable without biased sort callbacks.
-    for (let i = ready.length - 1; i > 0; i--) { const j = Math.floor(this.random() * (i + 1)); [ready[i], ready[j]] = [ready[j], ready[i]] }
-    // Keep random partners while giving colleagues who have waited longest the first places.
-    ready.sort((a, b) => (this.lastRest.get(a.id) ?? -1) - (this.lastRest.get(b.id) ?? -1))
-    const size = ready.length >= 3 && (ready.length === 3 || this.random() < .45) ? 3 : Math.min(2, ready.length)
-    // A single colleague drinks alone only when nobody else is eligible.
-    if (size === 1 && available.length > 1) return
-    let group = ready.slice(0, size)
-    let spot = this.spot(group, snapshot)
-    if (!spot && group.length === 3) { group = group.slice(0, 2); spot = this.spot(group, snapshot) }
-    group.forEach(actor => this.cooldown.set(actor.id, this.delay()))
-    if (!spot) return
-    const groupSize = group.length
-    const turns = Array.from({ length: groupSize * 3 }, (_, index) => ({ speaker: index % groupSize,
-      durationMs: index >= groupSize && index < groupSize * 2 ? 1800 : Math.floor(2200 + this.random() * 1800), sip: index >= groupSize && index < groupSize * 2 }))
-    this.start(group.map(actor => actor.id), false, { ...spot, turns: turns.slice(0, 10) })
+    const ready = this.shuffle(available.filter(actor => this.cooldown.get(actor.id) === 0))
+      .sort((a, b) => (this.lastRest.get(a.id) ?? -1) - (this.lastRest.get(b.id) ?? -1))
+    for (const visitor of ready) {
+      this.cooldown.set(visitor.id, this.delay())
+      if (idleActors.length === 1) {
+        const anchor = this.shuffle(COFFEE_WINDOW_ANCHORS).find(anchor => this.reachable(visitor, COFFEE_WINDOW, anchor, snapshot))
+        if (anchor) { this.start(visitor.id, false, { mode: 'window', anchor, turns: this.turns(false) }); return }
+      } else {
+        const hosts = this.shuffle(available.filter(actor => actor.id !== visitor.id))
+          .sort((a, b) => Number(a.id === this.lastPartner.get(visitor.id)) - Number(b.id === this.lastPartner.get(visitor.id)))
+        for (const host of hosts) {
+          const anchor = this.shuffle(['conversationLeft', 'conversationRight'] as const).find(anchor => {
+            try {
+              const point = this.runtime.navigation.anchor(snapshot.world, host.homeId!, anchor)
+              // Only use actual side positions supported by both seated and coffee artwork.
+              return Math.abs(point.x - host.position.x) > Math.abs(point.y - host.position.y)
+                && this.reachable(visitor, host.homeId!, anchor, snapshot)
+            } catch { return false }
+          })
+          if (!anchor) continue
+          if (this.start(visitor.id, false, { mode: 'visit', anchor, turns: this.turns(true) }, host.id)) {
+            this.lastPartner.set(visitor.id, host.id)
+          }
+          return
+        }
+      }
+    }
   }
-  private start(ids: string[], returning: boolean, params: StartCommand['params']) {
+  private start(visitorId: string, returning: boolean, params: StartCommand['params'], hostId?: string) {
     const command = { ...this.base(), type: 'activity.start' as const, capability: returning ? IDLE_RETURN : IDLE_COFFEE,
-      busyPolicy: 'reject' as const, timeoutMs: 60000,
-      participants: ids.map(entityId => ({ entityId, role: 'colleague' })), params }
-    this.managed.set(command.commandId, { ids, returning })
+      busyPolicy: 'reject' as const, timeoutMs: 90000,
+      participants: [{ entityId: visitorId, role: 'visitor' }, ...(hostId ? [{ entityId: hostId, role: 'host' }] : [])], params }
+    this.managed.set(command.commandId, { ids: command.participants.map(p => p.entityId), visitorId, returning })
     const result = this.submit(command)
     if (result.error) {
       this.managed.delete(command.commandId)
-      if (returning) ids.forEach(id => this.returning.add(id))
-    } else if (!returning) { const sequence = ++this.restSequence; ids.forEach(id => this.lastRest.set(id, sequence)) }
-  }
-  private spot(group: Actor[], snapshot: Snapshot) {
-    const world = snapshot.world
-    const chatting = new Set(snapshot.activities.filter(activity => activity.status === 'active' && activity.capability === IDLE_COFFEE).flatMap(activity => activity.participants))
-    const stations = world.props.filter(prop => this.runtime.template(prop.templateId).anchors.conversationLeft)
-    const start = Math.floor(this.random() * Math.max(1, stations.length))
-    for (let offset = 0; offset < stations.length; offset++) {
-      const prop = stations[(start + offset) % stations.length]
-      const anchors = ['coffee1', 'coffee2', 'coffee3'].filter(anchor => {
-        try {
-          if (snapshot.resources.some(resource => resource.resource === `anchor:${prop.id}:${anchor}` && resource.holders.length)) return false
-          const point = this.runtime.navigation.anchor(world, prop.id, anchor)
-          if (world.actors.some(actor => chatting.has(actor.id) && Math.abs(actor.position.x - point.x) < 2
-            && Math.abs(actor.position.y - point.y) < 3)) return false
-          if (!this.runtime.navigation.walkable(world, point) || world.actors.some(actor => distance(actor.position, point) === 0
-            || actor.step && distance(actor.step.to, point) === 0)) return false
-          // Keep standing groups out of one-cell corridors whenever possible.
-          const exits = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]
-            .filter(delta => this.runtime.navigation.walkable(world, { x: point.x + delta.x, y: point.y + delta.y }))
-          return exits.length >= 2
-        } catch { return false }
-      })
-      if (anchors.length < group.length) continue
-      const chosen = anchors.slice(0, group.length)
-      // Resolve the actual seated departure routes before accepting a social activity.
-      const reachable = group.every((actor, index) => {
-        const target = this.runtime.navigation.anchor(world, prop.id, chosen[index])
-        const desk = world.props.find(p => p.id === actor.homeId)
-        const approaches = desk && this.runtime.template(desk.templateId).interactions?.seat?.approaches
-        return (actor.posture === 'seated' && approaches ? approaches.map(anchor => this.runtime.navigation.anchor(world, desk!.id, anchor)) : [actor.position])
-          .some(from => { try { this.runtime.navigation.path(world, from, target); return true } catch { return false } })
-      })
-      if (reachable) return { placeId: prop.id, anchors: chosen }
+      if (returning) this.returning.add(visitorId)
+      return false
     }
-    return undefined
+    if (!returning) this.lastRest.set(visitorId, ++this.restSequence)
+    return true
+  }
+  private reachable(visitor: Actor, placeId: string, anchor: string, snapshot: Snapshot) {
+    try {
+      const world = snapshot.world, point = this.runtime.navigation.anchor(world, placeId, anchor)
+      if (snapshot.resources.some(resource => resource.resource === `anchor:${placeId}:${anchor}` && resource.holders.length)) return false
+      if (!this.runtime.navigation.walkable(world, point) || world.actors.some(actor => distance(actor.position, point) === 0
+        || actor.step && distance(actor.step.to, point) === 0)) return false
+      const desk = world.props.find(prop => prop.id === visitor.homeId)
+      const approaches = desk && this.runtime.template(desk.templateId).interactions?.seat?.approaches
+      const starts = visitor.posture === 'seated' && approaches
+        ? approaches.map(anchor => this.runtime.navigation.anchor(world, desk!.id, anchor)) : [visitor.position]
+      return starts.some(from => { try { this.runtime.navigation.path(world, from, point); return true } catch { return false } })
+    } catch { return false }
+  }
+  private turns(visit: boolean): Turn[] {
+    const count = visit ? 6 + Math.floor(this.random() * 2) * 2 : 6 + Math.floor(this.random() * 3)
+    const firstHost = this.random() < .5
+    const speakers: Turn['speaker'][] = Array.from({ length: count }, (_, index) => !visit ? 'none'
+      : (index % 2 === 0) === firstHost ? 'host' : 'visitor')
+    const candidates = speakers.flatMap((speaker, index) => speaker === 'visitor' ? [] : [index])
+    const sipSlots = new Set(this.shuffle(candidates).slice(0, 1 + Math.floor(this.random() * 3)))
+    const turns: Turn[] = []
+    speakers.forEach((speaker, index) => {
+      const sip = sipSlots.has(index)
+      turns.push({ speaker, sip, durationMs: Math.floor(sip ? 1800 + this.random() * 400 : 2200 + this.random() * 1400) })
+      if (visit && index < count - 1 && this.random() < .2) turns.push({ speaker: 'none', sip: false, durationMs: Math.floor(1200 + this.random() * 600) })
+    })
+    return turns
   }
 }
