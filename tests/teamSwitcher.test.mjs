@@ -99,7 +99,7 @@ test('background choices show radio options, disabled initial submit and team-lo
   } }
   const render = value => renderToStaticMarkup(createElement(TeamDecisionNotice, { team: value, otherCount: 0, onOpen() {}, onDismiss() {}, onResolve() {} }))
   const initial = render(team)
-  assert.equal((initial.match(/type="radio"/g) ?? []).length, 2)
+  assert.equal((initial.match(/type="radio"/g) ?? []).length, 3)
   assert(initial.includes('方案一') && initial.includes('先开发') && initial.includes('方案二'))
   assert(initial.includes('title="先开发"'))
   assert(initial.includes('class="team-decision-notice-option-detail">先开发</small>'))
@@ -110,6 +110,33 @@ test('background choices show radio options, disabled initial submit and team-lo
   assert(submitting.includes('aria-busy="true"'))
   assert(submitting.includes('正在提交…'))
   assert(submitting.includes('<fieldset aria-label="处理方案" disabled=""'))
+  const failed = render({ ...team, decisionError: '提交失败，请重试' })
+  assert(failed.includes('role="alert">提交失败，请重试'))
+  assert(!failed.includes('aria-busy="true"'))
+})
+
+test('background choices offer custom input as a radio option with the editor initially hidden', () => {
+  const options = [{ id: 'one', label: '方案一', description: '先开发' }, { id: 'two', label: '方案二', description: '先测试' }]
+  const team = { id: 'b', name: 'B', sceneLabel: '办公室', decisionCount: 1, pendingDecision: {
+    teamId: 'b', id: 'custom-choice', kind: 'choice', allowCustom: true, title: '选择处理方式', description: '', requester: { name: '负责人', appearanceId: 'office-lead' },
+    options,
+  } }
+  const render = value => renderToStaticMarkup(createElement(TeamDecisionNotice, { team: value, otherCount: 0, onOpen() {}, onDismiss() {}, onResolve() {} }))
+  const initial = render(team)
+  assert.equal((initial.match(/type="radio"/g) ?? []).length, 3)
+  assert.match(initial, /<label data-selected="false" title="填写你的具体需求"><input type="radio"[^>]*value="custom"[^>]*><span><strong>其他需求<\/strong><small class="team-decision-notice-option-detail">填写你的具体需求<\/small><\/span><\/label>/)
+  assert(!initial.includes('class="team-decision-notice-secondary"'))
+  assert(!initial.includes('type="text"'))
+  assert(initial.includes('其他需求'))
+  assert.match(initial, /type="submit"[^>]*disabled=""/)
+  assert.match(initial, /type="submit"[^>]*>[^]*先选择一项/)
+  const optedOut = render({ ...team, pendingDecision: { ...team.pendingDecision, allowCustom: false } })
+  assert(!optedOut.includes('其他需求'))
+  assert(!optedOut.includes('type="text"'))
+  const busy = render({ ...team, decisionSubmittingId: 'custom-choice' })
+  assert.match(busy, /<fieldset[^>]*disabled=""/)
+  assert.match(busy, /type="submit"[^>]*disabled=""/)
+  assert(busy.includes('正在提交…'))
   const failed = render({ ...team, decisionError: '提交失败，请重试' })
   assert(failed.includes('role="alert">提交失败，请重试'))
   assert(!failed.includes('aria-busy="true"'))

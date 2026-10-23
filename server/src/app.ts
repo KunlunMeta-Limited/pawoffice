@@ -20,7 +20,7 @@ import { chatPath } from '@pawoffice/protocol/chat'
 
 export const DEMO_API_KEY = 'pawoffice-demo-key'
 export const defaultStaticRoot = fileURLToPath(new URL('../../dist/', import.meta.url))
-export type ServerOptions = { apiKey?: string; staticRoot?: string; publicOrigin?: string; logger?: boolean; maxConnections?: number; maxBufferedBytes?: number; heartbeatMs?: number; maxOfficeRequests?: number; officeRequestMs?: number; chatTimeoutMs?: number }
+export type ServerOptions = { apiKey?: string; staticRoot?: string; publicOrigin?: string; logger?: boolean; maxConnections?: number; maxBufferedBytes?: number; heartbeatMs?: number; maxOfficeRequests?: number; officeRequestMs?: number; chatControlTimeoutMs?: number }
 const errorReasons: Record<number, string> = { 401: 'AUTH_FAILED', 403: 'FORBIDDEN', 404: 'NOT_FOUND', 408: 'REQUEST_TIMEOUT',
   410: 'REQUEST_CLOSED', 413: 'MESSAGE_TOO_LARGE', 422: 'BUSINESS_ERROR', 499: 'CALLER_DISCONNECTED', 500: 'INTERNAL_ERROR', 503: 'RECEIVER_UNAVAILABLE' }
 const envelope = (code: number, msg: string, data?: unknown) => responseEnvelopeSchema.parse({ code, msg,
@@ -69,7 +69,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     const expectedOrigin = publicOrigin ?? `${request.protocol}://${request.headers.host}`
     return request.headers['sec-fetch-site'] !== 'cross-site' && (!request.headers.origin || request.headers.origin === expectedOrigin)
   }
-  const chat = registerOfficeChat(app, { sameOrigin, hasOffice: teamId => Boolean(state.get(teamId)), timeoutMs: options.chatTimeoutMs })
+  const chat = registerOfficeChat(app, { sameOrigin, hasOffice: teamId => Boolean(state.get(teamId)), controlTimeoutMs: options.chatControlTimeoutMs })
   const maxBufferedBytes = options.maxBufferedBytes ?? maxRelayEventBytes
   if (apiKey === DEMO_API_KEY && options.logger) app.log.warn('Using the public demo API key. Set PAWOFFICE_API_KEY before public deployment.')
 
@@ -270,7 +270,7 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     return reply
   })
 
-  app.addHook('preClose', async () => { chat.close(); ui.close(); officeRequests.close(); relay.close() })
+  app.addHook('preClose', async () => { await chat.close(); ui.close(); officeRequests.close(); relay.close() })
   if (options.staticRoot) await app.register(serveStatic, { root: path.resolve(options.staticRoot), index: ['index.html'], redirect: true })
   return app
 }

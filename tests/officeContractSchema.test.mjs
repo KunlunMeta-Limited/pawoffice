@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { test } from 'node:test'
-import { officeErrorResultSchema, officeMessageSchema, officeSnapshotSchema } from '@pawoffice/protocol/office-integration'
+import { maxDecisionCustomText, officeDecisionResultSchema, officeErrorResultSchema, officeMessageSchema, officeSnapshotSchema } from '@pawoffice/protocol/office-integration'
 import { createPawOfficeServer, DEMO_API_KEY } from '../server/dist/app.js'
 
 const require = createRequire(import.meta.url)
@@ -61,4 +61,32 @@ test('published UI and scene inputs accept default omission while response schem
   assert.equal(error({ reasonCode: 'INVALID_MESSAGE' }), false, 'response defaults must still be present on the wire')
   const success = ajv.compile(data.responses.success)
   assert(success({ actions: [] }))
+})
+
+test('choice requests default allowCustom true, always reserve custom and keep customText optional', async t => {
+  const data = await capabilities(t), validate = validator().compile(data.requests)
+  const request = { conversationId: 'main', type: 'decision.request', teamId: 'schema-office',
+    decision: { id: 'menu', kind: 'choice', title: '选择', options: [{ id: 'a', label: '甲' }, { id: 'b', label: '乙' }] } }
+  const parsed = officeMessageSchema.parse(request)
+  assert.equal(parsed.decision.allowCustom, true)
+  assert(validate(request))
+  for (const allowCustom of [true, false]) {
+    const explicit = { ...request, decision: { ...request.decision, allowCustom } }
+    assert.equal(officeMessageSchema.parse(explicit).decision.allowCustom, allowCustom)
+    assert(validate(explicit))
+  }
+  for (const allowCustom of [undefined, true, false]) {
+    const reserved = { ...request, decision: { ...request.decision, ...(allowCustom === undefined ? {} : { allowCustom }),
+      options: [{ id: 'custom', label: '保留选项' }, { id: 'b', label: '乙' }] } }
+    assert.equal(officeMessageSchema.safeParse(reserved).success, false, `custom is reserved with allowCustom=${allowCustom}`)
+    assert.equal(validate(reserved), false, 'published JSON schema must reject the same reserved option id')
+  }
+  const ordinary = { ...request, decision: { ...request.decision, options: [{ id: 'custom-plan', label: '自定义方案' }, { id: 'b', label: '乙' }] } }
+  assert(officeMessageSchema.safeParse(ordinary).success)
+  assert(validate(ordinary))
+  const customResult = officeDecisionResultSchema.parse({ teamId: 'schema-office', conversationId: 'main', decisionId: 'menu', choiceId: 'custom', label: '其他', customText: '  需要导出  ' })
+  assert.equal(customResult.customText, '需要导出')
+  assert.equal(officeDecisionResultSchema.safeParse({ ...customResult, customText: undefined }).success, true, 'customText must stay optional for existing callers')
+  assert.equal(officeDecisionResultSchema.safeParse({ ...customResult, customText: '   ' }).success, false)
+  assert.equal(officeDecisionResultSchema.safeParse({ ...customResult, customText: 'x'.repeat(maxDecisionCustomText + 1) }).success, false)
 })

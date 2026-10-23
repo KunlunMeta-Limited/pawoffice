@@ -28,6 +28,11 @@
 .team-decision-notice label strong { display: block; font-size: 10px; line-height: 14px; font-weight: 500; }
 .team-decision-notice-description, .team-decision-notice-option-detail { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .team-decision-notice fieldset:disabled label { cursor: default; opacity: .65; }
+.team-decision-notice-custom { margin: 3px 4px 0 24px; }
+.team-decision-notice-custom input { box-sizing: border-box; width: 100%; min-width: 0; height: 26px; padding: 3px 6px; border: 1px solid #dce4de; border-radius: 4px; background: #fff; color: #344239; font: inherit; font-size: 10px; }
+.team-decision-notice-custom input:focus-visible { outline: none; border-color: #779681; box-shadow: 0 0 0 2px #77968118; }
+.team-decision-notice-custom input:disabled { background: #f3f6f3; color: #8b958e; }
+.team-decision-notice-custom input::placeholder { color: #a1aba3; }
 .team-decision-notice footer { display: flex; flex-shrink: 0; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; padding-top: 3px; }
 .team-decision-notice footer button { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; max-width: 100%; min-height: 26px; padding: 4px; border: 1px solid transparent; border-radius: 5px; font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }
 .team-decision-notice button[type=submit] { min-width: 76px; font-weight: 600; }

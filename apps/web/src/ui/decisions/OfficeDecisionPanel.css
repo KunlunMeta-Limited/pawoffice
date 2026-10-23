@@ -20,6 +20,11 @@
 .office-decision-options label > span { display: flex; min-width: 0; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
 .office-decision-options strong { font-size: 13px; line-height: 18px; font-weight: 500; }
 .office-decision-options small { font-size: 11px; color: #8b958e; line-height: 15px; }
+.office-decision-custom { margin: 6px 10px 0 37px; }
+.office-decision-custom textarea { box-sizing: border-box; width: 100%; min-height: 46px; max-height: 96px; padding: 6px 9px; border: 1px solid #dde5de; border-radius: 6px; background: #fff; color: #344239; font: inherit; font-size: 12px; line-height: 1.5; resize: vertical; }
+.office-decision-custom textarea:focus-visible { outline: none; border-color: #779681; box-shadow: 0 0 0 3px #77968118; }
+.office-decision-custom textarea:disabled { background: #f5f7f5; color: #8b958e; }
+.office-decision-custom textarea::placeholder { color: #a1aba3; }
 .office-decision-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e9eeea; }
 .office-decision-actions > span { margin-right: auto; color: #939c96; font-size: 10px; }
 .office-decision-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 12px; border: 1px solid transparent; border-radius: 6px; font: inherit; font-size: 12px; }

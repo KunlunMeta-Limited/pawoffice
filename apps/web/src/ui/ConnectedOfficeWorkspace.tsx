@@ -70,5 +70,5 @@ export function ConnectedOfficeWorkspace({ baseUrl, renderOffice }: { baseUrl: s
         if (conversationId) session?.chat.select(conversationId)
         select(id); setFocusedDecisionTeamId(id); setDecisionOpenToken(value => value + 1)
       },
-      resolveDecision: (teamId, decisionId, choiceId) => { void state.offices.find(item => item.id === teamId)?.session.decisions.choose(teamId, decisionId, choiceId) } } })
+      resolveDecision: (teamId, decisionId, choiceId, customText) => { void state.offices.find(item => item.id === teamId)?.session.decisions.choose(teamId, decisionId, choiceId, customText) } } })
 }

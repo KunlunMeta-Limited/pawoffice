@@ -4,7 +4,8 @@ import { parseProtocolObject } from './schema.ts'
 
 export const chatPath = '/api/pawoffice/chat'
 export const maxChatReplyCharacters = 50000
-export const chatTimeoutMs = 180000
+// Only history/cancel have a deadline. Send/resume streams have no duration limit.
+export const chatControlTimeoutMs = 15000
 export const officeChatConfigSchema = z.strictObject({ url: z.union([z.literal(''), z.url({ protocol: /^https?$/ }).refine(value => {
   try {
     const url = new URL(value)

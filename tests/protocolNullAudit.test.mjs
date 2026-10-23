@@ -57,7 +57,8 @@ test('every value position in all request, response and event variants rejects a
     { type: 'ui.respond', interactionId: 'interaction', presentation: { target: 'whiteboard', snapshot: state } },
     { type: 'ui.respond', interactionId: 'interaction', presentation: { target: 'result', success: true, message: '' } },
     { conversationId: 'main', type: 'decision.request', teamId: 'audit', timeoutMs: 1000, decision: { id: 'menu', actorId: 'office-lead', kind: 'confirmation', title: '确认', description: '', confirmLabel: '是', rejectLabel: '否' } },
-    { conversationId: 'main', type: 'decision.request', teamId: 'audit', timeoutMs: 1000, decision: { id: 'menu', actorId: '', kind: 'choice', title: '选择', description: '', options: [{ id: 'a', label: '甲', description: '' }, { id: 'b', label: '乙', description: '' }] } })
+    { conversationId: 'main', type: 'decision.request', teamId: 'audit', timeoutMs: 1000, decision: { id: 'menu', actorId: '', kind: 'choice', title: '选择', description: '', options: [{ id: 'a', label: '甲', description: '' }, { id: 'b', label: '乙', description: '' }] } },
+    { conversationId: 'main', type: 'decision.request', teamId: 'audit', timeoutMs: 1000, decision: { id: 'menu-no-custom', actorId: 'office-lead', kind: 'choice', allowCustom: false, title: '选择', description: '', options: [{ id: 'a', label: '甲', description: '' }, { id: 'b', label: '乙', description: '' }] } })
   add(commandSchema, activity, { ...common, type: 'activity.stop', activityId: 'activity' }, { ...common, type: 'command.cancel', targetCommandId: 'target' },
     { ...common, type: 'actor.presentation.set', actorId: 'actor', sourceRevision: 1, status: 'thinking', title: '' },
     { ...common, type: 'object.state.set', entityId: 'prop', expectedStateRevision: 0, state: { title: '', values: [{ value: false }] } })
@@ -83,7 +84,8 @@ test('every value position in all request, response and event variants rejects a
   add(officeUiActionSchema, ...actions)
   add(officeSuccessResultSchema, { actions: [actions[0]] }, { actions: [] }, { interactionId: 'interaction', delivered: true },
     { teamId: 'audit', seq: 1, status: 'ignored', reasonCode: 'STALE_SEQ' },
-    { conversationId: 'main', teamId: 'audit', decisionId: 'menu', choiceId: 'ok', label: '确认' })
+    { conversationId: 'main', teamId: 'audit', decisionId: 'menu', choiceId: 'ok', label: '确认' },
+    { conversationId: 'main', teamId: 'audit', decisionId: 'menu', choiceId: 'custom', label: '其他', customText: '自定义说明' })
   const scene = { protocolVersion: '2.0', sceneId: 'audit', command: { type: 'object' }, batch: { type: 'object' },
     actors: [{ id: 'actor', name: '人物', templateId: 'person', position: { x: 0, y: 0 }, presentation: { status: 'idle', title: '', sourceRevision: 0 } }],
     objects: [{ id: 'prop', name: '物品', templateId: 'object', state: { value: '' }, stateRevision: 0, stateSchema: { type: 'object' } }],

@@ -26,7 +26,7 @@ export type OfficeTeamSelection = {
   focusedDecisionTeamId?: string
   select: (id: string) => void
   openDecisions?: (id: string) => void
-  resolveDecision?: (teamId: string, decisionId: string, choiceId: string) => void
+  resolveDecision?: (teamId: string, decisionId: string, choiceId: string, customText?: string) => void
   create?: (input: OfficeCreationInput) => Promise<void>
 }
 

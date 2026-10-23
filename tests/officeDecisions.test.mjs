@@ -4,6 +4,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { readFile } from 'node:fs/promises'
 import { createTestServer } from './helpers/vite.mjs'
+import { maxDecisionCustomText } from '@pawoffice/protocol/office-integration'
 
 let server, DecisionSession, createDecisionPreview, DecisionCard, OfficeDecisionPanel
 before(async () => {
@@ -57,7 +58,7 @@ test('choice cards use radio options and cannot submit before selection', () => 
   const html = renderToStaticMarkup(createElement(DecisionCard, {
     request: createDecisionPreview(teamId, requester)[0], count: 2, preview: true, onResolve() {}, onCollapse() {},
   }))
-  assert.equal((html.match(/type="radio"/g) ?? []).length, 3)
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 4)
   assert.match(html, /disabled=""[^>]*>[^]*提交选择/)
   assert(html.includes('收起待决定面板'))
   assert(html.includes('本地演示'))
@@ -174,4 +175,65 @@ test('a newly arrived request cancels the old receipt timer without touching its
   assert.equal(session.getSnapshot().receipt, null)
   assert.equal(session.getSnapshot().pending[0].id, 'new-request')
   assert.equal(session.getSnapshot().records.length, 1)
+})
+
+test('custom choice text is trimmed, bounded and recorded without changing standard options', t => {
+  const request = createDecisionPreview(teamId, requester)[0], session = new DecisionSession(teamId, [request])
+  t.after(() => session.clearReceipt())
+  assert.equal(session.resolve(teamId, request.id, 'custom'), null)
+  assert.equal(session.resolve(teamId, request.id, 'custom', '   '), null)
+  assert.equal(session.resolve(teamId, request.id, 'custom', 'x'.repeat(maxDecisionCustomText + 1)), null)
+  assert.equal(session.resolve(teamId, request.id, 'missing', '夹带自由文本'), null)
+  assert.equal(session.getSnapshot().pending.length, 1)
+  const record = session.resolve(teamId, request.id, 'custom', '  需要补充导出能力  ')
+  assert.equal(record.choiceId, 'custom')
+  assert.equal(record.label, '需要补充导出能力')
+  assert.equal(record.customText, '需要补充导出能力')
+  assert.equal(session.getSnapshot().receipt?.label, '需要补充导出能力')
+  assert.equal(session.getSnapshot().receipt?.customText, '需要补充导出能力')
+})
+
+test('allowCustom false rejects custom text while standard choices keep working', t => {
+  const request = { ...createDecisionPreview(teamId, requester)[0], id: 'no-custom', allowCustom: false }
+  const session = new DecisionSession(teamId, [request])
+  t.after(() => session.clearReceipt())
+  assert.equal(session.resolve(teamId, request.id, 'custom', '自定义需求'), null)
+  assert.equal(session.resolve(teamId, request.id, 'core').label, '先打通核心流程')
+})
+
+test('remote custom choices submit trimmed text through the registered callback', async t => {
+  const request = { teamId, id: 'remote-custom', kind: 'choice', allowCustom: true, requester, title: '选择处理方式', description: '',
+    options: [{ id: 'one', label: '方案一', description: '' }, { id: 'two', label: '方案二', description: '' }] }
+  const session = new DecisionSession(teamId), submitted = []
+  t.after(() => session.clearReceipt())
+  assert.equal(session.enqueue(request, async (choiceId, customText) => { submitted.push([choiceId, customText]) }), true)
+  const record = await session.choose(teamId, request.id, 'custom', ' 新增导出能力 ')
+  assert.deepEqual(submitted, [['custom', '新增导出能力']])
+  assert.equal(record.label, '新增导出能力')
+  assert.equal(record.customText, '新增导出能力')
+})
+
+test('omitted allowCustom allows custom text without a custom option', t => {
+  const request = { teamId, id: 'default-custom', kind: 'choice', requester, title: '选择处理方式', description: '',
+    options: [{ id: 'one', label: '方案一', description: '' }, { id: 'two', label: '方案二', description: '' }] }
+  const session = new DecisionSession(teamId, [request])
+  t.after(() => session.clearReceipt())
+  assert.equal(session.resolve(teamId, request.id, 'custom', ' 自定义需求 ').customText, '自定义需求')
+})
+
+test('choice cards offer custom input as a radio option with the editor initially hidden', () => {
+  const [choice, confirmation] = createDecisionPreview(teamId, requester)
+  const render = request => renderToStaticMarkup(createElement(DecisionCard, { request, count: 1, onResolve() {}, onCollapse() {} }))
+  const html = render(choice)
+  assert.equal((html.match(/type="radio"/g) ?? []).length, 4)
+  assert.match(html, /<label data-selected="false"><input type="radio"[^>]*value="custom"[^>]*><span><strong>其他需求<\/strong><small>填写你的具体需求<\/small><\/span><\/label>/)
+  assert(!html.includes('class="office-decision-secondary"'))
+  assert(!html.includes('<textarea'))
+  assert(!html.includes('class="office-decision-custom"'))
+  assert.match(html, /disabled=""[^>]*>[^]*提交选择/)
+  assert(!render(confirmation).includes('<textarea'))
+  assert(!render(confirmation).includes('其他需求'))
+  const optedOut = { ...choice, allowCustom: false }
+  assert(!render(optedOut).includes('<textarea'))
+  assert(!render(optedOut).includes('其他需求'))
 })

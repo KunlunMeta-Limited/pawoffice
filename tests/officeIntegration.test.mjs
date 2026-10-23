@@ -475,3 +475,28 @@ test('connection readiness follows state synchronization and decision enqueue fa
   for (let i = 0; i < 31; i++) decisions.enqueue({ ...item, id: `menu-${i}` })
   assert.equal(decisions.enqueueError({ ...item, id: 'full' }), 'DECISION_QUEUE_FULL')
 })
+
+test('remote choice decisions send custom text with the fixed custom label and leave standard payloads unchanged', async t => {
+  const { integration, send, replies } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot()] })
+  const options = [{ id: 'one', label: '方案一' }, { id: 'two', label: '方案二' }]
+  assert.equal(await send('custom', { conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 60000,
+    decision: { id: 'custom-approval', kind: 'choice', allowCustom: true, title: '如何处理？', options } }), undefined)
+  const decisions = integration.getSnapshot().offices[0].session.decisions
+  assert.equal(await decisions.choose('team-a', 'custom-approval', 'custom', '   '), null)
+  assert.equal(await decisions.choose('team-a', 'custom-approval', 'custom', 'x'.repeat(1001)), null)
+  assert.equal(replies.filter(reply => reply.responseToken === 'reply-custom').length, 0)
+  const custom = await decisions.choose('team-a', 'custom-approval', 'custom', '  需要导出能力  ')
+  assert.equal(custom.label, '需要导出能力')
+  assert.equal(custom.customText, '需要导出能力')
+  const customReplies = replies.filter(reply => reply.responseToken === 'reply-custom')
+  assert.equal(customReplies.length, 1)
+  assert.deepEqual(customReplies[0].result.data, { teamId: 'team-a', conversationId: 'main', decisionId: 'custom-approval', choiceId: 'custom', label: '其他', customText: '需要导出能力' })
+
+  assert.equal(await send('standard', { conversationId: 'main', type: 'decision.request', teamId: 'team-a', timeoutMs: 60000,
+    decision: { id: 'standard-choice', kind: 'choice', title: '如何处理？', options } }), undefined)
+  const standard = await decisions.choose('team-a', 'standard-choice', 'one')
+  assert.equal(standard.choiceId, 'one')
+  assert.deepEqual(replies.find(reply => reply.responseToken === 'reply-standard').result.data,
+    { teamId: 'team-a', conversationId: 'main', decisionId: 'standard-choice', choiceId: 'one', label: '方案一' })
+})
