@@ -1,0 +1,14 @@
+{
+  "tool": "built-in image_gen",
+  "mode": "edit",
+  "reference": "reference.png",
+  "original": "illustration.png",
+  "runtimeAsset": "../../../public/assets/office/empty-office.webp",
+  "transparentBackground": false,
+  "prompt": "Use case: precise-object-edit. Create a production illustration asset for the PawOffice empty office screen, using the attached UI screenshot as a visual reference. Extract and faithfully recreate ONLY the illustration at the top of that screenshot as a clean standalone illustration, without any UI text, headings, feature icons, separators, buttons, border, panel, or gray outer background. Center the same cute small 3D chibi office worker viewed from behind, tousled dark brown hair, white and orange top, seated in a pale beige office chair bearing a subtle paw-print on its back. At his right is the same curled sleepy orange-and-white cat. A tiny warm question-mark speech bubble floats near the worker. Behind them an unfinished office is suggested with delicate very pale blue-gray dashed blueprint line art: desk, large blank wall board, a slim bookcase on the left and a plant and filing cabinet on the right. The worker and cat are gently rendered with soft clay-like 3D shading, while background furniture stays faint line art. Bright pure white #FFFFFF background, subtle grounding shadows. Wide horizontal composition, illustration fills most of the image, moderate white margin all around, no cropped objects. Match the reference's friendly quiet mood and composition. No letters, words, watermark, or extra characters. This asset will sit above live HTML heading and button; generate only the illustration.",
+  "export": {
+    "format": "webp",
+    "width": 1280,
+    "quality": 88
+  }
+}

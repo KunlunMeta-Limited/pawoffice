@@ -12,7 +12,7 @@ export type OfficeSnapshot = {
   whiteboard: { template: 'task-board-v1'; title: string; status: string; description: string; note: string; steps: { id: string; title: string; progress: number }[] }
   }[]
 }
-export type UserAction = { id: string; teamId: string; conversationId: string; action: string; actorId?: string; employeeId?: string; taskId?: string; interactionId?: string; optionId?: string }
+export type UserAction = { id: string; teamId: string; conversationId: string; action: string; name?: string; actorId?: string; employeeId?: string; taskId?: string; interactionId?: string; optionId?: string }
 export type Capabilities = { scene: { actors: { id: string; name: string; position: { x: number; y: number } }[];
   capabilities: { id: string }[] }; ui: object; requests: object; responses: object }
 export type OfficeRead = { snapshot: OfficeSnapshot; scene: Capabilities['scene']; pendingDecisions: string[] }

@@ -38,4 +38,5 @@
 - `DemoOfficeDirectory` 实现本地示例创建，新增办公室拥有独立的业务数据源和运行时，任务初始为空。新增定义的 ID、名称存储在 `pawoffice:classic:demo-offices:v1`，刷新后恢复；这不是完整业务状态、聊天或决策历史的持久化。
 - 多标签页创建使用浏览器 Web Locks 串行保存，并在锁内重新读取、校验、合并最新目录，避免旧页面覆盖新办公室。现有会话对象不重建；其他标签页新增的办公室在刷新后显示。本地持久化创建需要支持 Web Locks 的安全上下文（HTTPS 或 localhost），不支持时明确报错，不增加后端接口或连接租约。
 - `OfficeTeamHost` 对会话集合增量更新，只启动新增或上次启动失败的会话，不停止或重启已正常运行的会话。动画时钟不会因列表追加而重建。
-- 服务器模式由后端发送 `offices.initialize` 新增或更新办公室。已有运行时保留；完整快照、白板与 `seq` 缓存在 `pawoffice:connected-offices:v3`。Fastify 内存随服务重启清空，需要后端重新初始化；前端此时提示等待同步。未完成菜单不补播，超时不产生默认选择。
+- 服务器模式的空状态提供「新建办公室」入口，复用名称表单，通过 `/api/pawoffice/ui` 发起 `office.create`，此时 `teamId`、`conversationId` 为空字符串。外部主机通过 `ui.next` 领取操作，创建真实工作空间后，以 `ui.respond` 返回 `target: "office"` 和完整快照。服务端缓存快照并通过 SSE 同步所有页面，发起页面进入新办公室。失败时保留表单，不创建本地替代办公室。已有办公室的团队空间加号使用同一链路。
+- 后端仍可通过 `offices.initialize` 主动新增或更新已有工作空间。两条入口均保留已有运行时；完整快照、白板与 `seq` 缓存在 `pawoffice:connected-offices:v5`。Fastify 内存随服务重启清空，需要后端重新初始化；前端此时显示空状态创建入口并等待同步。未完成菜单不补播，超时不产生默认选择。协议和示例见[从空状态创建办公室](../../integration/docs/office-integration.md#从空状态创建办公室)。

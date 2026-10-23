@@ -63,7 +63,7 @@ export function OfficeShell({ connection, dashboard, dashboardError, sceneLinkEr
   const runAction = (action: DashboardAction) => { void executeAction(action).catch(() => {}) }
   const resource = (label: string, value: number | undefined, tone: string) => <div className="runtime-resource-row" key={label}><span>{label}</span><div className="runtime-meter"><i className={tone} style={{ width: `${Math.max(0, value ?? 0)}%` }} /></div><strong>{value === undefined || value < 0 ? '—' : `${Math.round(value)}%`}</strong></div>
 
-  return <div className={`runtime-workspace ${editing ? 'map-editing' : ''}`}>
+  return <div className={`runtime-workspace ${editing ? 'map-editing' : ''}`} data-empty={!hasOffice}>
     <aside className="runtime-sidebar">
       <a className="runtime-brand" href={import.meta.env.BASE_URL} title="PawOffice 首页"><img className="runtime-brand-title" src={`${import.meta.env.BASE_URL}brand/title.png`} width={2172} height={724} alt="PawOffice" /></a>
       <nav aria-label="主导航" className="runtime-nav">

@@ -26,6 +26,37 @@ async function canvasDensity(page: Page) {
   return density
 }
 
+for (const mobile of [false, true]) test(`empty office welcome creates a backend-owned office and recovers from rejection (${mobile ? 'mobile' : 'desktop'})`, async ({ backend, page, service }, testInfo) => {
+  if (mobile) await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(service.url)
+  await expect(page.getByRole('heading', { name: '还没有办公室' })).toBeVisible()
+  const art = page.getByRole('img', { name: '等待布置办公室的同事与小猫' })
+  await expect(art).toBeVisible()
+  await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
+  await expect(page.locator('canvas')).toHaveCount(0)
+  await testInfo.attach('empty-office', { body: await page.screenshot(), contentType: 'image/png' })
+  await page.getByRole('button', { name: '新建办公室', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '创建办公室', exact: true })
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel('办公室名称', { exact: true }).fill('我的新办公室')
+  await dialog.getByRole('button', { name: '创建办公室', exact: true }).click()
+  const rejected = (await backend.next()).data.actions[0]
+  expect(rejected).toMatchObject({ action: 'office.create', name: '我的新办公室', teamId: '', conversationId: '' })
+  await backend.respond(rejected.id, { target: 'result', success: false, message: '工作目录暂不可用，请重试' })
+  await expect(dialog.getByRole('alert')).toHaveText('工作目录暂不可用，请重试')
+  await expect(page.locator('canvas')).toHaveCount(0)
+  await dialog.getByRole('button', { name: '创建办公室', exact: true }).click()
+  const accepted = (await backend.next()).data.actions[0]
+  const created = office('new-office'); created.workspace.name = accepted.name!
+  await backend.respond(accepted.id, { target: 'office', snapshot: created })
+  await expect(dialog).toBeHidden()
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 30000 })
+  await expect(page.getByRole('button', { name: /团队空间，当前团队：我的新办公室/ })).toBeVisible()
+  await page.reload()
+  await expect(page.locator('canvas')).toBeVisible({ timeout: 30000 })
+  await expect(page.getByRole('heading', { name: '还没有办公室' })).toHaveCount(0)
+})
+
 test('conversation tabs isolate pushed tasks, wall boards and drafts, including background updates and reload', async ({ backend, page, service }, testInfo) => {
   const state = office()
   state.conversations[0].title = '登录开发'

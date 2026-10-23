@@ -47,6 +47,15 @@ export class OfficeIntegrationSession {
   getSnapshot = () => this.state
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
 
+  async registerCreatedOffice(snapshot: OfficeSnapshot) {
+    if (!this.active) throw new Error('页面连接已关闭，请刷新后重试')
+    this.receive(officeSyncSchema.parse({ type: 'office.sync', snapshot }))
+    await this.work
+    const session = this.offices.get(snapshot.workspace.id)?.session
+    const state = session?.getSnapshot()
+    if (!state || state.dashboardError || state.sceneLinkError) throw new Error(state?.dashboardError || state?.sceneLinkError || '办公室尚未就绪，请刷新后重试')
+  }
+
   async start() {
     if (this.active) return
     this.active = true

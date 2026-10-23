@@ -69,6 +69,7 @@ export { officeUiManifest }
 
 const uiBase = { id: idSchema, teamId: idSchema, conversationId: idSchema }
 export const officeUiActionSchema = z.discriminatedUnion('action', [
+  z.strictObject({ id: idSchema, teamId: z.literal(''), conversationId: z.literal(''), action: z.literal('office.create'), name: z.string().trim().min(1).max(40) }),
   z.strictObject({ ...uiBase, action: z.literal('conversation.delete') }),
   z.strictObject({ ...uiBase, action: z.literal('actor.inspect'), actorId: idSchema }),
   z.strictObject({ ...uiBase, action: z.literal('employee.inspect'), employeeId: z.string().min(1).max(100) }),
@@ -82,6 +83,7 @@ export const officeDialogSchema = z.strictObject({ template: z.literal('detail-v
   actions: z.array(z.strictObject({ id: idSchema, label: text })).max(8).default([]),
 })
 export const officeUiPresentationSchema = z.discriminatedUnion('target', [
+  z.strictObject({ target: z.literal('office'), snapshot: officeSnapshotSchema }),
   z.strictObject({ target: z.literal('result'), success: z.boolean(), message: z.string().max(4000).default('') }),
   z.strictObject({ target: z.literal('dialog'), content: officeDialogSchema }),
   z.strictObject({ target: z.literal('whiteboard'), snapshot: officeSnapshotSchema }),

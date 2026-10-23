@@ -129,7 +129,9 @@ test('adding a team starts only that session and preserves existing lifecycle', 
 test('an empty scene exposes the plus creation entry without instantiating a canvas', () => {
   const html = renderToStaticMarkup(createElement(OfficeEmptyState, { create: async () => {} }))
   assert(html.includes('办公室空状态'))
-  assert(html.includes('创建办公室'))
+  assert(html.includes('新建办公室'))
+  assert(html.includes('还没有办公室'))
+  assert(html.includes('assets/office/empty-office.webp'))
   assert(html.includes('lucide-plus'))
   assert(!html.includes('<canvas'))
   const unavailable = renderToStaticMarkup(createElement(OfficeEmptyState))

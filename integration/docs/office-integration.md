@@ -35,14 +35,25 @@ sequenceDiagram
     B->>S: GET /api/pawoffice/events?workspace=1，建立SSE连接
     S-->>B: 发送已缓存的最新办公室状态
 
-    Note over E,B: 二、初始化办公室
+    Note over E,B: 二、创建或初始化办公室
     E->>S: office.capabilities：查询人物、行为和展示规范
     S-->>E: 返回能力及字段定义
-    E->>S: offices.initialize：提交办公室数据及可选聊天地址
-    S-->>B: SSE发送初始化数据
-    B->>B: 创建各办公室运行时并展示
-    B->>S: POST /api/pawoffice/reply，报告初始化结果
-    S-->>E: 原初始化请求返回200及办公室就绪状态
+    alt 用户从空状态新建办公室
+        E->>S: ui.next：等待用户操作
+        B->>S: POST /api/pawoffice/ui，office.create + name
+        S-->>E: 返回创建操作，teamId和conversationId为空
+        E->>E: 创建真实工作空间，分配稳定ID
+        E->>S: ui.respond：target为office，携带完整snapshot
+        S->>S: 缓存办公室快照
+        S-->>B: SSE同步新办公室，原创建请求返回快照
+        B->>B: 创建运行时，进入新办公室
+    else 后端主动同步已有工作空间
+        E->>S: offices.initialize：提交办公室数据及可选聊天地址
+        S-->>B: SSE发送初始化数据
+        B->>B: 创建各办公室运行时并展示
+        B->>S: POST /api/pawoffice/reply，报告初始化结果
+        S-->>E: 原初始化请求返回200及办公室就绪状态
+    end
 
     Note over E,B: 三、更新任务和白板
     E->>E: 执行业务，生成完整快照和更大的seq
@@ -502,7 +513,7 @@ sequenceDiagram
 
 ## 6. 处理用户操作
 
-用户点击人物、成员列表、任务按钮或详情选项时，浏览器将操作发送给 PawOffice 服务端。外部业务后端调用 `ui.next` 领取操作，处理后调用 `ui.respond` 返回展示内容：
+用户新建办公室、点击人物、成员列表、任务按钮或详情选项时，浏览器将操作发送给 PawOffice 服务端。外部业务后端调用 `ui.next` 领取操作，处理后调用 `ui.respond` 返回展示内容：
 
 ```text
 用户操作 -> 浏览器提交操作 -> PawOffice 服务端暂存
@@ -542,6 +553,7 @@ sequenceDiagram
 
 | `action` | 业务字段 |
 | --- | --- |
+| `office.create` | `name`：办公室名称，1–40 字；`teamId`、`conversationId` 固定为空字符串，初始化前即可使用 |
 | `actor.inspect` | `actorId`：场景人物 ID |
 | `employee.inspect` | `employeeId`：业务成员 ID |
 | `task.start`、`task.block`、`task.complete` | `taskId`：任务 ID |
@@ -549,7 +561,7 @@ sequenceDiagram
 | `dialog.action` | `interactionId`：原详情请求 ID；`optionId`：详情按钮 ID |
 | `conversation.delete` | 使用操作中的 `teamId`、`conversationId` 指定待删除会话，无额外业务字段 |
 
-每项操作还包含 `id`、`teamId` 和 `conversationId`，后端按办公室及会话定位成员和任务。将操作的 `id` 作为 `ui.respond.interactionId`，返回展示结果：
+每项操作还包含 `id`、`teamId` 和 `conversationId`，后端按办公室及会话定位成员和任务。`office.create` 发起时尚无办公室，因此这两个引用为空。将操作的 `id` 作为 `ui.respond.interactionId`，返回展示结果：
 
 ```json
 {
@@ -565,6 +577,7 @@ sequenceDiagram
 
 | `target` | 参数 | 展示方式 |
 | --- | --- | --- |
+| `office` | `snapshot` | 仅用于 `office.create`，缓存新办公室完整快照并同步页面，发起页面自动进入办公室 |
 | `dialog` | `content` | 在详情对话框中展示 `detail-v1` 内容，包含标题、描述、字段列表和最多 8 个按钮 |
 | `whiteboard` | `snapshot` | 应用所属办公室的新版本完整快照，更新其中的白板和其他业务状态 |
 | `result` | `success`、`message` | 返回操作是否成功及原因，不打开详情对话框 |
@@ -574,6 +587,36 @@ sequenceDiagram
 详情对话框仅在请求所属会话仍被选中时显示，迟到结果不会覆盖另一个会话。白板展示结果必须携带包含请求所属会话的完整办公室快照；服务端缓存全部会话，浏览器只显示所选会话的数据。
 
 用户操作最多保留并等待处理 60 秒，超时后页面提示失败，后续 `ui.respond` 返回 `410 UI_REQUEST_EXPIRED`。领取后的操作不会再次返回给其他 `ui.next` 请求。任务按钮的实际业务处理由外部业务后端执行，处理后通过 `office.snapshot` 同步结果。
+
+### 从空状态创建办公室
+
+无办公室时，PawOffice 显示引导页；点击「新建办公室」填写名称后，向 `/api/pawoffice/ui` 提交操作。已有办公室时，团队空间中的加号使用相同流程。前端不创建虚假的本地办公室。
+
+外部后端通过 `ui.next` 收到：
+
+```json
+{ "id": "create-1", "action": "office.create", "teamId": "", "conversationId": "", "name": "产品研发团队" }
+```
+
+后端负责创建真实工作空间、选择或校验主机工作目录，并分配稳定办公室 ID。成功后返回 `target: "office"` 及完整快照，无需另外调用 `offices.initialize`。PawOffice 缓存快照并同步所有已连接页面，发起创建的页面自动进入新办公室。
+
+```json
+{
+  "type": "ui.respond", "interactionId": "create-1",
+  "presentation": {
+    "target": "office",
+    "snapshot": {
+      "schemaVersion": "1.0", "seq": 1,
+      "workspace": { "id": "host-workspace-id", "name": "产品研发团队" },
+      "conversations": [{ "id": "main", "title": "主会话", "employees": [], "tasks": [], "events": [] }]
+    }
+  }
+}
+```
+
+工作空间 ID 必须未被占用；已有 ID 返回 `409 OFFICE_ALREADY_EXISTS`，不会覆盖已有办公室。失败时返回 `target: "result", success: false, message: "失败原因"`，页面保留表单及名称以便重试；不能只返回 `success: true` 而不提供快照。`office` 展示结果仅用于 `office.create`，不能用于其他用户操作。聊天地址仍由后端通过 `offices.initialize.chat` 注册，可以在没有办公室时先用空数组配置。
+
+操作同样最长等待 60 秒，已领取的请求不会重复投递。后端应按操作 `id` 做创建幂等，并在创建耗时较长时处理用户取消或超时后的工作空间归属。参考客户端 `npm run integration-ui-example` 提供内存示例；接入主机时需替换成真实工作空间创建。
 
 ### 删除会话
 

@@ -121,6 +121,19 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
       if (data.type === 'ui.respond') {
         const action = ui.get(data.interactionId)
         if (!action) throw new OfficeStateFault(410, 'UI_REQUEST_EXPIRED', '用户请求已结束或超时')
+        if (action.action === 'office.create') {
+          if (data.presentation.target === 'office') {
+            const snapshot = data.presentation.snapshot
+            if (state.get(snapshot.workspace.id)) throw new OfficeStateFault(409, 'OFFICE_ALREADY_EXISTS', '新办公室 ID 已被使用')
+            state.apply([snapshot])
+            publishSnapshot(state.get(snapshot.workspace.id)!)
+            relay.publish(officeWorkspaceTopic, eventFrame({ type: 'office.sync.complete', offices: state.list().map(office => ({ teamId: office.workspace.id, seq: office.seq })) }))
+          } else if (data.presentation.target !== 'result' || data.presentation.success) {
+            throw new OfficeStateFault(400, 'INVALID_MESSAGE', '创建办公室须返回 office 快照，失败时返回 result')
+          }
+        } else if (data.presentation.target === 'office') {
+          throw new OfficeStateFault(400, 'INVALID_MESSAGE', 'office 展示结果仅适用于创建办公室')
+        }
         if (action.action === 'conversation.delete') {
           if (data.presentation.target !== 'result') throw new OfficeStateFault(400, 'INVALID_MESSAGE', '删除会话须返回 result 处理结果')
           if (data.presentation.success && state.get(action.teamId)?.conversations.some(item => item.id === action.conversationId)) {
@@ -191,14 +204,17 @@ export async function createPawOfficeServer(options: ServerOptions = {}) {
     if (!sameOrigin(request)) return reply.code(403).send(envelope(403, 'Use a same-origin browser connection'))
     const parsed = officeUiActionSchema.safeParse(request.body)
     if (!parsed.success) return reply.code(400).send(envelope(400, 'Invalid UI action', { reasonCode: 'UNSUPPORTED_UI_ACTION', issues: parsed.error.issues }))
-    const action = parsed.data, snapshot = state.get(action.teamId)
-    if (!snapshot) throw new OfficeStateFault(404, 'OFFICE_NOT_INITIALIZED', '办公室未初始化')
-    const conversation = snapshot.conversations.find(item => item.id === action.conversationId)
-    if (!conversation) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '操作所属会话不存在')
-    if (action.action === 'actor.inspect' && !OFFICE_ROSTER.some(actor => actor.id === action.actorId)) throw new OfficeStateFault(404, 'ACTOR_NOT_FOUND', '人物不存在')
-    if (action.action === 'employee.inspect' && !conversation.employees.some(employee => employee.id === action.employeeId)
-      || 'taskId' in action && !conversation.tasks.some(task => task.id === action.taskId)
-      || action.action === 'task.assign' && !conversation.employees.some(employee => employee.id === action.assigneeId)) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '用户操作引用的数据不存在')
+    const action = parsed.data
+    if (action.action !== 'office.create') {
+      const snapshot = state.get(action.teamId)
+      if (!snapshot) throw new OfficeStateFault(404, 'OFFICE_NOT_INITIALIZED', '办公室未初始化')
+      const conversation = snapshot.conversations.find(item => item.id === action.conversationId)
+      if (!conversation) throw new OfficeStateFault(404, 'CONVERSATION_NOT_FOUND', '操作所属会话不存在')
+      if (action.action === 'actor.inspect' && !OFFICE_ROSTER.some(actor => actor.id === action.actorId)) throw new OfficeStateFault(404, 'ACTOR_NOT_FOUND', '人物不存在')
+      if (action.action === 'employee.inspect' && !conversation.employees.some(employee => employee.id === action.employeeId)
+        || 'taskId' in action && !conversation.tasks.some(task => task.id === action.taskId)
+        || action.action === 'task.assign' && !conversation.employees.some(employee => employee.id === action.assigneeId)) throw new OfficeStateFault(400, 'INVALID_MESSAGE', '用户操作引用的数据不存在')
+    }
     const pending = ui.open(action), abort = () => pending.cancel()
     reply.raw.on('close', abort)
     const result = await pending.response; reply.raw.off('close', abort)

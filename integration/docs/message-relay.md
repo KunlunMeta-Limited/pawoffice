@@ -34,7 +34,7 @@ npm run dev                # Vite + Fastify，页面使用同源代理
 npm run dev:vite           # 纯前端演示，不启动连接
 ```
 
-开发 POST 地址默认为 `http://127.0.0.1:8765/api/pawoffice/messages`。设置 `PORT=其他端口 npm run dev` 时，Fastify 监听和 Vite 代理使用该端口。打开 `/office/` 后，页面等待外部业务后端初始化，可运行 `npm run integration-example` 联调。教室与农场通过各自场景入口加载；首页与 `/office/` 共同提供完整办公室并建立业务消息订阅；最小装配页面不建立业务消息订阅。
+开发 POST 地址默认为 `http://127.0.0.1:8765/api/pawoffice/messages`。设置 `PORT=其他端口 npm run dev` 时，Fastify 监听和 Vite 代理使用该端口。打开 `/office/` 后，没有办公室时显示创建引导；启动 `npm run integration-ui-example` 后，可从页面新建示例办公室。外部主机应接入 `office.create` 处理真实工作空间创建，也可运行 `npm run integration-example` 主动初始化已有办公室，详见[创建流程](./office-integration.md#从空状态创建办公室)。教室与农场通过各自场景入口加载；首页与 `/office/` 共同提供完整办公室并建立业务消息订阅；最小装配页面不建立业务消息订阅。
 
 Docker：
 

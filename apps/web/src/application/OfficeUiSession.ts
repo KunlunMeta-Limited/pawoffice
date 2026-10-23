@@ -1,7 +1,8 @@
 import type { OfficeUiAction, OfficeUiPresentation } from '@pawoffice/protocol/office-integration'
 import { notifySubscribers } from '../notifications.ts'
 
-export type OfficeUiIntent = OfficeUiAction extends infer T ? T extends OfficeUiAction ? Omit<T, 'id' | 'teamId' | 'conversationId'> : never : never
+type ScopedAction = Exclude<OfficeUiAction, { action: 'office.create' }>
+export type OfficeUiIntent = ScopedAction extends infer T ? T extends ScopedAction ? Omit<T, 'id' | 'teamId' | 'conversationId'> : never : never
 export class OfficeUiSession {
   private state: { pending: boolean; error: string | null; dialog: Extract<OfficeUiPresentation, { target: 'dialog' }>['content'] | null; interactionId: string | null } = { pending: false, error: null, dialog: null, interactionId: null }
   private listeners = new Set<() => void>()

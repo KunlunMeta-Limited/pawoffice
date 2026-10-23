@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL('../public', import.meta.url))
 
 test('application release only includes current catalogs, live fallbacks and PawOffice branding', async () => {
   const files = await collectReleaseAssets(root)
-  for (const name of ['brand/logo.png', 'brand/title.png', 'brand/icon.png', 'assets/office/preview.webp', 'LICENSE.txt', 'THIRD_PARTY_NOTICES.txt',
+  for (const name of ['brand/logo.png', 'brand/title.png', 'brand/icon.png', 'assets/office/preview.webp', 'assets/office/empty-office.webp', 'LICENSE.txt', 'THIRD_PARTY_NOTICES.txt',
     'pawoffice-config.js', 'characters/registry.json', 'assets/office/reference-v1/room-whiteboard-v3.png',
     'assets/office/effects/work-crafting-lite-v1.png', 'assets/office/effects/work-crafting-lite-v1.webp',
     'classroom-assets/roster.json', 'farm-assets/chickens.webp']) assert(files.has(name), name)

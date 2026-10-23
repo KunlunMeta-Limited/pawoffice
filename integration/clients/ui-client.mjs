@@ -14,6 +14,14 @@ try {
     const { actions } = await post({ type: 'ui.next', timeoutMs: 30000 }); const action = actions[0]
     if (!action) continue
     console.log('收到用户操作：', action)
+    if (action.action === 'office.create') {
+      // Replace this in-memory example with the host's actual workspace creation.
+      await post({ type: 'ui.respond', interactionId: action.id, presentation: { target: 'office', snapshot: {
+        schemaVersion: '1.0', seq: 1, workspace: { id: crypto.randomUUID(), name: action.name },
+        conversations: [{ id: 'main', title: '主会话', employees: [], tasks: [], events: [] }],
+      } } })
+      continue
+    }
     if (action.action === 'conversation.delete') {
       const { snapshot } = await post({ type: 'office.read', teamId: action.teamId })
       snapshot.seq++; snapshot.conversations = snapshot.conversations.filter(item => item.id !== action.conversationId)

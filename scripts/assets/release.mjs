@@ -3,7 +3,7 @@ import path from 'node:path'
 import { readAssetCatalogFiles } from './export-pack.mjs'
 
 const shared = ['LICENSE.txt', 'THIRD_PARTY_NOTICES.txt', 'pawoffice-config.js']
-const shellAssets = ['brand/logo.png', 'brand/title.png', 'brand/icon.png', 'assets/office/preview.webp']
+const shellAssets = ['brand/logo.png', 'brand/title.png', 'brand/icon.png', 'assets/office/preview.webp', 'assets/office/empty-office.webp']
 
 /** Publish current catalog entries, never the contents of an old generated directory. */
 export async function collectReleaseAssets(directory, product = 'app') {
