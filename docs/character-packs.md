@@ -17,12 +17,17 @@ art/characters/packs/office-lead/
   quality.json                     # 新增/修改正式素材必需
   review.json                      # 绑定素材版本的视觉验收
   idle/back/001.png
-  walk/back/001.png ... 004.png
+  body/idle/front/001.png
+  body/idle/right/001.png
+  body/walk/right/001.png, 003.png
+  standard-v2/walk/front/001.png ... 004.png
+  standard-v2/walk/back/001.png ... 004.png
   run/back/001.png ... 004.png
-  sit/back/001.png
-  pose/lean/001.png
-  pose/rise/001.png
-  talk/seated-right/001.png
+  standard-v2/sit/back/001.png
+  standard-v2/pose/lean/001.png
+  standard-v2/pose/rise/001.png
+  standard-v2/talk/seated-right/001.png
+  work/quiet-back-v2/001.png ... 004.png
   work/typing-back-v2/001.png ... 004.png
   work/computer-v1/body.png
   work/computer-v1/upper.png
@@ -39,6 +44,8 @@ public/characters/                 # 自动生成，不提交 Git
 ```
 
 源素材是维护入口；不要直接编辑生成的图集、注册表或 manifest。图片布局改变后，业务仍通过 `walk.back` 等名称访问动作。
+
+清理源图片时，同时核对 `character.json`、`standard.json`、制作配方与兼容性测试。旧的 `walk/back/` 成品已由当前帧替代并移除；其他五人的旧 `sit/`、`pose/` 成品也已移除。嘴型制作仍使用的原始 `idle/`、`walk/front/`、`walk/right/`、`talk/`，嘴型像素回归使用的早期 `body/` 成品，以及验证旧整图说话格式的 `speak/` 保留。`office-motion-v2/source-manifests/` 是迁移前配置的历史记录，不是可执行的当前素材清单；已清理的旧图片可从 Git 历史恢复。
 
 ## 制作规范
 

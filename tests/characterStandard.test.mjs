@@ -64,7 +64,7 @@ test(`${id}: locomotion, seat and typing clips share calibrated head areas and f
 
 test('a new uncalibrated frame cannot silently replace a standard clip', async () => {
   const { source, buffers } = await fixture()
-  source.clips['walk.back'].frames[0].file = 'walk/back/001.png'
+  source.clips['walk.back'].frames[0].file = 'unregistered/back.png'
   await assert.rejects(validateCharacterStandard(directory, source, buffers), /uncalibrated frame/)
 })
 

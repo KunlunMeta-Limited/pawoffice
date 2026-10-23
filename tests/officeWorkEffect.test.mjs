@@ -220,7 +220,8 @@ test('reduced motion keeps the working decoration still after fade-in', () => {
   } finally { view.dispose(); root.destroy({ children: true }); texture.destroy(true) }
 })
 
-for (const file of ['spritesheet.png', 'spritesheet-small-tools.png', 'spritesheet-small-tools-white-smoke.png', 'spritesheet-white-cloud-core.png']) test(`${file}: authoring sheet retains twelve transparent frames without edge clipping`, async () => {
+test('the current cloud authoring sheet retains twelve transparent frames without edge clipping', async () => {
+  const file = 'spritesheet-white-cloud-core.png'
   const image = await readFile(new URL(`../art/office/work-crafting-v1/${file}`, import.meta.url))
   const { data, info } = await sharp(image).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   assert.equal(info.width, 1448); assert.equal(info.height, 1086)
@@ -256,44 +257,6 @@ test('the runtime atlas uses six downscaled keyframes at less than one tenth of 
     const expected = await sharp(source).extract({ left: index % 4 * 362, top: Math.floor(index / 4) * 362, width: 362, height: 362 }).resize(160, 160).raw().toBuffer()
     const actual = await sharp(first).extract({ left: i % 3 * 160, top: Math.floor(i / 3) * 160, width: 160, height: 160 }).raw().toBuffer()
     assert(actual.every((value, channel) => Math.abs(value - expected[channel]) <= 1), 'PNG alpha compositing may round an 8-bit channel by one')
-  }
-})
-
-test('the smaller notebook keeps its half-size footprint through the smoke recoloring', async () => {
-  const notebookBounds = async (file, frame, denoise = false) => {
-    const { data, info } = await sharp(new URL(`../art/office/work-crafting-v1/${file}`, import.meta.url).pathname)
-      .extract({ left: frame % 4 * 362, top: Math.floor(frame / 4) * 362, width: 362, height: 362 }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    let left = info.width, right = -1, top = info.height, bottom = -1
-    const teal = i => data[i + 3] >= 192 && data[i] < 100 && data[i + 1] > data[i] * 1.3 && data[i + 2] > data[i] * 1.1 && data[i + 1] > data[i + 2]
-    for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
-      const i = (y * info.width + x) * 4
-      if (teal(i)) {
-        // Ignore isolated color noise when comparing the recolored outline.
-        if (denoise) {
-          let neighbors = 0
-          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-            if ((dx || dy) && x + dx >= 0 && x + dx < info.width && y + dy >= 0 && y + dy < info.height
-              && teal(i + (dy * info.width + dx) * 4)) neighbors++
-          }
-          if (neighbors < 2) continue
-        }
-        left = Math.min(left, x); right = Math.max(right, x); top = Math.min(top, y); bottom = Math.max(bottom, y)
-      }
-    }
-    assert(right >= left && bottom >= top)
-    return { width: right - left + 1, height: bottom - top + 1 }
-  }
-  for (const frame of [0, 2, 11]) {
-    const original = await notebookBounds('spritesheet.png', frame)
-    const smaller = await notebookBounds('spritesheet-small-tools.png', frame)
-    const beforeColor = await notebookBounds('spritesheet-small-tools.png', frame, true)
-    const afterColor = await notebookBounds('spritesheet-small-tools-white-smoke.png', frame, true)
-    for (const axis of ['width', 'height']) {
-      assert(smaller[axis] / original[axis] >= .4 && smaller[axis] / original[axis] <= .6,
-        `frame ${frame + 1}: ${axis} must remain close to half size, regardless of flight placement`)
-      assert(Math.abs(afterColor[axis] - beforeColor[axis]) * effect.OFFICE_WORK_EFFECT.cellPixels / 362 <= 4,
-        `frame ${frame + 1}: the painted tool outline must stay within four runtime pixels of its prior footprint`)
-    }
   }
 })
 

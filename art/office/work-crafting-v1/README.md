@@ -24,7 +24,9 @@ It replaces the procedural floating-icon prototype.
   Intact clusters are centered with transparent padding, without scaling;
   every cell shares a 330-pixel baseline and transparent footer.
 - Runtime dimensions, six-frame timing, 80% opacity, seat offset and depth
-  ordering are unchanged. Older sheets below are authoring history only.
+  ordering are unchanged. Only this current authoring sheet is kept in the
+  working tree. Retired sheets mentioned below are recoverable from Git history;
+  their generation IDs and prompts remain here for provenance.
 
 Cloud-core edit prompt:
 
@@ -38,7 +40,7 @@ Use case: precise-object-edit. This is an approved twelve-frame WHITE CLOUD CORE
 
 - Generated with the built-in ImageGen tool on 2026-10-19.
 - Output ID: `exec-b748fe44-243e-4cb9-8191-bbea1e31972b`.
-- Original output, unchanged: `spritesheet.png`, 1448 x 1086 RGBA.
+- Retired original: `spritesheet.png`, 1448 x 1086 RGBA, available in Git history.
 - Original grid: 4 columns x 3 rows, 362 x 362 pixels per frame, row-major order.
 - Scene attachment: own workstation, seated/back view only. The effect sits
   above the desk depth but behind the seated worker and chair, never in the UI
@@ -73,7 +75,7 @@ remain tracked. The browser never requests the original high-resolution sheet.
 
 ## Smaller Tools
 
-- Half-size authoring variant: `spritesheet-small-tools.png`, 1448 x 1086 RGBA,
+- Retired half-size variant: `spritesheet-small-tools.png` (Git history), 1448 x 1086 RGBA,
   with the same 4 x 3 grid, 362-pixel cells and ground registration.
 - Edited with the built-in ImageGen tool on 2026-10-19.
 - Initial resize output ID: `exec-d2e0fdea-8f61-4f8e-b8c7-a12f4cea474a`.
@@ -85,7 +87,7 @@ remain tracked. The browser never requests the original high-resolution sheet.
   remain visible behind the character instead of disappearing behind the head.
 - Smoke keeps its original scene scale. Playback, frame count, runtime atlas
   dimensions and layering are unchanged. The office uses a 20/60 FPS rendering profile.
-- The original `spritesheet.png` remains untouched as the source reference.
+- The original `spritesheet.png` is recoverable from Git history.
 
 Edit prompt:
 
@@ -97,7 +99,7 @@ Use case: precise-object-edit. Edit target: this transparent 1448 x 1086 sprites
 
 ## White Smoke
 
-- Historical white-smoke variant: `spritesheet-small-tools-white-smoke.png`,
+- Retired white-smoke variant: `spritesheet-small-tools-white-smoke.png` (Git history),
   1448 x 1086 RGBA with the original 4 x 3 grid and 362-pixel cells.
 - Edited with built-in ImageGen on 2026-10-19.
 - Initial recolor output ID: `exec-6e88757b-1757-4b70-abd7-d616da2ee451`.
@@ -108,8 +110,8 @@ Use case: precise-object-edit. Edit target: this transparent 1448 x 1086 sprites
   fade behavior are unchanged. The scene renders idle work at 20 FPS and walking
   or seat transitions at 60 FPS. Current render
   opacity and vertical offset are listed under Source And Registration.
-- Earlier source variants are retained for authoring history, not loaded by the
-  browser or included in the runtime asset catalog.
+- Earlier source variants have been removed from the working tree. Their prompt
+  records remain here; the browser and runtime catalog use the current cloud sheet.
 
 Edit prompt:
 

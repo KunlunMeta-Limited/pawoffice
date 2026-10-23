@@ -21,8 +21,9 @@ furniture and rendering scale. V1 is preserved as a rejected resting-pose trial.
 
 Generated using the built-in ImageGen tool. `pose-prompt.txt`,
 `pose-correction-prompt.txt` and `contact-correction-prompt.txt` retain the exact
-pose requests. `pose-attempt-1.png` still had low wrists; `pose-attempt-2.png`
-reached only the desk edge. `pose-attempt-3.png` is the selected base.
+pose requests. The first two rejected pose attempts had low wrists or reached
+only the desk edge; their images are recoverable from Git history.
+`pose-attempt-3.png` is the retained, selected base.
 `motion-prompt.txt` and `motion-generated.png` contain the finger edit source.
 Output IDs, authored landmarks and local hand import rectangles are recorded
 in `registration.json`; actual transforms are in `registered-frames.json`.

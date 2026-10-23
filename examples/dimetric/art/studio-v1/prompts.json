@@ -15,6 +15,8 @@
     },
     {
       "file": "board.png",
+      "status": "retired",
+      "storage": "git-history",
       "generationId": "exec-4a4aa62c-8ab5-4647-a5de-c9299534a0c8.png",
       "prompt": "Use case: product-mockup. Asset type: one transparent freestanding whiteboard sprite for an interactive 2.5D office.\nUse supplied image only as reference for the polished miniature 3D material style and sunny upper-left light. Generate ONE large elegant mobile whiteboard, complete white writing surface, thin white and brushed-silver frame, two gray legs and four small caster wheels, narrow pen tray with three tiny colorful markers. Isolated real transparent alpha background, no floor plane or background. Landscape image 1024x768.\nThe board faces almost square toward the viewer, only a subtle 6 degree yaw so the right edge looks slightly smaller. Vertical sides vertical, top and bottom writing-surface edges almost horizontal. Writing surface is a broad 1.7:1 rectangle occupying roughly x 8%-92%, y 9%-68% of the canvas. Stand and wheels extend to y 94%, leave 4% clear padding. Board is slightly elevated-view compatible with an orthographic room camera at 30 degrees, but rotate its face toward the camera for reading dynamic content.\nNO text, NO scribbles, NO stickers, NO UI, NO sticky notes, NO people or plants, NO logo. The writing surface must be perfectly clean white, solid opaque, softly lit. This will carry a separate dynamic web UI layer; preserve a generous clean white writing area. High quality rounded product render, soft natural contact shadow only directly under caster wheels, transparent otherwise."
     },
