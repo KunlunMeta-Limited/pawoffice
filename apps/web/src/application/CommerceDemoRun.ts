@@ -31,11 +31,23 @@ export class CommerceDemoRun {
     for (const session of this.sessions) {
       session.simulation.pauseIdleCoffee()
       session.decisions.reset()
-      session.chat.select('main')
+      const prepareChat = () => {
+        if (this.ended) return
+        session.chat.restorePreviewConversation('main')
+        for (const entry of session.chat.getSnapshot().conversations) void entry.session.clearPreviewExchanges()
+      }
+      if (session.chat.getSnapshot().ready) prepareChat()
+      else void session.chat.ready.then(prepareChat)
       this.subscriptions.push(session.decisions.subscribe(() => this.checkDecision()))
+      let hasMain = session.chat.getSnapshot().conversations.some(entry => entry.id === 'main')
+      this.subscriptions.push(session.chat.subscribe(() => {
+        const present = session.chat.getSnapshot().conversations.some(entry => entry.id === 'main')
+        const removed = hasMain && !present
+        hasMain = present
+        if (removed) this.finish('stopped')
+      }))
       this.scenes.set(session, new CommerceSceneQueue(session.runtime))
       session.source.beginDispatch()
-      for (const entry of session.chat.getSnapshot().conversations) void entry.session.clearPreviewExchanges()
     }
     this.log('dispatch-start', '开始本轮商品准备。', '本轮成员先待命。负责人将依次走访工位，交代各自的商品任务；每人回应结束后才开工，不会提前开始。')
     this.dispatchAssignments(() => {
@@ -159,8 +171,8 @@ export class CommerceDemoRun {
   }
   private finish(stage: CommerceStage) {
     if (this.ended) return
-    if (stage !== this.stage) this.setStage(stage)
     this.ended = true
+    if (stage !== this.stage) this.setStage(stage)
     this.cleanup()
     this.owner.simulation.setDemo(false)
   }

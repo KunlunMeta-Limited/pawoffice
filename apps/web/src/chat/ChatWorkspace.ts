@@ -115,6 +115,11 @@ export class ChatWorkspace {
     if (!this.state.ready || !this.entries.has(id) || this.state.selectedId === id) return
     this.emit({ selectedId: id }); this.scheduleSave(); void this.selected?.synchronize(true)
   }
+  restorePreviewConversation(id: string) {
+    if (!this.state.ready || this.source.kind !== 'preview' || !this.catalogue.some(entry => entry.id === id)) return
+    if (this.deletedIds.delete(id)) { this.sync(this.catalogue); this.scheduleSave() }
+    this.select(id)
+  }
   create() {
     if (!this.state.ready) return
     const empty = [...this.entries.values()].find(entry => entry.local && entry.session.getSnapshot().messages.length === 0 && !entry.session.getSnapshot().draft)

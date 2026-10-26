@@ -207,6 +207,36 @@ test('the asset conversation keeps its own board while the launch story advances
   assert.match((await source.getSnapshot()).whiteboard.title, /经营复盘/)
 })
 
+test('explicit replay restores a deleted main demo conversation without restoring other deletions or losing drafts', async t => {
+  const f = await setup(t)
+  await f.owner.chat.ready
+  f.owner.chat.select('conversion-review')
+  f.owner.chat.selected.setDraft('保留复盘草稿')
+  await f.owner.chat.remove('main')
+  await f.owner.chat.remove('product-assets')
+  f.owner.simulation.setDemo(true)
+  await f.until(() => f.pending().length === 1)
+  const chat = f.owner.chat.getSnapshot()
+  assert.equal(chat.selectedId, 'main')
+  assert(chat.conversations.some(entry => entry.id === f.pending()[0].request.conversationId))
+  assert(!chat.conversations.some(entry => entry.id === 'product-assets'))
+  assert.match(f.owner.chat.selected.getSnapshot().messages.map(message => message.content).join('\n'), /上架材料已复核/)
+  assert.equal(chat.conversations.find(entry => entry.id === 'conversion-review').session.getSnapshot().draft, '保留复盘草稿')
+})
+
+test('deleting the main conversation during handoff stops the story and never creates an orphaned decision', async t => {
+  const f = await setup(t)
+  f.owner.simulation.setDemo(true)
+  await f.advance(1000)
+  await f.owner.chat.remove('main')
+  await f.advance(120000)
+  assert.equal(f.owner.source.stage, 'stopped')
+  assert.equal(f.owner.simulation.isDemoRunning, false)
+  assert.equal(f.pending().length, 0)
+  assert(!f.owner.chat.getSnapshot().conversations.some(entry => entry.id === 'main'))
+  assert(!f.owner.getSnapshot().dashboard.tasks.length)
+})
+
 test('commerce preview replies use current scenario state and never claim live AI or store execution', async () => {
   const source = new CommerceOfficeDataSource('operations')
   const request = text => ({ messages: [{ role: 'user', content: text }] })

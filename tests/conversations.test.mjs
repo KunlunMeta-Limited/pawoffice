@@ -98,6 +98,8 @@ test('backend-owned deletion waits for confirmation, coalesces repeated clicks a
   assert.deepEqual(workspace.getSnapshot().deletingIds, [])
   const success = workspace.remove('a'); await flush(); resolve(); await success
   assert.equal(calls, 2); assert.equal(workspace.getSnapshot().selectedId, 'b')
+  workspace.restorePreviewConversation('a')
+  assert.deepEqual(workspace.getSnapshot().conversations.map(entry => entry.id), ['b'], 'demo replay cannot restore a backend-owned deletion')
 })
 
 test('deleting the last local conversation leaves an empty workspace that can create a fresh conversation', async t => {

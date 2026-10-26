@@ -163,8 +163,10 @@ test('whiteboard progress advances below 100 until the backend sends completed s
 test('a person click reaches the backend and dialog options return another user action', async ({ backend, page, service }) => {
   await backend.post({ type: 'offices.initialize', offices: [office()] })
   await openOffice(page, service.url)
+  await expect(page.getByRole('button', { name: '编辑布局', exact: true })).toBeEnabled()
   const waiting = backend.next(), canvas = page.locator('canvas'), bounds = await canvas.boundingBox()
-  await canvas.click({ position: { x: bounds!.width * .3, y: bounds!.height * .42 } })
+  const scale = Math.min(bounds!.width / 1100, bounds!.height / 850)
+  await canvas.click({ position: { x: (bounds!.width - 1100 * scale) / 2 + 350 * scale, y: (bounds!.height - 850 * scale) / 2 + 310 * scale } })
   const action = (await waiting).data.actions[0]
   expect(action).toMatchObject({ conversationId: 'main', teamId: 'team-a', action: 'actor.inspect', actorId: 'office-lead' })
   expect((await backend.respond(action.id, { target: 'dialog', content: { template: 'detail-v1', title: '开发员实时详情', description: '后端返回的详情。',
@@ -564,6 +566,7 @@ test.describe('static local demo', () => {
     const initial = Number(await progress.getAttribute('aria-valuenow'))
     await page.clock.fastForward(10000)
     await expect(notice).toBeVisible()
+    if (mobile) await page.locator('.runtime-workspace').evaluate(element => { element.scrollTop = element.scrollHeight })
     await expect(progress).toBeInViewport()
     if (mobile) {
       await expect(page.getByRole('complementary', { name: '待你决定' })).toBeHidden()
