@@ -4,6 +4,7 @@
 .office-chat[hidden] { display: none; }
 .office-chat-panel { position: absolute; inset: 0; display: flex; flex-direction: column; background: #fff; border-radius: inherit; opacity: 0; transform: translateY(24px); clip-path: inset(100% 0 0 0 round 16px); visibility: hidden; transition: clip-path .42s cubic-bezier(.22, 1, .36, 1), transform .42s cubic-bezier(.22, 1, .36, 1), opacity .22s, visibility .42s; }
 .office-chat[data-expanded=true] .office-chat-panel { opacity: 1; transform: translateY(0); clip-path: inset(0 round 16px); visibility: visible; pointer-events: auto; }
+.office-chat[data-expanded=true] .office-chat-panel:has(.office-conversation-menu) { transform: none; clip-path: none; }
 .office-chat-message-meta button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #7a827c; }
 .office-chat-message-meta button:hover { background: #f1f3f1; }
 .office-chat-body { display: flex; flex: 1; min-height: 0; padding-bottom: calc(var(--chat-composer-height, 48px) + 40px); }
