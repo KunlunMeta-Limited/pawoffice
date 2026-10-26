@@ -94,6 +94,12 @@ curl -X POST http://localhost:8765/api/pawoffice/messages \
 
 `command` 可以是单条场景命令，也可以是含 `mode` 和 `commands` 的批次对象。`mode` 为 `sequence` 或 `parallel`，分别表示顺序或并行执行；批次最多 32 条。每条命令的 `sceneId` 必须等于顶层 `teamId`，每条新指令使用唯一 `commandId`。请求最大 64 KiB。字段定义见[场景协议](../../docs/plugin-runtime.md)。
 
+同一办公室连续发送的**单条命令**按浏览器接收顺序执行，前一条动作实际结束后才开始下一条，无需预先录制数组或填写 `after`。该队列覆盖不同人物的移动、发言、思考活动及 `actor.presentation.set` 工作/思考状态更新；不同办公室独立推进。显式批次继续使用原有 `sequence` / `parallel` 规则，不加入单条消息的 FIFO。
+
+例如，先发送负责人的 `scene.move`，再发送子 agent 的 `actor.presentation.set`（`status: "working"`），子 agent 的状态更新会等负责人完成移动后生效。展示状态更新在应用后即完成，并保持到后续状态更新；它不等待后端任务完成，也不额外规定展示时长。需要有时长的思考动作可使用 `office.emote`（`animation: "emotes/thinking"`、`durationMs`）。
+
+`activity.stop` 和 `command.cancel` 立即处理。持续活动（如 `office.focus`）会占用该顺序队列直到停止或结束，不能以启动命令的完成回执判断动画已结束；取消移动后，还会等待当前步和家具交互收尾。失败、过期或取消的命令不会阻塞后续独立消息，显式 `after` 依赖仍按原规则处理。队列沿用运行时的容量和过期限制，默认等待期限为 120 秒，可通过 `expiresAt` 指定。
+
 场景请求字段为 `teamId` 和 `command`。业务请求通过 `type` 区分操作。所有 HTTP 响应含 `code`、`msg`、`data`，其中 `data` 为对象，`code` 与 HTTP 状态码一致。数据字段和默认值见[办公室 HTTP 接入协议](./office-integration.md)。
 
 动画请求成功时返回 `data.forwarded`，表示接收指令的在线页面连接数量。动画的排队和播放发生在浏览器内，HTTP 响应不包含播放结果。业务处理应以外部业务后端的状态为依据。

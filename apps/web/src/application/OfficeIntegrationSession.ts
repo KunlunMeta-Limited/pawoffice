@@ -178,7 +178,7 @@ export class OfficeIntegrationSession {
       const runtime = session?.runtime
       if (!runtime) return
       const command = scene.data.command
-      const results = 'commands' in command ? runtime.submitBatch(command) : [runtime.submit(command)]
+      const results = 'commands' in command ? runtime.submitBatch(command) : [runtime.submit(command, { ordered: true })]
       for (const result of results) if (result.error) console.warn('[OfficeIntegration] animation skipped', result)
       return
     }
