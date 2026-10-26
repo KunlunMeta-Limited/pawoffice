@@ -36,7 +36,7 @@ export function renderTaskBoard(data: WhiteboardTaskBoardData, surface: Whiteboa
     <div class="task-whiteboard-columns" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:${wall ? '.9em' : '1.3em'};align-items:start">
       <div style="min-width:0;padding-top:.15em">
         <div style="display:flex;align-items:center;gap:.4em;min-width:0;margin-bottom:${wall ? '.2em' : '.45em'}">${icon('file', '1.3em', '#638dd2')}<h3 title="${escape(data.title)}" style="margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:1.2em;line-height:1.3;font-weight:700">${escape(data.title)}</h3></div>
-        <p style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0 0 ${wall ? '.25em' : '.45em'};min-height:${wall ? '0' : '2.8em'};font-size:.85em;line-height:${wall ? '1.35' : '1.4'};color:#778390">${escape(data.description ?? '')}</p>
+        <p style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:0 0 ${wall ? '.25em' : '.45em'};min-height:${wall ? '0' : '2.8em'};font-size:.85em;line-height:${wall ? '1.35' : '1.4'};color:#778390">${escape(data.summary?.trim() ? data.summary : data.description ?? '')}</p>
         ${link}
         ${data.note ? `<aside style="box-sizing:border-box;width:90%;margin-top:${wall ? '.35em' : '.65em'};padding:${wall ? '.3em .5em' : '.5em .75em'};background:#fff0ad;color:#7d775c;box-shadow:1px 2px 4px #4d442514;transform:rotate(-1deg);font-size:.8em;line-height:${wall ? '1.3' : '1.4'}"><div style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escape(data.note)}</div></aside>` : ''}
       </div>
