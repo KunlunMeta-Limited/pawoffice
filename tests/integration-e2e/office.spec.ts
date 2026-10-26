@@ -420,6 +420,52 @@ test.describe('static local demo', () => {
   test.use({ staticDemo: true })
   test.setTimeout(120000)
 
+  for (const viewport of [{ width: 1912, height: 914 }, { width: 956, height: 914 }, { width: 390, height: 844 }]) {
+    test(`chat history and empty state survive repeated reopening (${viewport.width}px)`, async ({ page, service }) => {
+      await page.setViewportSize(viewport)
+      await page.goto(`${service.url}/office/`)
+      const open = page.getByRole('button', { name: '展开对话', exact: true })
+      const close = page.getByRole('button', { name: '收起聊天', exact: true })
+      const transcript = page.getByRole('log', { name: '对话内容', exact: true })
+      const bubbles = transcript.locator('.office-chat-bubble')
+      const draft = page.getByRole('textbox', { name: '给办公室发送消息', exact: true })
+      await open.click()
+      await expect(bubbles).toHaveCount(2)
+      const original = await bubbles.allTextContents()
+      await draft.fill('Keep this unsent draft when reopening chat.')
+
+      const reopen = async () => {
+        await close.click()
+        await expect(transcript).toBeHidden()
+        await open.click()
+        await expect(transcript).toBeVisible()
+      }
+      for (let cycle = 0; cycle < 3; cycle++) {
+        await reopen()
+        await expect(bubbles).toHaveText(original)
+        await expect(bubbles.last()).toBeInViewport()
+        await expect(draft).toHaveValue('Keep this unsent draft when reopening chat.')
+      }
+
+      const selected = await page.getByRole('tab', { selected: true }).textContent()
+      await page.getByRole('tab', { name: '商品素材与参数', exact: true }).click()
+      await expect(bubbles).toHaveCount(2)
+      await page.getByRole('tab', { name: selected!.trim(), exact: true }).click()
+      await reopen()
+      await expect(bubbles).toHaveText(original)
+      await expect(draft).toHaveValue('Keep this unsent draft when reopening chat.')
+
+      await page.locator('.office-conversation-add').click()
+      const empty = transcript.getByRole('heading', { name: '今天一起做点什么？', exact: true })
+      await expect(empty).toBeVisible()
+      for (let cycle = 0; cycle < 3; cycle++) {
+        await reopen()
+        await expect(empty).toBeInViewport()
+        await expect(bubbles).toHaveCount(0)
+      }
+    })
+  }
+
   async function advanceDemo(page: Page, milliseconds: number) {
     for (let remaining = milliseconds; remaining > 0;) {
       const step = Math.min(1000, remaining)

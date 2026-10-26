@@ -127,7 +127,7 @@ test('local decision preview stays outside the public protocol and real connecti
   const workspace = await readFile(new URL('../apps/web/src/components/RuntimeWorkspace.tsx', import.meta.url), 'utf8')
   assert.match(workspace, /decisionPreview=\{dataMode === 'example' && chatSession.source.kind === 'preview'\}/)
   const chat = await readFile(new URL('../apps/web/src/components/OfficeChat.tsx', import.meta.url), 'utf8')
-  assert.match(chat, /<OfficeDecisionPanel preview=\{decisionPreview\} hidden=\{expanded\}/)
+  assert.match(chat, /<OfficeDecisionPanel preview=\{decisionPreview\} openToken=\{decisionOpenToken\}/)
   assert(!chat.includes('new DecisionSession'))
   assert(!chat.includes('decisionSession.clearRecords'), 'starting a chat must not erase team decision history')
   const transcript = await readFile(new URL('../apps/web/src/components/ChatTranscript.tsx', import.meta.url), 'utf8')
