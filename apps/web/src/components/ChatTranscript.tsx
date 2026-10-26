@@ -26,7 +26,8 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
   const virtualizer = useVirtualizer({
     count: rows.length, getScrollElement: () => scroll.current, getItemKey: index => rows[index].id,
     estimateSize: () => 140, overscan: 6, anchorTo: 'end', followOnAppend: true, scrollEndThreshold: 64,
-    directDomUpdates: true, enabled: expanded, paddingStart: 22, paddingEnd: 18,
+    // The collapsed panel retains its layout. Disabling clears its rows, but direct DOM updates can skip rendering the same range on reopen.
+    directDomUpdates: true, paddingStart: 22, paddingEnd: 18,
     onChange: instance => { onAtBottomChange(instance.isAtEnd()); setAtStart((instance.scrollOffset ?? 0) < 200) },
   })
   useImperativeHandle(ref, () => ({ toBottom: () => virtualizer.scrollToEnd() }), [virtualizer])
