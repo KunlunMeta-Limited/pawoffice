@@ -78,6 +78,30 @@ async function connectedBrowser(t, app, base, overrides = {}) {
   return { ...linked, receipts, close }
 }
 
+test('workspace scene delivery orders single actions and presentation updates without blocking other offices', async t => {
+  const { integration, send } = await setup(t)
+  await send('init', { type: 'offices.initialize', offices: [snapshot(), snapshot('team-b')] })
+  const [first, second] = integration.getSnapshot().offices.map(office => office.session.runtime)
+  const command = (commandId, teamId = 'team-a', actor = 'office-lead') => ({ protocolVersion: '2.0', sceneId: teamId, commandId,
+    type: 'activity.start', capability: 'scene.say', participants: [{ entityId: actor, role: 'actor' }], params: { text: commandId, durationMs: 300 } })
+  const deliver = value => integration.receive({ teamId: value.sceneId, command: value })
+  deliver(command('first'))
+  deliver({ protocolVersion: '2.0', sceneId: 'team-a', commandId: 'work', type: 'actor.presentation.set',
+    actorId: 'code-agent', status: 'working', title: 'Implementation',
+    sourceRevision: first.readActors().find(actor => actor.id === 'code-agent').presentation.sourceRevision + 1 })
+  deliver(command('last', 'team-a', 'file-agent'))
+  deliver(command('other-office', 'team-b'))
+  assert.equal(first.getRecord('first').status, 'running')
+  assert.equal(first.getRecord('work').status, 'queued')
+  assert.equal(first.getRecord('last').status, 'queued')
+  assert.equal(first.readActors().find(actor => actor.id === 'code-agent').presentation.status, 'idle')
+  assert.equal(second.getRecord('other-office').status, 'running')
+  for (let i = 0; i < 6; i++) first.tick(50)
+  assert.equal(first.getRecord('work').status, 'completed')
+  assert.equal(first.getRecord('last').status, 'running')
+  assert.equal(first.readActors().find(actor => actor.id === 'code-agent').presentation.status, 'working')
+})
+
 test('backend layout selection initializes and switches connected pages without recreating business sessions', { timeout: 10000 }, async t => {
   const app = await createPawOfficeServer(), base = await app.listen({ host: '127.0.0.1', port: 0 })
   t.after(() => app.close())
