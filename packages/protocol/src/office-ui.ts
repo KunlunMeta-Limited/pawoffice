@@ -5,6 +5,7 @@ export const whiteboardTaskBoardSchema = z.strictObject({
   template: z.literal('task-board-v1').default('task-board-v1'), title: z.string().max(160).default(''),
   status: z.enum(['queued', 'running', 'blocked', 'completed', 'failed']).default('queued'),
   tagline: z.string().max(40).default(''), description: z.string().max(300).default(''), note: z.string().max(160).default(''),
+  summary: z.string().max(300).default(''), detail: z.string().max(16000).default(''),
   link: z.strictObject({ label: z.string().max(40).default(''), url: z.union([z.literal(''), z.url().refine(value => {
     try { return ['http:', 'https:'].includes(new URL(value).protocol) } catch { return false }
   })]).default('') }).default({ label: '', url: '' }),

@@ -1,12 +1,32 @@
-.whiteboard-reader { width: min(780px, calc(100vw - 32px)); max-height: calc(100dvh - 64px); margin: auto; padding: 0; border: 1px solid #dedfdd; border-radius: 28px; background: #fff; color: #343b36; box-shadow: 0 24px 80px #17221a24; }
+.whiteboard-reader { box-sizing: border-box; width: min(860px, calc(100vw - 32px)); max-height: calc(100dvh - 64px); margin: auto; padding: 0; overflow: hidden; border: 1px solid #dedfdd; border-radius: 28px; background: #fff; color: #343b36; box-shadow: 0 24px 80px #17221a24; }
+.whiteboard-reader[open] { display: flex; flex-direction: column; }
 .whiteboard-reader::backdrop { background: #1b241e66; backdrop-filter: blur(3px); }
-.whiteboard-reader > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; }
+.whiteboard-reader > header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; border-bottom: 1px solid #eef0ec; }
 .whiteboard-reader > header h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .whiteboard-reader > header > div { display: flex; gap: 4px; }
 .whiteboard-reader > header button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #777e78; cursor: pointer; }
 .whiteboard-reader > header button:hover { background: #f2f3f1; }
 .whiteboard-reader button:focus-visible { outline: 2px solid #718575; outline-offset: 2px; }
-.whiteboard-reader-content { min-height: 120px; max-height: calc(100dvh - 150px); overflow: auto; padding: 8px 28px 28px; font: 16px/1.6 system-ui, sans-serif; overflow-wrap: anywhere; }
+.whiteboard-reader-content { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 20px 32px 32px; font: 16px/1.8 system-ui, sans-serif; overflow-wrap: anywhere; }
+.whiteboard-reader-content:focus-visible { outline: 2px solid #718575; outline-offset: -4px; }
+.whiteboard-detail > :first-child { margin-top: 0; }
+.whiteboard-detail > :last-child { margin-bottom: 0; }
+.whiteboard-detail h1 { font-size: 26px; line-height: 1.4; letter-spacing: -.02em; }
+.whiteboard-detail h2 { margin-top: 28px; font-size: 20px; line-height: 1.5; }
+.whiteboard-detail h3 { font-size: 17px; }
+.whiteboard-detail p, .whiteboard-detail ul, .whiteboard-detail ol { margin: 12px 0; }
+.whiteboard-detail li + li { margin-top: 6px; }
+.whiteboard-detail blockquote { margin: 20px 0; padding: 4px 18px; border-left: 3px solid #8ba794; background: #f5f8f4; color: #637067; }
+.whiteboard-detail pre { overflow: auto; padding: 16px; border-radius: 12px; background: #f4f5f2; font-size: 13px; }
+.whiteboard-detail :not(pre) > code { padding: 2px 5px; border-radius: 4px; background: #f1f3ef; font-size: .9em; }
+.whiteboard-detail img { max-width: 100%; height: auto; }
+.whiteboard-detail-table { max-width: 100%; overflow: auto; margin: 20px 0; }
+.whiteboard-detail table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.whiteboard-detail th, .whiteboard-detail td { padding: 10px 14px; border: 1px solid #e3e8e1; text-align: left; }
+.whiteboard-detail th { background: #f4f7f2; font-weight: 600; }
+.whiteboard-detail hr { margin: 28px 0; border: 0; border-top: 1px solid #e3e8e1; }
+.whiteboard-reader-fallback .task-whiteboard h3, .whiteboard-reader-fallback .task-whiteboard p, .whiteboard-reader-fallback .task-whiteboard aside > div, .whiteboard-reader-fallback .task-whiteboard [title] { display: block !important; -webkit-line-clamp: unset !important; white-space: normal !important; overflow: visible !important; }
+.whiteboard-reader-fallback .task-whiteboard li { height: auto !important; min-height: 2.65em; }
 .whiteboard-reader-content a { color: #3e6854; text-underline-offset: 3px; }
 .whiteboard-reader-content code { font-family: ui-monospace, monospace; }
 .whiteboard-reader-content .task-whiteboard { font-size: 20px; }
