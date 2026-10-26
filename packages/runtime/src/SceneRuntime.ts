@@ -53,6 +53,7 @@ export class SceneRuntime {
   private world: World
   private resources = new ResourceManager()
   private records = new Map<string, CommandRecord>()
+  private orderedCommands = new Set<string>()
   private stateSources = new Map<string, string>()
   private completedActivities = 0
   private activities = new Map<string, Activity>()
@@ -139,7 +140,8 @@ export class SceneRuntime {
     canRecoverLayout: Boolean(this.layoutRecovery && this.persistence?.replaceWithBackup) }) }
   describe() { return { ...protocolDescription(), sceneId: this.sceneId, furnitureGrid: { cellSize: FURNITURE_CELL_SIZE, origin: { x: 0, y: 0 } }, plugins: this.plugins.describe(), templates: this.templates(), entities: [...this.world.actors.map(a => ({ id: a.id, name: a.name, kind: 'actor' })), ...this.world.props.map(p => ({ id: p.id, name: p.name, kind: 'prop', templateId: p.templateId, anchors: { ...this.plugins.template(p.templateId).anchors, ...p.anchors } }))] } }
 
-  submit(value: unknown, context?: { stateSource?: string }): CommandResult {
+  /** Ordered submissions share a per-runtime FIFO; stop and cancel always bypass it. */
+  submit(value: unknown, context?: { stateSource?: string; ordered?: boolean }): CommandResult {
     const parsed = commandSchema.safeParse(value)
     if (!parsed.success) return { commandId: typeof value === 'object' && value && 'commandId' in value ? String(value.commandId).slice(0, 100) : '', status: 'rejected', error: { code: 'INVALID_COMMAND', message: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ').slice(0, 500) } }
     const command = parsed.data
@@ -169,6 +171,7 @@ export class SceneRuntime {
       if (command.type === 'activity.start') this.buildPlan(command)
       this.persist()
       if (this.persistenceError && !control) throw new SceneFault('PERSISTENCE_FAILED', this.persistenceError)
+      if (context?.ordered && !control) this.orderedCommands.add(command.commandId)
       this.emit('command.status', { commandId: command.commandId, status: 'queued' })
       this.pump()
     } catch (error) { this.finish(record, 'rejected', sceneError(error)) }
@@ -260,6 +263,16 @@ export class SceneRuntime {
     return { plan, pluginId }
   }
 
+  /** FIFO is separate from success dependencies: a failed message must not poison the stream. */
+  private nextOrderedCommand() {
+    for (const id of this.orderedCommands) {
+      const record = this.records.get(id)
+      // Continuous starts acknowledge immediately; cancellation can still be settling movement.
+      if ((record && !terminal(record.status)) || this.activities.get(id)?.status === 'active' || this.settling.has(id)) return id
+      this.orderedCommands.delete(id)
+    }
+  }
+
   private pump() {
     if (this.pumping || this.disposed) return
     this.pumping = true
@@ -274,6 +287,7 @@ export class SceneRuntime {
           const dependencies = command.after?.map(id => this.records.get(id)) ?? []
           if (dependencies.some(r => !r || terminal(r.status) && r.status !== 'completed')) throw new SceneFault('DEPENDENCY_FAILED', '前置命令失败，后续命令不会执行')
           if (dependencies.some(r => r?.status !== 'completed')) continue
+          if (this.orderedCommands.has(command.commandId) && this.nextOrderedCommand() !== command.commandId) continue
           if (command.type === 'activity.start') {
             const { plan, pluginId } = this.buildPlan(command)
             if (plan.claims.some(c => blockedResources.has(c.resource)) || !this.resources.available(plan.claims)) {
@@ -300,7 +314,7 @@ export class SceneRuntime {
           else this.finish(record, 'failed', sceneError(error))
         }
       }
-    } finally { this.pumping = false }
+    } finally { this.nextOrderedCommand(); this.pumping = false }
   }
 
   private advance(activity: Activity, dt: number) {
@@ -617,6 +631,7 @@ export class SceneRuntime {
     for (const id of this.settling.keys()) this.resources.release(id)
     this.settling.clear()
     for (const record of this.records.values()) if (!terminal(record.status)) this.finish(record, 'cancelled')
+    this.orderedCommands.clear()
     this.listeners.clear()
   }
 }
