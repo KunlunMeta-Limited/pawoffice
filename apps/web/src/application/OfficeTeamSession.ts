@@ -144,12 +144,14 @@ export class OfficeTeamSession {
     this.simulation.resumeIdleCoffee()
     const generation = ++this.generation
     try {
+      this.chat.start()
       this.decisions.start()
       this.unsubscribe = this.source.subscribe(() => { if (this.isCurrent(generation)) void this.refresh() })
       this.disconnect = this.transport?.(connection => { if (this.isCurrent(generation)) this.update({ connection }) })
       return this.refresh()
     } catch (error) {
       this.active = false; this.generation++; this.pending = false
+      this.chat.stop()
       this.decisions.stop()
       this.releaseConnections()
       this.update({ dashboardError: `团队启动失败：${error instanceof Error ? error.message : String(error)}`, ...(this.transport ? { connection: '未连接' } : {}) })

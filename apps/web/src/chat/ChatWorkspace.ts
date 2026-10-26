@@ -5,6 +5,7 @@ import { ChatSession } from './ChatSession.ts'
 import { chatWorkspaceArchiveSchema } from './persistence.ts'
 import type { ChatArchive, ChatWorkspaceArchive, ChatWorkspacePersistence } from './persistence.ts'
 import { PreviewChatSource } from './sources.ts'
+import { archivedActiveTurn, mergeChatWorkspaces, sameWorkspaceData } from './mergeWorkspace.ts'
 
 export type ConversationEntry = { id: string; title: string; session: ChatSession; local: boolean; data?: DashboardConversation }
 export type ChatWorkspaceSnapshot = { conversations: readonly ConversationEntry[]; selectedId: string; ready: boolean; storageError: string | null; deletingIds: readonly string[] }
@@ -36,6 +37,10 @@ export class ChatWorkspace {
   private catalogue: readonly DashboardConversation[] = []
   private readonly requestDelete?: (id: string) => Promise<void>
   private readonly onRemoved?: (id: string) => void
+  private active = false
+  private unsubscribeStorage?: () => void
+  private refreshing?: Promise<void>
+  private refreshAgain = false
 
   constructor(teamId: string, source: OfficeChatSource, options: { persistence?: ChatWorkspacePersistence; requestDelete?: (id: string) => Promise<void>; onRemoved?: (id: string) => void } = {}) {
     this.teamId = teamId; this.source = source; this.persistence = options.persistence
@@ -48,6 +53,7 @@ export class ChatWorkspace {
   get selected() { return this.entries.get(this.state.selectedId)?.session }
   requiresBackendDeletion(id: string) { return Boolean(this.requestDelete && this.entries.get(id)?.data) }
   private emit(change: Partial<ChatWorkspaceSnapshot> = {}) {
+    if (change.selectedId !== undefined && change.selectedId !== this.state.selectedId) this.persistence?.writeSelection?.(change.selectedId)
     this.state = { ...this.state, ...change, conversations: [...this.entries.values()] }
     notifySubscribers(this.listeners, 'ChatWorkspace')
   }
@@ -60,7 +66,8 @@ export class ChatWorkspace {
         if (archive.teamId !== this.teamId) throw new Error('会话不属于当前办公室')
         this.deletedIds = new Set(archive.deletedIds)
         for (const entry of archive.conversations) this.add(entry.id, entry.title, entry.local, entry.chat)
-        this.state = { ...this.state, selectedId: archive.selectedId }
+        const selection = this.persistence?.readSelection?.()
+        this.state = { ...this.state, selectedId: selection !== undefined && this.entries.has(selection) ? selection : archive.selectedId }
         await Promise.all([...this.entries.values()].map(entry => entry.session.ready))
       }
     } catch {
@@ -113,7 +120,9 @@ export class ChatWorkspace {
   }
   select(id: string) {
     if (!this.state.ready || !this.entries.has(id) || this.state.selectedId === id) return
-    this.emit({ selectedId: id }); this.scheduleSave(); void this.selected?.synchronize(true)
+    this.emit({ selectedId: id })
+    if (!this.persistence?.writeSelection) this.scheduleSave()
+    void this.selected?.synchronize(true)
   }
   restorePreviewConversation(id: string) {
     if (!this.state.ready || this.source.kind !== 'preview' || !this.catalogue.some(entry => entry.id === id)) return
@@ -162,19 +171,99 @@ export class ChatWorkspace {
     return this.saving
   }
   private async save() {
+    let collisions = 0
     while (this.dirty && this.persistence && !this.blocked) {
       this.dirty = false
-      const archive: ChatWorkspaceArchive = { version: 2, teamId: this.teamId, selectedId: this.state.selectedId,
-        deletedIds: [...this.deletedIds],
-        conversations: [...this.entries.values()].map(({ id, title, local }) => ({ id, title, local, chat: this.archives.get(id)! })) }
+      const archive = this.capture()
       try { await this.persistence.write(archive, this.persisted); this.persisted = archive; if (this.state.storageError) this.emit({ storageError: null }) }
       catch (error) {
         this.dirty = true
-        if (error instanceof Error && 'code' in error && error.code === 'CHAT_STORAGE_CONFLICT') this.blocked = true
-        this.emit({ storageError: this.blocked ? '会话已被其他页面更新，未覆盖存档；本页内容仅临时保留。' : '会话保存失败，刷新可能丢失最近内容。' })
+        if (error instanceof Error && 'code' in error && error.code === 'CHAT_STORAGE_CONFLICT' && collisions++ < 8) {
+          try {
+            const latest = await this.readStorage()
+            const merged = mergeChatWorkspaces(this.persisted as ChatWorkspaceArchive | undefined, this.capture(), latest, this.activeIds())
+            this.persisted = latest
+            this.applyStorage(merged)
+            continue
+          } catch { /* Keep the visible local state and retry on the next save. */ }
+        }
+        this.emit({ storageError: '会话保存暂未完成，内容仍保留在本页；请稍后重试，刷新前保留重要内容。' })
         return
       }
     }
   }
-  stop() { for (const entry of this.entries.values()) entry.session.detach(); void this.flush() }
+  private capture(): ChatWorkspaceArchive {
+    return { version: 2, teamId: this.teamId, selectedId: this.state.selectedId, deletedIds: [...this.deletedIds],
+      conversations: [...this.entries.values()].map(({ id, title, local, session }) => {
+        const chat = session.getSnapshot().ready ? session.getArchive() : this.archives.get(id)!
+        // The shared checkpoint is deterministic even when pages own different receivers.
+        return { id, title, local, chat: { ...chat, activeTurnId: archivedActiveTurn(chat.messages) } }
+      }) }
+  }
+  private activeIds() { return new Set([...this.entries.values()].filter(entry => entry.session.isReceiving).map(entry => entry.id)) }
+  private async readStorage() {
+    const value = await this.persistence!.read()
+    if (value === undefined) return undefined
+    chatWorkspaceArchiveSchema.parse(value)
+    if ((value as ChatWorkspaceArchive).teamId !== this.teamId) throw new Error('会话不属于当前办公室')
+    for (const { chat } of (value as ChatWorkspaceArchive).conversations) {
+      if (chat.messages.length % 2 || new Set(chat.messages.map(message => message.id)).size !== chat.messages.length
+        || chat.messages.some((message, index) => message.role !== (index % 2 ? 'assistant' : 'user'))) throw new Error('聊天记录顺序无效')
+    }
+    return value as ChatWorkspaceArchive
+  }
+  private applyStorage(archive: ChatWorkspaceArchive) {
+    const ids = new Set(archive.conversations.map(entry => entry.id))
+    for (const [id, entry] of this.entries) if (!ids.has(id)) {
+      this.unsubscribers.get(id)?.(); this.unsubscribers.delete(id)
+      this.entries.delete(id); this.archives.delete(id); entry.session.detach()
+      this.onRemoved?.(id)
+    }
+    this.deletedIds = new Set(archive.deletedIds)
+    for (const saved of archive.conversations) {
+      const entry = this.entries.get(saved.id) ?? this.add(saved.id, saved.title, saved.local, saved.chat)
+      entry.title = saved.title; entry.local = saved.local
+      this.archives.set(saved.id, saved.chat)
+      const apply = () => { if (this.entries.get(saved.id) === entry && this.archives.get(saved.id) === saved.chat) entry.session.applyArchive(saved.chat) }
+      if (entry.session.getSnapshot().ready) apply()
+      else void entry.session.ready.then(apply)
+    }
+    this.entries = new Map(archive.conversations.map(saved => [saved.id, this.entries.get(saved.id)!]))
+    this.emit({ selectedId: archive.selectedId, storageError: null })
+  }
+  start() {
+    if (this.active) return
+    this.active = true
+    if (!this.persistence?.subscribe) return
+    this.unsubscribeStorage = this.persistence?.subscribe?.(() => { void this.refreshStorage() })
+    void this.refreshStorage()
+  }
+  private refreshStorage(): Promise<void> {
+    this.refreshAgain = true
+    if (this.refreshing) return this.refreshing
+    this.refreshing = (async () => {
+      await this.ready
+      while (this.active && this.refreshAgain && this.persistence && !this.blocked) {
+        this.refreshAgain = false
+        await this.flush()
+        const base = this.persisted
+        try {
+          const latest = await this.readStorage()
+          if (!this.active) return
+          // A save that overtook this read owns the newer baseline.
+          if (this.saving || this.persisted !== base) { this.refreshAgain = true; continue }
+          const merged = mergeChatWorkspaces(base as ChatWorkspaceArchive | undefined, this.capture(), latest, this.activeIds())
+          this.persisted = latest
+          this.applyStorage(merged)
+          if (!sameWorkspaceData(merged, latest)) this.scheduleSave()
+        } catch { /* A failed background read must never discard visible conversations. */ }
+      }
+    })().finally(() => { this.refreshing = undefined })
+    return this.refreshing
+  }
+  stop() {
+    this.active = false; this.unsubscribeStorage?.(); this.unsubscribeStorage = undefined
+    for (const entry of this.entries.values()) entry.session.detach()
+    void this.flush()
+  }
 }
