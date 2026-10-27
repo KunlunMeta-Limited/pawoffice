@@ -6,6 +6,7 @@ import { createResultDemo, createResultDemoBoard, resultDemoStatuses } from '../
 import type { OfficeResult } from '@pawoffice/protocol/office-ui'
 import { resultFileBase, resultStatusLabels } from '../results/format.ts'
 import { ResultReader } from '../components/ResultReader.tsx'
+import { WhiteboardBoardView } from '../components/WhiteboardBoardView.tsx'
 import '../components/WhiteboardReader.css'
 import './ResultPreview.css'
 
@@ -36,7 +37,7 @@ export function ResultPreview() {
     <div className={`whiteboard-reader result-preview-panel${showResult ? ' is-result' : ''}`} data-view={showResult ? 'result' : 'board'}>
       <header>
         <div className="whiteboard-reader-heading">
-          <h2 title={showResult ? result.title : '折叠电脑支架上架与优化'}>{showResult ? result.title : '协作白板'}</h2>
+          <h2 title={showResult ? result.title : board.detail ? '白板详情' : '协作白板'}>{showResult ? result.title : board.detail ? '白板详情' : '协作白板'}</h2>
           <div className="whiteboard-reader-switch" role="tablist" aria-label="白板视图">
             <button type="button" role="tab" aria-selected={!showResult} tabIndex={showResult ? -1 : 0} onClick={() => setView('board')}><FileText size={13} strokeWidth={2} />任务白板</button>
             <button type="button" role="tab" aria-selected={showResult} tabIndex={showResult ? 0 : -1} onClick={() => setView('result')}><Sparkles size={13} strokeWidth={2} />成果</button>
@@ -48,7 +49,7 @@ export function ResultPreview() {
         </div>
       </header>
       <article className={`whiteboard-reader-content${showResult ? ' is-result' : ''}`} tabIndex={0} aria-label={showResult ? '成果内容' : '白板内容'}>
-        {showResult ? <ResultReader result={result} onOpenBoard={() => setView('board')} /> : <div className="whiteboard-reader-fallback" dangerouslySetInnerHTML={{ __html: boardHtml }} />}
+        {showResult ? <ResultReader result={result} onOpenBoard={() => setView('board')} /> : <WhiteboardBoardView detail={board.detail ?? ''} html={boardHtml} />}
       </article>
     </div>
   </div>

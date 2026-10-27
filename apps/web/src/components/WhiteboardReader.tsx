@@ -6,7 +6,7 @@ import type { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
 import { renderWhiteboardContent } from '@pawoffice/scene-office/task-board'
 import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
 import { officeResultSchema } from '@pawoffice/protocol/office-ui'
-import { WhiteboardDetail } from './WhiteboardDetail.tsx'
+import { WhiteboardBoardView } from './WhiteboardBoardView.tsx'
 import { ResultReader } from './ResultReader.tsx'
 import { resultFileBase, resultHasContent } from '../results/format.ts'
 import './WhiteboardReader.css'
@@ -93,7 +93,7 @@ export function WhiteboardReader({ state, boardId, progress, onClose }: { state:
       </div>
     </header>
     <article className={`whiteboard-reader-content${showResult ? ' is-result' : ''}`} ref={content} tabIndex={0} aria-label={showResult ? '成果内容' : '白板内容'}>
-      {showResult && result ? <ResultReader result={result} onOpenBoard={() => switchView('board')} /> : detail ? <WhiteboardDetail content={detail} /> : <div className="whiteboard-reader-fallback" dangerouslySetInnerHTML={{ __html: html }} />}
+      {showResult && result ? <ResultReader result={result} onOpenBoard={() => switchView('board')} /> : <WhiteboardBoardView detail={detail} html={html} />}
     </article>
   </dialog>
 }

@@ -5,13 +5,14 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
 let server, schema, resultSchema, emptyResult, ResultReader, WhiteboardReader, WhiteboardProgress
-let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard
+let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard, WhiteboardBoardView
 
 before(async () => {
   server = await createTestServer()
   ;({ whiteboardTaskBoardSchema: schema, officeResultSchema: resultSchema, emptyResult } = await server.ssrLoadModule('/packages/protocol/src/office-ui.ts'))
   ;({ ResultReader } = await server.ssrLoadModule('/apps/web/src/components/ResultReader.tsx'))
   ;({ WhiteboardReader } = await server.ssrLoadModule('/apps/web/src/components/WhiteboardReader.tsx'))
+  ;({ WhiteboardBoardView } = await server.ssrLoadModule('/apps/web/src/components/WhiteboardBoardView.tsx'))
   ;({ WhiteboardProgress } = await server.ssrLoadModule('/packages/scene-office/src/whiteboard.ts'))
   ;({ createResultDemo, createResultDemoBoard } = await server.ssrLoadModule('/apps/web/src/dashboard/resultDemo.ts'))
   ;({ CommerceOfficeDataSource } = await server.ssrLoadModule('/apps/web/src/dashboard/CommerceOfficeDataSource.ts'))
@@ -66,11 +67,12 @@ test('a completed goal with a result opens the reader on the result view and kee
 
 test('a running or draft goal keeps the board view while the result stays available', () => {
   const html = reader(createResultDemoBoard('draft'))
-  assert(html.includes('whiteboard-reader-fallback'))
+  assert(html.includes('执行详情'))
   assert(!html.includes('result-conclusion'))
   assert(html.includes('role="tablist"'))
   const legacy = reader({ template: 'task-board-v1', title: '旧白板', status: 'running', description: '原有说明', steps: [] })
   assert(legacy.includes('原有说明'))
+  assert(legacy.includes('whiteboard-reader-fallback'))
   assert(!legacy.includes('role="tablist"'), 'boards without a result do not grow a result tab')
 })
 
@@ -93,6 +95,17 @@ test('the result can be exported as a portable Markdown report and summary', () 
   assert(report.includes('## 下一步'))
   assert(format.resultSummaryText(result).includes('订单'))
   assert.equal(format.resultFileBase(result), '电脑支架首轮经营复盘')
+})
+
+test('the authored detail page is what the board tab shows, while the result page stays separate', () => {
+  const board = createResultDemoBoard('verified')
+  assert(board.detail.includes('执行详情'))
+  assert(board.detail.includes('验收要求'))
+  const boardHtml = renderToStaticMarkup(createElement(WhiteboardBoardView, { detail: board.detail, html: '<p>compact fallback</p>' }))
+  assert(boardHtml.includes('<h1>折叠电脑支架上架与优化 · 执行详情</h1>'))
+  assert(!boardHtml.includes('compact fallback'))
+  const fallback = renderToStaticMarkup(createElement(WhiteboardBoardView, { detail: '', html: '<p>compact fallback</p>' }))
+  assert(fallback.includes('compact fallback'))
 })
 
 test('a completed result board points the wall link at 成果 while unfinished boards keep the task breakdown', () => {
