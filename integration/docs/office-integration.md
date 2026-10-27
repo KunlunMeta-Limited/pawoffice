@@ -608,7 +608,7 @@ sequenceDiagram
   "link": { "label": "", "url": "" }, "steps": [],
   "result": {
     "template": "result-v1", "status": "draft", "title": "", "summary": "", "verdict": "",
-    "owner": "", "producedAt": "", "metrics": [], "artifacts": [], "checks": [], "decisions": [], "next": [], "note": ""
+    "owner": "", "producedAt": "", "metrics": [], "metricsTitle": "", "metricsCaption": "", "artifacts": [], "checks": [], "decisions": [], "next": [], "note": ""
   }
 }
 ```
@@ -630,8 +630,13 @@ sequenceDiagram
   "summary": "尺寸说明补齐后，订单从 9 单增至 14 单，成交率 2.5% → 4.0%。",
   "verdict": "标题、主图、详情与价格已复核；两轮为同口径模拟窗口，尚不能证明因果关系。",
   "owner": "王明 · 电商运营负责人", "producedAt": "2026-10-19 14:32",
+  "metricsTitle": "关键指标", "metricsCaption": "首轮观察 → 更新后观察",
   "metrics": [
-    { "id": "orders", "label": "订单", "value": "14", "unit": "单", "previous": "9 单", "change": "+5 单", "trend": "up", "tone": "positive" }
+    { "id": "orders", "label": "订单", "value": "14", "unit": "单", "kind": "comparison", "emphasis": "primary",
+      "previous": "9 单", "change": "+5 单", "trend": "up", "tone": "positive" },
+    { "id": "samples", "label": "完成访谈", "value": "18", "unit": "位", "kind": "target",
+      "target": "20 位", "targetStatus": "at-risk", "progress": 90 },
+    { "id": "result", "label": "审核结果", "value": "通过（有条件）", "kind": "status", "tone": "positive" }
   ],
   "artifacts": [
     { "id": "page-changes", "kind": "document", "title": "商品页改动清单", "description": "标题、主图与详情改动。",
@@ -647,12 +652,28 @@ sequenceDiagram
 | 字段 | 内容 |
 | --- | --- |
 | `status` | `draft` 草稿 / `ready` 已交付 / `verified` 已验证 / `rejected` 未通过；只影响状态徽标与阅读页色调，不改变白板阶段 |
-| `metrics` | 最多 12 项；`label`、`value`、`unit` 为展示字符串，`previous` 为首轮值，`change` 为变化文案，`trend` 为 `up`/`down`/`flat`，`tone` 为 `positive`/`negative`/`neutral` |
+| `metrics` | 最多 12 项；`label`、`value`、`unit` 为展示字符串；`kind` 决定卡片形态（见下文）；`emphasis` 为 `normal`/`primary`，用于突出首屏指标；`previous`/`change`/`trend`/`tone` 用于对比；`target`/`targetStatus`/`progress` 用于目标型指标 |
+| `metricsTitle` / `metricsCaption` | 指标区标题与说明，最多 40 / 60 字符；省略时标题为“关键指标”，全部为对比指标时说明为“首轮观察 → 更新后观察” |
 | `artifacts` | 最多 8 项；`kind` 为 `document`/`image`/`link`/`data`，`content` 为最多 8000 字符的 Markdown 正文，`url` 为可选 HTTPS 链接；前端提供查看、复制与下载 |
 | `checks` | 最多 12 项；`status` 为 `passed`/`pending`/`failed`，用于验收清单 |
 | `decisions` | 最多 8 项；记录问题、选择与时间，供读者回看过程决策 |
 | `next` | 最多 8 条、每条 160 字符以内的下一步行动 |
 | `note` | 最多 300 字符的免责声明或补充说明 |
+
+#### 指标形态与布局
+
+指标不是固定模板，`kind` 告诉前端用哪种卡片展示；后端只提供语义，不传布局、样式或 HTML。
+
+| `kind` | 用途 | 展示 |
+| --- | --- | --- |
+| `auto`（默认） | 由数据自动选择 | 有 `previous` 时按 `comparison`，否则按 `value` |
+| `comparison` | 前后对比 | 当前值 + 首轮值 + `change` 徽章 |
+| `value` | 单个数字 | 大数字 + 单位，没有“首轮”行 |
+| `status` | 状态/结论 | 状态徽章文字，如“通过（有条件）”，颜色由 `tone` 决定 |
+| `target` | 目标达成 | 当前值 + `target` + `progress` 进度条 + `targetStatus`（`met`/`missed`/`at-risk`） |
+| `text` | 定性结论 | 短文本，不强行量化 |
+
+布局由指标数量自动决定：0 项不显示指标区；1 项占满整行；2 项两列；3 项三列；4 项 2×2；5–6 项三列；窄屏统一两列（1 项仍占满）。`emphasis: "primary"` 会加强该卡片的边框、底色和数字字号，但不会改变数据顺序。没有合适指标的任务可以完全省略 `metrics`，成果页继续展示结论、交付物、验收与下一步。
 
 成果与白板共用快照 `seq`，必须随完整快照一起提交。字段均可省略并带默认值，禁止 `null`；旧客户端忽略未知字段时仍按原白板模板展示。成果数据会随 `office.capabilities` 的 `whiteboardSchema` 自动暴露，无需新增通道。下载按钮在成果视图导出成果 JSON；`result` 不包含文件路径，交付物内容以 Markdown 文本内联，整体仍受 64 KiB 请求上限约束。
 

@@ -1,4 +1,5 @@
 import type { DashboardConversation, DashboardTask } from '@pawoffice/protocol/dashboard'
+import { officeResultSchema } from '@pawoffice/protocol/office-ui'
 import type { OfficeResult } from '@pawoffice/protocol/office-ui'
 import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 
@@ -90,7 +91,7 @@ export function commerceResult(team: CommerceTeam, strategy: Exclude<CommerceStr
   const summary = coupon
     ? `5 元优惠后订单 ${first.orders} → ${current.orders} 单，成交价 ${first.price} → ${current.price} 元。`
     : `尺寸说明补齐后，订单 ${first.orders} → ${current.orders} 单，成交率 ${conversion(first).toFixed(1)}% → ${conversion(current).toFixed(1)}%。`
-  return {
+  return officeResultSchema.parse({
     template: 'result-v1',
     title: team === 'operations' ? '电脑支架经营复盘' : team === 'visual' ? '商品视觉交付复盘' : '经营观察复盘',
     status: 'verified',
@@ -114,7 +115,7 @@ export function commerceResult(team: CommerceTeam, strategy: Exclude<CommerceStr
     ],
     next: next[team],
     note: '以上为本地模拟数据，不连接真实店铺，不产生费用。两个观察窗口不是随机对照实验，不能据此证明优化效果。',
-  }
+  })
 }
 
 export const commerceTeams = {

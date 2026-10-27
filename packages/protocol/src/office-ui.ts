@@ -5,15 +5,23 @@ const resultUrl = z.union([z.literal(''), z.url().refine(value => {
   try { return ['http:', 'https:'].includes(new URL(value).protocol) } catch { return false }
 })]).default('')
 
+export const resultMetricKinds = ['auto', 'comparison', 'value', 'status', 'target', 'text'] as const
+
 export const resultMetricSchema = z.strictObject({
   id: idSchema,
   label: z.string().trim().min(1).max(40),
   value: z.string().trim().min(1).max(40),
   unit: z.string().trim().max(12).default(''),
+  /** auto picks comparison when a previous value exists, otherwise value. */
+  kind: z.enum(resultMetricKinds).default('auto'),
+  emphasis: z.enum(['normal', 'primary']).default('normal'),
   previous: z.string().trim().max(40).default(''),
   change: z.string().trim().max(40).default(''),
   trend: z.enum(['up', 'down', 'flat']).default('flat'),
   tone: z.enum(['positive', 'negative', 'neutral']).default('neutral'),
+  target: z.string().trim().max(40).default(''),
+  targetStatus: z.union([z.literal(''), z.enum(['met', 'missed', 'at-risk'])]).default(''),
+  progress: z.number().min(0).max(100).optional(),
 })
 
 export const resultArtifactSchema = z.strictObject({
@@ -48,6 +56,10 @@ export const officeResultSchema = z.strictObject({
   owner: z.string().max(40).default(''),
   producedAt: z.string().max(40).default(''),
   metrics: z.array(resultMetricSchema).max(12).default([]),
+  /** Optional section heading override, e.g. 审核结论 or 调研完成度. */
+  metricsTitle: z.string().max(40).default(''),
+  /** Optional caption for the metric group, e.g. the observation window. */
+  metricsCaption: z.string().max(60).default(''),
   artifacts: z.array(resultArtifactSchema).max(8).default([]),
   checks: z.array(resultCheckSchema).max(12).default([]),
   decisions: z.array(resultDecisionSchema).max(8).default([]),
@@ -56,7 +68,9 @@ export const officeResultSchema = z.strictObject({
 })
 export const emptyResult = () => officeResultSchema.parse({})
 export type OfficeResult = z.infer<typeof officeResultSchema>
+export type OfficeResultInput = z.input<typeof officeResultSchema>
 export type ResultMetric = z.infer<typeof resultMetricSchema>
+export type ResultMetricInput = z.input<typeof resultMetricSchema>
 export type ResultArtifact = z.infer<typeof resultArtifactSchema>
 export type ResultCheck = z.infer<typeof resultCheckSchema>
 export type ResultDecision = z.infer<typeof resultDecisionSchema>

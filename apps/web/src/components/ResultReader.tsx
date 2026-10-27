@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 import {
   ArrowDownRight, ArrowUpRight, BadgeCheck, CalendarDays, Check, CheckCircle2, CircleDashed, CircleX,
   ClipboardCheck, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Info, Link2, Minus,
-  PackageCheck, PencilLine, Table2, UserRound,
+  PackageCheck, PencilLine, Table2, Target, UserRound,
 } from 'lucide-react'
 import type { OfficeResult, ResultArtifact, ResultCheck, ResultMetric } from '@pawoffice/protocol/office-ui'
 import { resultFileBase, resultHasContent, resultReport, resultStatusLabels, resultSummaryText } from '../results/format.ts'
@@ -12,9 +12,14 @@ import './ResultReader.css'
 
 const statusIcons = { verified: BadgeCheck, ready: PackageCheck, draft: PencilLine, rejected: CircleX } as const
 const trendIcons = { up: ArrowUpRight, down: ArrowDownRight, flat: Minus } as const
+const toneIcons = { positive: CheckCircle2, negative: CircleX, neutral: CircleDashed } as const
+const targetIcons = { met: CheckCircle2, missed: CircleX, 'at-risk': CircleDashed } as const
+const targetLabels = { met: '已达标', missed: '未达标', 'at-risk': '有风险' } as const
 const checkIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
 const checkLabels = { passed: '已通过', pending: '待补充', failed: '未通过' } as const
 const artifactIcons = { document: FileText, image: ImageIcon, link: Link2, data: Table2 } as const
+
+type ResolvedMetricKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
 
 const markdownComponents: Components = {
   a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</a>,
@@ -27,6 +32,81 @@ function downloadText(filename: string, content: string, type = 'text/markdown;c
   const link = document.createElement('a')
   link.href = url; link.download = filename; link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+/** auto = comparison when a previous value exists, otherwise a plain value card. */
+function resolveMetricKind(metric: ResultMetric): ResolvedMetricKind {
+  if (metric.kind !== 'auto') return metric.kind
+  return metric.previous ? 'comparison' : 'value'
+}
+
+function MetricHeader({ metric }: { metric: ResultMetric }) {
+  return <div className="result-metric-top"><span>{metric.label}</span></div>
+}
+
+function ComparisonMetric({ metric }: { metric: ResultMetric }) {
+  const TrendIcon = trendIcons[metric.trend]
+  return <>
+    <div className="result-metric-top">
+      <span>{metric.label}</span>
+      {metric.change && <span className={`result-delta is-${metric.tone}`}><TrendIcon size={12} strokeWidth={2.4} />{metric.change}</span>}
+    </div>
+    <p className="result-metric-value"><strong>{metric.value}</strong>{metric.unit && <span>{metric.unit}</span>}</p>
+    {metric.previous && <p className="result-metric-previous">首轮 {metric.previous}</p>}
+  </>
+}
+
+function ValueMetric({ metric }: { metric: ResultMetric }) {
+  return <>
+    <MetricHeader metric={metric} />
+    <p className="result-metric-value"><strong>{metric.value}</strong>{metric.unit && <span>{metric.unit}</span>}</p>
+    {metric.change && <p className="result-metric-previous">{metric.change}</p>}
+  </>
+}
+
+function StatusMetric({ metric }: { metric: ResultMetric }) {
+  const Icon = toneIcons[metric.tone]
+  return <>
+    <MetricHeader metric={metric} />
+    <p className="result-metric-state" data-tone={metric.tone}><Icon size={17} strokeWidth={2} /><strong>{metric.value}</strong>{metric.unit && <span>{metric.unit}</span>}</p>
+    {metric.previous && <p className="result-metric-previous">首轮 {metric.previous}</p>}
+  </>
+}
+
+function TargetMetric({ metric }: { metric: ResultMetric }) {
+  const status = metric.targetStatus || ''
+  const StatusIcon = status ? targetIcons[status] : Target
+  return <>
+    <div className="result-metric-top">
+      <span>{metric.label}</span>
+      {status ? <span className={`result-target-state is-${status}`}><StatusIcon size={12} strokeWidth={2.2} />{targetLabels[status]}</span> : <Target size={13} strokeWidth={2} />}
+    </div>
+    <p className="result-metric-value"><strong>{metric.value}</strong>{metric.unit && <span>{metric.unit}</span>}</p>
+    {metric.progress !== undefined && <div className="result-target-progress">
+      <div className="result-target-track" role="progressbar" aria-label={`${metric.label}进度`} aria-valuenow={Math.round(metric.progress)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${metric.progress}%` }} /></div>
+      <small>{Math.round(metric.progress)}%</small>
+    </div>}
+    {(metric.target || metric.change) && <p className="result-metric-previous">{metric.target ? `目标 ${metric.target}` : metric.change}</p>}
+  </>
+}
+
+function TextMetric({ metric }: { metric: ResultMetric }) {
+  return <>
+    <MetricHeader metric={metric} />
+    <p className="result-metric-text">{metric.value}{metric.unit && <span>{metric.unit}</span>}</p>
+    {metric.change && <p className="result-metric-previous">{metric.change}</p>}
+  </>
+}
+
+function MetricCard({ metric }: { metric: ResultMetric }) {
+  const kind = resolveMetricKind(metric)
+  return <article className={`result-metric result-kind-${kind}`} data-kind={kind} data-tone={metric.tone} data-trend={metric.trend} data-emphasis={metric.emphasis}>
+    {kind === 'status' ? <StatusMetric metric={metric} />
+      : kind === 'target' ? <TargetMetric metric={metric} />
+        : kind === 'text' ? <TextMetric metric={metric} />
+          : kind === 'value' ? <ValueMetric metric={metric} />
+            : <ComparisonMetric metric={metric} />}
+  </article>
 }
 
 function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload }: {
@@ -55,18 +135,6 @@ function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload
   </article>
 }
 
-function MetricCard({ metric }: { metric: ResultMetric }) {
-  const TrendIcon = trendIcons[metric.trend]
-  return <article className="result-metric" data-tone={metric.tone} data-trend={metric.trend}>
-    <div className="result-metric-top">
-      <span>{metric.label}</span>
-      {metric.change && <span className={`result-delta is-${metric.tone}`}><TrendIcon size={12} strokeWidth={2.4} />{metric.change}</span>}
-    </div>
-    <p className="result-metric-value"><strong>{metric.value}</strong>{metric.unit && <span>{metric.unit}</span>}</p>
-    {metric.previous && <p className="result-metric-previous">首轮 {metric.previous}</p>}
-  </article>
-}
-
 function CheckRow({ check }: { check: ResultCheck }) {
   const Icon = checkIcons[check.status]
   return <li data-status={check.status}><Icon size={15} strokeWidth={2} /><span>{check.label}</span><em>{checkLabels[check.status]}</em></li>
@@ -83,6 +151,12 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
   const status = { label: resultStatusLabels[result.status], Icon: statusIcons[result.status] }
   const StatusIcon = status.Icon
   const passed = result.checks.filter(check => check.status === 'passed').length
+  const metrics = result.metrics
+  const kinds = metrics.map(resolveMetricKind)
+  const metricsTitle = result.metricsTitle || '关键指标'
+  const metricsCaption = result.metricsCaption || (kinds.length > 0 && kinds.every(kind => kind === 'comparison') ? '首轮观察 → 更新后观察' : '')
+  const metricCount = metrics.length
+  const hasPrimary = metrics.some(metric => metric.emphasis === 'primary')
   const copy = async (id: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -112,9 +186,14 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
       {result.status === 'verified' && <span className="result-seal" aria-hidden="true">验收通过</span>}
     </section>
 
-    {!!result.metrics.length && <section className="result-section" aria-labelledby={`${baseId}-metrics`}>
-      <header className="result-section-head"><h3 id={`${baseId}-metrics`}>关键指标</h3><small>首轮观察 → 更新后观察</small></header>
-      <div className="result-metrics">{result.metrics.map(metric => <MetricCard key={metric.id} metric={metric} />)}</div>
+    {!!metricCount && <section className="result-section" aria-labelledby={`${baseId}-metrics`}>
+      <header className="result-section-head">
+        <h3 id={`${baseId}-metrics`}>{metricsTitle}</h3>
+        {metricsCaption && <small>{metricsCaption}</small>}
+      </header>
+      <div className="result-metrics" data-count={String(Math.min(metricCount, 6))} data-lead={hasPrimary ? 'true' : undefined}>
+        {metrics.map(metric => <MetricCard key={metric.id} metric={metric} />)}
+      </div>
     </section>}
 
     {!!result.artifacts.length && <section className="result-section" aria-labelledby={`${baseId}-artifacts`}>

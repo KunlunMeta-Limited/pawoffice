@@ -1,8 +1,13 @@
 import type { OfficeResult } from '@pawoffice/protocol/office-ui'
 
+type ResultMetric = OfficeResult['metrics'][number]
+type ResolvedKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
+
 export const resultStatusLabels: Record<OfficeResult['status'], string> = {
   verified: '已验证', ready: '已交付', draft: '草稿', rejected: '未通过',
 }
+
+const targetStatusLabels = { met: '已达标', missed: '未达标', 'at-risk': '有风险' } as const
 
 export function resultHasContent(result: OfficeResult | undefined): result is OfficeResult {
   if (!result) return false
@@ -15,16 +20,28 @@ export function resultFileBase(result: OfficeResult) {
   return base || 'result'
 }
 
-function metricValue(metric: OfficeResult['metrics'][number]) {
+function resolvedKind(metric: ResultMetric): ResolvedKind {
+  if (metric.kind !== 'auto') return metric.kind
+  return metric.previous ? 'comparison' : 'value'
+}
+
+function metricValue(metric: ResultMetric) {
   if (!metric.unit) return metric.value
   return `${metric.value}${metric.unit === '%' ? '' : ' '}${metric.unit}`
+}
+
+function metricLine(metric: ResultMetric) {
+  const kind = resolvedKind(metric)
+  if (kind === 'comparison') return `${metric.label}：${metric.previous ? `${metric.previous} → ` : ''}${metricValue(metric)}${metric.change ? `（${metric.change}）` : ''}`
+  if (kind === 'target') return `${metric.label}：${metricValue(metric)}${metric.target ? ` / 目标 ${metric.target}` : ''}${metric.targetStatus ? `（${targetStatusLabels[metric.targetStatus]}${metric.progress !== undefined ? `，${Math.round(metric.progress)}%` : ''}）` : ''}`
+  if (kind === 'status' || kind === 'text') return `${metric.label}：${metric.value}`
+  return `${metric.label}：${metricValue(metric)}${metric.change ? `（${metric.change}）` : ''}`
 }
 
 /** A compact read-aloud summary for the copy button. */
 export function resultSummaryText(result: OfficeResult) {
   const lines = [result.title, result.summary, result.verdict].filter(Boolean)
-  if (result.metrics.length) lines.push('', ...result.metrics.map(metric =>
-    `${metric.label}：${metric.previous ? `${metric.previous} → ` : ''}${metricValue(metric)}${metric.change ? `（${metric.change}）` : ''}`))
+  if (result.metrics.length) lines.push('', ...result.metrics.map(metricLine))
   if (result.next.length) lines.push('', '下一步：', ...result.next.map((item, index) => `${index + 1}. ${item}`))
   return `${lines.join('\n').trim()}\n`
 }
@@ -36,8 +53,14 @@ export function resultReport(result: OfficeResult) {
   if (result.summary) lines.push(result.summary, '')
   if (result.verdict) lines.push(result.verdict, '')
   if (result.metrics.length) {
-    lines.push('## 关键指标', '', '| 指标 | 首轮 | 当前 | 变化 |', '| --- | ---: | ---: | ---: |')
-    for (const metric of result.metrics) lines.push(`| ${metric.label} | ${metric.previous || '—'} | ${metricValue(metric)} | ${metric.change || '—'} |`)
+    lines.push(`## ${result.metricsTitle || '关键指标'}`, '')
+    if (result.metricsCaption) lines.push(`*${result.metricsCaption}*`, '')
+    if (result.metrics.every(metric => resolvedKind(metric) === 'comparison')) {
+      lines.push('| 指标 | 首轮 | 当前 | 变化 |', '| --- | ---: | ---: | ---: |')
+      for (const metric of result.metrics) lines.push(`| ${metric.label} | ${metric.previous || '—'} | ${metricValue(metric)} | ${metric.change || '—'} |`)
+    } else {
+      for (const metric of result.metrics) lines.push(`- ${metricLine(metric)}`)
+    }
     lines.push('')
   }
   if (result.artifacts.length) {

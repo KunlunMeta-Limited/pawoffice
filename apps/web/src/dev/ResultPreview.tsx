@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Download, FileText, Sparkles, X } from 'lucide-react'
+import { Braces, Check, Copy, Download, FileText, Sparkles, X } from 'lucide-react'
 import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
 import { renderWhiteboardContent } from '@pawoffice/scene-office/task-board'
-import { createResultDemo, createResultDemoBoard, resultDemoStatuses } from '../dashboard/resultDemo.ts'
 import type { OfficeResult } from '@pawoffice/protocol/office-ui'
 import { resultFileBase, resultStatusLabels } from '../results/format.ts'
 import { ResultReader } from '../components/ResultReader.tsx'
 import { WhiteboardBoardView } from '../components/WhiteboardBoardView.tsx'
+import { findResultPreviewCase, resultPreviewCases, resultPreviewStatuses } from './resultPreviewData.ts'
 import '../components/WhiteboardReader.css'
 import './ResultPreview.css'
 
@@ -20,18 +20,43 @@ function downloadJson(filename: string, value: unknown) {
 }
 
 export function ResultPreview() {
-  const [status, setStatus] = useState<OfficeResult['status']>('verified')
+  const initialCase = findResultPreviewCase(new URLSearchParams(location.search).get('case'))
+  const [caseId, setCaseId] = useState(initialCase.id)
+  const [status, setStatus] = useState<OfficeResult['status']>(initialCase.result.status)
   const [view, setView] = useState<PreviewView>('result')
-  const result = useMemo(() => createResultDemo(status), [status])
-  const board = useMemo(() => createResultDemoBoard(status), [status])
+  const [dataOpen, setDataOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const current = findResultPreviewCase(caseId)
+  const result = useMemo<OfficeResult>(() => ({ ...current.result, status }), [current, status])
+  const board = useMemo(() => ({ ...current.board, result }), [current.board, result])
   const boardHtml = useMemo(() => renderWhiteboardContent({ taskBoard: board }), [board])
   const showResult = view === 'result'
   const download = () => downloadJson(showResult ? `${resultFileBase(result)}-result.json` : 'whiteboard.json', showResult ? result : board)
+  const selectCase = (id: string) => {
+    const next = findResultPreviewCase(id)
+    setCaseId(next.id); setStatus(next.result.status); setView('result')
+    const url = new URL(location.href)
+    url.searchParams.set('case', next.id)
+    history.replaceState(null, '', url)
+  }
+  const copyData = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify({ whiteboard: board }, null, 2))
+      setCopied(true); setTimeout(() => setCopied(false), 1600)
+    } catch { setCopied(false) }
+  }
   return <div className="result-preview-page">
     <div className="result-preview-bar">
-      <div className="result-preview-title"><span>成果阅读页</span><small>前端设计预览 · 仅开发环境</small></div>
-      <div className="result-preview-variants" role="group" aria-label="成果状态">
-        {resultDemoStatuses.map(item => <button key={item} type="button" aria-pressed={item === status} onClick={() => setStatus(item)}>{resultStatusLabels[item]}</button>)}
+      <div className="result-preview-title"><span>成果阅读页</span><small>数据驱动预览 · 仅开发环境</small></div>
+      <div className="result-preview-cases" role="group" aria-label="任务样例">
+        {resultPreviewCases.map(item => <button key={item.id} type="button" aria-pressed={item.id === caseId} onClick={() => selectCase(item.id)}>{item.label}</button>)}
+      </div>
+      <button type="button" className="result-preview-data-toggle" aria-pressed={dataOpen} onClick={() => setDataOpen(open => !open)}><Braces size={14} />{dataOpen ? '收起数据' : '查看驱动数据'}</button>
+    </div>
+    <div className="result-preview-subbar">
+      <p>{current.description}</p>
+      <div className="result-preview-statuses" role="group" aria-label="成果状态">
+        {resultPreviewStatuses.map(item => <button key={item} type="button" aria-pressed={item === status} onClick={() => setStatus(item)}>{resultStatusLabels[item]}</button>)}
       </div>
     </div>
     <div className={`whiteboard-reader result-preview-panel${showResult ? ' is-result' : ''}`} data-view={showResult ? 'result' : 'board'}>
@@ -52,5 +77,12 @@ export function ResultPreview() {
         {showResult ? <ResultReader result={result} onOpenBoard={() => setView('board')} /> : <WhiteboardBoardView detail={board.detail ?? ''} html={boardHtml} />}
       </article>
     </div>
+    {dataOpen && <aside className="result-preview-data" aria-label="驱动数据">
+      <header><div><strong>驱动数据</strong><small>当前成果页读取的结构化数据</small></div>
+        <div><button type="button" onClick={() => { void copyData() }}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? '已复制' : '复制'}</button>
+          <button type="button" aria-label="关闭数据" onClick={() => setDataOpen(false)}><X size={16} /></button></div>
+      </header>
+      <pre>{JSON.stringify({ whiteboard: board }, null, 2)}</pre>
+    </aside>}
   </div>
 }

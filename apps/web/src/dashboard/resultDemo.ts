@@ -1,6 +1,7 @@
-import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
+import { officeResultSchema } from '@pawoffice/protocol/office-ui'
+import type { OfficeResult, OfficeResultInput, ResultMetricInput, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
 
-const metrics: OfficeResult['metrics'] = [
+const metrics: ResultMetricInput[] = [
   { id: 'impressions', label: '曝光', value: '10,000', unit: '次', previous: '10,000 次', change: '+0.0%', trend: 'flat', tone: 'neutral' },
   { id: 'visits', label: '商品访问', value: '350', unit: '次', previous: '360 次', change: '-2.8%', trend: 'down', tone: 'neutral' },
   { id: 'orders', label: '订单', value: '14', unit: '单', previous: '9 单', change: '+5 单', trend: 'up', tone: 'positive' },
@@ -90,7 +91,7 @@ const decisions: OfficeResult['decisions'] = [
 export const resultDemoStatuses = ['verified', 'ready', 'draft', 'rejected'] as const
 
 export function createResultDemo(status: OfficeResult['status'] = 'verified'): OfficeResult {
-  const base: OfficeResult = {
+  const base: OfficeResultInput = {
     template: 'result-v1',
     title: '电脑支架首轮经营复盘',
     status,
@@ -127,7 +128,7 @@ export function createResultDemo(status: OfficeResult['status'] = 'verified'): O
     base.next = ['补齐退款与售后数据后重新提交验收。', '延长观察窗口，保留当前商品与价格。']
     base.note = '以上为本地模拟数据。验收未通过不表示商品不可继续销售，只表示本轮证据不足。'
   }
-  return base
+  return officeResultSchema.parse(base)
 }
 
 /** A completed board that carries the demo result, for the reader preview and whiteboard demo. */
