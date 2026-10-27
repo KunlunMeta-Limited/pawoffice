@@ -41,3 +41,53 @@ test('external layout discovery, initialization, live switching and browser cont
   await expect(page.locator('.member-workspace')).toBeVisible()
   await expect(input).toHaveValue('布局切换时保留的输入草稿')
 })
+
+test('member layout keeps six room portraits while backend bindings and presence change per conversation', async ({ page, service, backend }) => {
+  const state = office()
+  await backend.post({ type: 'offices.initialize', offices: [state], layoutId: 'members' })
+  await page.goto(`${service.url}/office/`)
+  const roster = page.locator('.member-roster-grid')
+  const portraits = roster.locator('.member-roster-person')
+  const active = roster.locator('.member-presence.online')
+  await expect(portraits).toHaveCount(6)
+  await expect(roster.locator('.runtime-avatar img')).toHaveCount(6)
+  await expect(active).toHaveCount(2)
+  await expect(page.locator('.member-overview-card').last()).toContainText('2 / 6')
+  const input = page.getByRole('textbox', { name: '给办公室发送消息' })
+  await input.fill('稀疏成员数据更新时保留草稿')
+  const idle = roster.locator('[data-actor-id="file-agent"]')
+  await idle.click()
+  await expect(idle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.member-profile-role')).toHaveText('当前会话未分配')
+  await expect(page.locator('.member-profile-open')).toBeDisabled()
+  await expect(page.locator('.member-current-task')).toContainText('当前没有关联任务')
+
+  state.seq = 2; state.conversations[0].employees[0].online = false
+  await backend.post({ type: 'office.snapshot', teamId: state.workspace.id, snapshot: state })
+  await expect(portraits).toHaveCount(6)
+  await expect(active).toHaveCount(1)
+  await expect(roster.locator('[data-actor-id="office-lead"] .member-presence')).toHaveAttribute('aria-label', '空闲')
+  await expect(idle).toHaveAttribute('aria-pressed', 'true')
+  await expect(input).toHaveValue('稀疏成员数据更新时保留草稿')
+
+  const review = structuredClone(state.conversations[0])
+  review.id = 'review'; review.title = '复核会话'; review.tasks = []
+  review.employees = [{ id: 'reviewer', sceneActorId: 'data-agent', name: '复核员', online: true }]
+  state.seq = 3; state.conversations.push(review)
+  await backend.post({ type: 'office.snapshot', teamId: state.workspace.id, snapshot: state })
+  await page.getByRole('button', { name: '展开对话', exact: true }).click()
+  await page.getByRole('tab', { name: '复核会话', exact: true }).click()
+  await expect(portraits).toHaveCount(6)
+  await expect(active).toHaveCount(1)
+  await expect(roster.locator('[data-actor-id="data-agent"] .member-presence')).toHaveAttribute('aria-label', '活跃')
+  await expect(roster.locator('[data-actor-id="code-agent"] .member-presence')).toHaveAttribute('aria-label', '空闲')
+  await page.getByRole('tab', { name: '主会话', exact: true }).click()
+  await expect(input).toHaveValue('稀疏成员数据更新时保留草稿')
+
+  state.seq = 4; state.conversations[0].employees = []; state.conversations[0].tasks = []
+  await backend.post({ type: 'office.snapshot', teamId: state.workspace.id, snapshot: state })
+  await expect(portraits).toHaveCount(6)
+  await expect(active).toHaveCount(0)
+  await expect(page.locator('.member-overview-card').last()).toContainText('0 / 6')
+  await expect(input).toHaveValue('稀疏成员数据更新时保留草稿')
+})

@@ -1,4 +1,15 @@
 import type { DashboardSnapshot, DashboardTask } from '@pawoffice/protocol/dashboard'
+import { maxOfficeMembers } from '@pawoffice/protocol/dashboard'
+
+export type MemberRosterActor = { id: string; name: string }
+
+/** Keep the room's six characters visible; business bindings only supply identity and presence. */
+export function memberRoster(dashboard: DashboardSnapshot | null, actors: readonly MemberRosterActor[], preferredEmployeeId = '') {
+  return actors.slice(0, maxOfficeMembers).map(actor => ({ ...actor,
+    employee: employeeForActor(dashboard, actor.id, preferredEmployeeId),
+    active: dashboard?.employees.some(employee => employee.sceneActorId === actor.id && employee.online === true) ?? false,
+  }))
+}
 
 const rank: Record<DashboardTask['status'], number> = { running: 0, blocked: 1, queued: 2, failed: 3, completed: 4 }
 export const memberTaskStatuses: Record<DashboardTask['status'], string> = { running: '进行中', blocked: '待处理', queued: '待开始', failed: '失败', completed: '已完成' }

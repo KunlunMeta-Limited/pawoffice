@@ -19,7 +19,7 @@ const snapshot = {
   schemaVersion: '1.0', conversationId: 'session-a', workspace: { id: 'office-a', name: '研发办公室' },
   employees: [
     { id: 'alice', sceneActorId: 'shared-actor', name: '甲', role: '开发', online: true },
-    { id: 'bob', sceneActorId: 'shared-actor', name: '乙', role: '评审', online: false },
+    { id: 'bob', sceneActorId: 'second-actor', name: '乙', role: '评审', online: false },
   ],
   tasks: [
     { id: 'done', title: '完成任务', assigneeId: 'alice', status: 'completed', progress: 10, updatedAt: at },
@@ -49,8 +49,9 @@ test('member summary uses only assigned tasks in the supplied conversation and n
 })
 
 test('employees sharing one character retain independent identities and the current selection', () => {
-  assert.equal(selectors.employeeForActor(snapshot, 'shared-actor').id, 'alice')
-  assert.equal(selectors.employeeForActor(snapshot, 'shared-actor', 'bob').id, 'bob')
+  const shared = { ...snapshot, employees: snapshot.employees.map(employee => ({ ...employee, sceneActorId: 'shared-actor' })) }
+  assert.equal(selectors.employeeForActor(shared, 'shared-actor').id, 'alice')
+  assert.equal(selectors.employeeForActor(shared, 'shared-actor', 'bob').id, 'bob')
   assert.equal(selectors.employeeForActor(snapshot, 'unknown'), undefined)
 })
 
@@ -69,9 +70,28 @@ test('page shell selection is separate from scene-only layout and handles unknow
   assert.equal(layout.resolveOfficeShell('?shell=invalid', 'members'), 'classic')
 })
 
+const rosterActors = ['shared-actor', 'second-actor', 'idle-3', 'idle-4', 'idle-5', 'idle-6'].map((id, index) => ({ id, name: `场景成员${index + 1}` }))
+
+test('six room portraits remain in place with sparse, missing and shared business bindings', () => {
+  const original = structuredClone(snapshot)
+  const roster = selectors.memberRoster(snapshot, rosterActors)
+  assert.equal(roster.length, 6)
+  assert.deepEqual(roster.map(item => item.id), rosterActors.map(actor => actor.id))
+  assert.deepEqual(roster.map(item => item.active), [true, false, false, false, false, false])
+  assert.equal(roster[2].employee, undefined)
+  const shared = { ...snapshot, employees: [snapshot.employees[0], { ...snapshot.employees[1], sceneActorId: 'shared-actor', online: true }] }
+  assert.equal(selectors.memberRoster(shared, rosterActors, 'bob')[0].employee.id, 'bob')
+  assert.equal(selectors.memberRoster(shared, rosterActors).filter(item => item.active).length, 1)
+  const empty = selectors.memberRoster({ ...snapshot, employees: [] }, rosterActors)
+  assert.equal(empty.length, 6)
+  assert(empty.every(item => !item.active && !item.employee))
+  assert(selectors.memberRoster({ ...snapshot, employees: [{ ...snapshot.employees[0], online: undefined }] }, rosterActors).every(item => !item.active))
+  assert.deepEqual(snapshot, original)
+})
+
 function renderMemberShell(props = {}) {
   return renderToStaticMarkup(createElement(MemberOfficeShell, {
-    dashboard: snapshot, appearanceIds: { 'shared-actor': 'existing-portrait' }, selectedEmployeeId: 'alice',
+    dashboard: snapshot, appearanceIds: { 'shared-actor': 'existing-portrait' }, selectedEmployeeId: 'alice', rosterActors,
     scene: createElement('div', { id: 'existing-office-scene' }), connection: 'connected', dataMode: 'push',
     dashboardError: '', sceneLinkError: '', actionError: '', executeAction: async () => {}, pendingTaskIds: [],
     editing: false, canRecoverLayout: false, recoverLayout() {}, exportCapabilities() {}, exportSnapshot() {}, renderScenePanel: () => undefined,
@@ -93,14 +113,28 @@ test('member profile shows the role under the name and status only as a dot', ()
   const html = renderMemberShell()
   const heading = html.match(/<header class="member-profile-heading">([\s\S]*?)<\/header>/)?.[1] ?? ''
   assert.match(heading, /<span class="member-profile-role" title="开发">开发<\/span>/)
-  assert.match(heading, /class="member-presence online" role="img" aria-label="在线"/)
+  assert.match(heading, /class="member-presence online" role="img" aria-label="活跃"/)
   assert.doesNotMatch(heading, />在线<|>离线<|>状态未知</)
   assert.doesNotMatch(html, /class="member-role"|class="member-online-label"/)
 
   const offline = renderMemberShell({ selectedEmployeeId: 'bob' })
   const offlineHeading = offline.match(/<header class="member-profile-heading">([\s\S]*?)<\/header>/)?.[1] ?? ''
-  assert.match(offlineHeading, /class="member-presence " role="img" aria-label="离线"/)
+  assert.match(offlineHeading, /class="member-presence " role="img" aria-label="空闲"/)
   assert.match(offlineHeading, /class="member-profile-role" title="评审">评审<\/span>/)
+})
+
+test('idle room characters can show an empty profile without inventing backend employees', () => {
+  const html = renderMemberShell({ selectedActorId: 'idle-3' })
+  assert.equal((html.match(/class="member-roster-person"/g) ?? []).length, 6)
+  assert.match(html, /data-actor-id="idle-3" aria-label="查看场景成员3的资料" aria-pressed="true"/)
+  const profile = html.match(/<header class="member-profile-heading">([\s\S]*?)<\/header>/)?.[1] ?? ''
+  assert.match(profile, /场景成员3/)
+  assert.match(profile, /当前会话未分配/)
+  assert.match(profile, /aria-label="空闲"/)
+  assert.match(html, /class="member-profile-open" disabled="" title="当前会话未绑定业务成员"/)
+  assert.match(html, /当前没有关联任务/)
+  const emptyOffice = renderMemberShell({ hasOffice: false, dashboard: null })
+  assert.doesNotMatch(emptyOffice, /class="member-roster-person"/)
 })
 
 test('member roster and details have a decorative divider with compact spacing', async () => {
@@ -115,7 +149,7 @@ test('member roster and details have a decorative divider with compact spacing',
 
 test('member roster has a compact add button immediately after its title and count', async () => {
   const html = renderMemberShell({ createEmployee: async () => {}, memberActors: [{ id: 'shared-actor', name: '王明' }] })
-  assert.match(html, /class="member-roster-heading"><h2[^>]*>团队成员 <span>（2）<\/span><\/h2><button class="member-add-button" type="button" title="添加成员" aria-label="添加成员"><svg/)
+  assert.match(html, /class="member-roster-heading"><h2[^>]*>团队成员 <span>（6）<\/span><\/h2><button class="member-add-button" type="button" title="添加成员" aria-label="添加成员"><svg/)
   assert.match(renderMemberShell(), /aria-label="添加成员" disabled=""/)
   const css = await readFile(new URL('../apps/web/src/ui/MemberOfficeShell.css', import.meta.url), 'utf8')
   const rule = css.match(/\.member-add-button \{([^}]+)\}/)?.[1] ?? ''
@@ -150,11 +184,14 @@ test('task details scroll separately from the member summary and archive footer'
   assert(html.slice(end).includes('查看完整档案'))
 })
 
-test('member header provides one office-entry slot beside the layout control without a duplicate office dropdown', () => {
+test('current office has its own header with the layout control and a single office-entry slot', () => {
   const html = renderMemberShell({ layoutControl: createElement('button', { 'aria-label': '切换页面布局' }) })
-  const header = html.match(/<header class="member-brand-row">([\s\S]*?)<\/header>/)?.[1] ?? ''
+  const header = html.match(/<header class="member-brand-row"[^>]*>([\s\S]*?)<\/header>/)?.[1] ?? ''
+  assert.match(header, /研发办公室/)
+  assert.match(header, /6 个工位/)
   assert.match(header, /aria-label="切换页面布局"/)
   assert.match(header, /class="member-office-control"/)
+  assert(html.indexOf('</header>') < html.indexOf('<aside class="member-sidebar"'))
   assert.doesNotMatch(html, /member-office-picker|aria-label="选择办公室"/)
 })
 

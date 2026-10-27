@@ -42,6 +42,9 @@ export interface OfficeShellProps {
   officeSwitcherRef?: RefCallback<HTMLDivElement>
   selectedEmployeeId?: string
   onSelectEmployee?: (employeeId: string) => void
+  rosterActors?: readonly { id: string; name: string }[]
+  selectedActorId?: string
+  onSelectRosterActor?: (actorId: string) => void
   createEmployee?: (input: OfficeMemberInput) => Promise<void>
   memberCreationBlockReason?: string
   memberActors?: readonly { id: string; name: string }[]
