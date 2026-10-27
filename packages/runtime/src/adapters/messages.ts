@@ -53,7 +53,7 @@ export class SceneMessageClient {
     if (!receiver) return
     try {
       const payload = message.command
-      const results = 'commands' in payload ? receiver.runtime.submitBatch(payload) : [receiver.runtime.submit(payload)]
+      const results = 'commands' in payload ? receiver.runtime.submitBatch(payload) : [receiver.runtime.submit(payload, { ordered: true })]
       for (const result of results) if (result.error) console.warn('[SceneMessages] command not executed', result)
     } catch (error) { console.warn('[SceneMessages] command rejected locally', error) }
   }

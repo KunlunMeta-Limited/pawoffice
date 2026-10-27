@@ -5,6 +5,7 @@ import { browserPersistence } from '@pawoffice/runtime/adapters/storage'
 import { seatStepDurationMs } from '@pawoffice/scene-office/pixi/projection'
 import { supportsCharacterPose } from './application/poseSupport.ts'
 import { createOfficeDataSource } from './dashboard/createSource.ts'
+import { createWhiteboardDemoSource } from './dashboard/whiteboardDemo.ts'
 import type { OfficeDataSource } from '@pawoffice/protocol/dashboard'
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
 import type { OfficeChatSource } from '@pawoffice/protocol/chat'
@@ -112,19 +113,20 @@ export function OfficeTeamWorkspace({ initialTeams, createTeam, chatSource, layo
       resolveDecision: (teamId, decisionId, choiceId, customText) => { void sessions.get(teamId)?.decisions.choose(teamId, decisionId, choiceId, customText) } }} layout={layout} />
 }
 
-function DemoApp() {
-  const [dataSource] = useState(createOfficeDataSource)
+function DemoApp({ whiteboardDemo = false }: { whiteboardDemo?: boolean }) {
+  const [dataSource] = useState(() => whiteboardDemo ? createWhiteboardDemoSource() : createOfficeDataSource())
   const [chatSource] = useState(() => new PreviewChatSource())
-  const [directory] = useState(() => dataSource.kind === 'example' ? new DemoOfficeDirectory(dataSource, localStorage) : undefined)
+  const [directory] = useState(() => !whiteboardDemo && dataSource.kind === 'example' ? new DemoOfficeDirectory(dataSource, localStorage) : undefined)
   const [initialTeams] = useState(() => {
     const teams = directory?.list() ?? []
-    return teams.length ? teams : [{ id: 'office-1', name: '办公室', sceneLabel: '办公室', source: dataSource }]
+    return teams.length ? teams : [{ id: whiteboardDemo ? 'office-whiteboard-demo' : 'office-1', name: whiteboardDemo ? '白板验收办公室' : '办公室', sceneLabel: '办公室', source: dataSource }]
   })
   return <OfficeTeamWorkspace initialTeams={initialTeams} createTeam={directory?.create} chatSource={chatSource}
     layout={new URLSearchParams(location.search).get('layout') === 'scene' ? 'scene' : 'full'} />
 }
 
 function App() {
+  if (import.meta.env.DEV && new URLSearchParams(location.search).get('whiteboard-demo') === '1') return <DemoApp whiteboardDemo />
   const relayUrl = sceneRelayUrl()
   return relayUrl ? <ConnectedOfficeWorkspace baseUrl={relayUrl} renderOffice={props => <OfficeApp dataSource={props.session.source} {...props} />} /> : <DemoApp />
 }
