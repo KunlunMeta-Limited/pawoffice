@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { RuntimeWorkspace } from './components/RuntimeWorkspace.tsx'
 import { createOfficeRuntime } from './application/createOfficeRuntime.ts'
 import { browserPersistence } from '@pawoffice/runtime/adapters/storage'
@@ -31,6 +31,10 @@ import { SceneOnlyLayout } from '../../shared/scene/layout.tsx'
 import { sceneRelayUrl } from '../../shared/scene/connectionConfig.ts'
 import { ConnectedOfficeWorkspace } from './ui/ConnectedOfficeWorkspace.tsx'
 import type { OfficeLayoutControl } from './ui/officeLayout.ts'
+
+const ResultPreview = import.meta.env.DEV
+  ? lazy(() => import('./dev/ResultPreview.tsx').then(module => ({ default: module.ResultPreview })))
+  : undefined
 
 function createTeamRuntime(sceneId: string) {
   return createOfficeRuntime({ sceneId, referenceLayout: true, persistence: browserPersistence(localStorage, sceneId), seatStepDuration: seatStepDurationMs, supportsPose: supportsCharacterPose })
@@ -126,6 +130,7 @@ function DemoApp({ whiteboardDemo = false }: { whiteboardDemo?: boolean }) {
 }
 
 function App() {
+  if (ResultPreview && new URLSearchParams(location.search).get('result-preview') === '1') return <Suspense fallback={null}><ResultPreview /></Suspense>
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('whiteboard-demo') === '1') return <DemoApp whiteboardDemo />
   const relayUrl = sceneRelayUrl()
   return relayUrl ? <ConnectedOfficeWorkspace baseUrl={relayUrl} renderOffice={props => <OfficeApp dataSource={props.session.source} {...props} />} /> : <DemoApp />

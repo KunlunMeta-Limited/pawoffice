@@ -25,9 +25,12 @@ export function renderTaskBoard(data: WhiteboardTaskBoardData, surface: Whiteboa
       <div style="display:flex;align-items:center;gap:.5em;margin-top:.35em"><div role="progressbar" aria-label="${escape(step.title)}" ${progress === null ? '' : `aria-valuenow="${progress}"`} aria-valuemin="0" aria-valuemax="100" style="flex:1;height:.38em;overflow:hidden;border-radius:5px;background:${material.track}"><div style="width:${progress ?? 0}%;height:100%;border-radius:5px;background:${color}"></div></div><span style="flex:none;min-width:2.7em;text-align:right;font-size:${wall ? '.8em' : '.7em'};color:#68758a">${progress === null ? '—' : `${progress}%`}</span></div></div>
     </li>`
   }).join('')
+  const result = data.result
+  const hasResult = Boolean(result && ((result.title ?? '').trim() || (result.summary ?? '').trim() || (result.verdict ?? '').trim()
+    || result.metrics?.length || result.artifacts?.length || result.checks?.length))
   const link = data.link?.url
     ? `<a href="${escape(data.link.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:.25em;color:#6288b4;font-size:.8em;line-height:${wall ? '1.2' : 'inherit'};text-decoration:none">${escape(data.link.label ?? '')}${icon('arrow', '1em', '#6288b4')}</a>`
-    : `<a href="#whiteboard-steps" style="display:inline-flex;align-items:center;gap:.25em;color:#6288b4;font-size:.8em;line-height:${wall ? '1.2' : 'inherit'};text-decoration:none">查看任务拆解${icon('arrow', '1em', '#6288b4')}</a>`
+    : `<a href="#whiteboard-steps" style="display:inline-flex;align-items:center;gap:.25em;color:#6288b4;font-size:.8em;line-height:${wall ? '1.2' : 'inherit'};text-decoration:none">${hasResult && data.status === 'completed' ? '查看成果' : '查看任务拆解'}${icon('arrow', '1em', '#6288b4')}</a>`
   return `<section class="task-whiteboard" aria-label="任务白板" style="box-sizing:border-box;width:100%;padding:${wall ? '.1em 0 .3em' : '.2em 0 .8em'};color:#203450;font-family:system-ui,sans-serif;line-height:1.6;letter-spacing:0">
     <header style="display:flex;align-items:center;justify-content:space-between;gap:1em;height:${wall ? '1.95em' : '2.45em'};margin-bottom:${wall ? '.2em' : '.35em'}">
       <div style="display:flex;align-items:center;gap:.4em;min-width:0">${icon('lightbulb', wall ? '1.8em' : '2.05em', '#e9b43c')}<strong style="font-size:${wall ? '1.8em' : '2em'};line-height:1.1;font-weight:750;white-space:nowrap">${statusLabels[data.status]}</strong></div>

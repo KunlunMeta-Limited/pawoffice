@@ -1,4 +1,5 @@
 import { ExampleOfficeDataSource } from './demoSource.ts'
+import { createResultDemoBoard } from './resultDemo.ts'
 
 const detail = `# 商品上架计划 · 执行详情
 
@@ -87,6 +88,7 @@ export function createWhiteboardDemoSource() {
       { id: 'legacy', title: '无详情 · 旧数据兼容', employees: [], tasks: [], events: [], whiteboard: { ...base,
         summary: '', description: '这是一块未提供新字段的旧白板。展开后回退展示原有任务板，完整阅读说明和便签；原有标题、状态与阶段进度继续保留。'.repeat(3), detail: '',
         note: '此示例没有独立详情，使用原有概览作为回退内容。'.repeat(3) } },
+      { id: 'result', title: '成果阅读 · 验收通过', employees: [], tasks: [], events: [], whiteboard: createResultDemoBoard('verified') },
     ],
   })
 }

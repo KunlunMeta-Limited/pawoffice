@@ -605,13 +605,56 @@ sequenceDiagram
 {
   "template": "task-board-v1", "title": "", "status": "queued",
   "tagline": "", "description": "", "note": "", "summary": "", "detail": "",
-  "link": { "label": "", "url": "" }, "steps": []
+  "link": { "label": "", "url": "" }, "steps": [],
+  "result": {
+    "template": "result-v1", "status": "draft", "title": "", "summary": "", "verdict": "",
+    "owner": "", "producedAt": "", "metrics": [], "artifacts": [], "checks": [], "decisions": [], "next": [], "note": ""
+  }
 }
 ```
 
 白板与任务共用办公室快照的 `seq`。阶段 `progress` 的范围为 0–100，省略时默认为 `-1`，表示进度未知。
 
 `summary` 是墙上收起白板的概览文字（最多 300 字符），与标题、状态、便签及阶段进度按原模板展示；省略、空串或纯空白时回退使用旧字段 `description`。`detail` 是点击白板后展示的独立详情（最多 16000 字符），支持 Markdown 标题、列表、表格、代码及链接，忽略原始 HTML；详情超出窗口高度时在内容区滚动，顶部关闭与下载按钮保持可见。其他白板文字字段仍为普通文本。未提供有效详情时，弹窗回退展示概览任务板，文字完整显示。下载数据包含两个新字段及后端原始进度。一次请求仍受整体 64 KiB 大小限制。
+
+### 成果阅读页
+
+白板的可选 `result` 承载本轮目标的成果。空结果（默认 `status: "draft"`、无正文）不显示成果视图；`result` 有内容后，白板弹窗顶部出现「任务白板 / 成果」切换。`status: "completed"` 且结果有内容时默认打开成果视图；其它状态默认仍展示任务白板，读者可手动切换。成果页以 `summary` 作为首屏结论，`verdict` 作为验收结论，`title` 显示为弹窗标题，`owner`、`producedAt` 为展示字符串。
+
+成果示例：
+
+```json
+{
+  "template": "result-v1", "status": "verified",
+  "title": "电脑支架首轮经营复盘",
+  "summary": "尺寸说明补齐后，订单从 9 单增至 14 单，成交率 2.5% → 4.0%。",
+  "verdict": "标题、主图、详情与价格已复核；两轮为同口径模拟窗口，尚不能证明因果关系。",
+  "owner": "王明 · 电商运营负责人", "producedAt": "2026-10-19 14:32",
+  "metrics": [
+    { "id": "orders", "label": "订单", "value": "14", "unit": "单", "previous": "9 单", "change": "+5 单", "trend": "up", "tone": "positive" }
+  ],
+  "artifacts": [
+    { "id": "page-changes", "kind": "document", "title": "商品页改动清单", "description": "标题、主图与详情改动。",
+      "url": "", "content": "## 已完成\n\n- 补充尺寸说明。\n- 调整详情顺序。" }
+  ],
+  "checks": [{ "id": "copy", "label": "标题、主图、详情与价格完成复核", "status": "passed" }],
+  "decisions": [{ "id": "listing", "question": "是否按 79 元上架？", "choice": "确认上架", "at": "10-19 14:02" }],
+  "next": ["延长观察窗口至 72 小时，核对退款与售后数据。"],
+  "note": "以上为本地模拟数据，不连接真实店铺。"
+}
+```
+
+| 字段 | 内容 |
+| --- | --- |
+| `status` | `draft` 草稿 / `ready` 已交付 / `verified` 已验证 / `rejected` 未通过；只影响状态徽标与阅读页色调，不改变白板阶段 |
+| `metrics` | 最多 12 项；`label`、`value`、`unit` 为展示字符串，`previous` 为首轮值，`change` 为变化文案，`trend` 为 `up`/`down`/`flat`，`tone` 为 `positive`/`negative`/`neutral` |
+| `artifacts` | 最多 8 项；`kind` 为 `document`/`image`/`link`/`data`，`content` 为最多 8000 字符的 Markdown 正文，`url` 为可选 HTTPS 链接；前端提供查看、复制与下载 |
+| `checks` | 最多 12 项；`status` 为 `passed`/`pending`/`failed`，用于验收清单 |
+| `decisions` | 最多 8 项；记录问题、选择与时间，供读者回看过程决策 |
+| `next` | 最多 8 条、每条 160 字符以内的下一步行动 |
+| `note` | 最多 300 字符的免责声明或补充说明 |
+
+成果与白板共用快照 `seq`，必须随完整快照一起提交。字段均可省略并带默认值，禁止 `null`；旧客户端忽略未知字段时仍按原白板模板展示。成果数据会随 `office.capabilities` 的 `whiteboardSchema` 自动暴露，无需新增通道。下载按钮在成果视图导出成果 JSON；`result` 不包含文件路径，交付物内容以 Markdown 文本内联，整体仍受 64 KiB 请求上限约束。
 
 ### 详情 Markdown 写作规范
 
