@@ -1,0 +1,635 @@
+{
+  "cases": [
+    {
+      "id": "operations",
+      "label": "电商复盘",
+      "description": "前后对比指标：订单、成交率、成交额。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "折叠电脑支架上架与优化",
+        "status": "completed",
+        "tagline": "电商运营 · 模拟数据",
+        "description": "按首轮约定复核商品内容，补齐尺寸说明后再观察一轮。",
+        "note": "点击白板查看执行详情与本轮成果。",
+        "summary": "统一商品参数，补齐尺寸说明，完成上架、观察与优化。",
+        "detail": "# 折叠电脑支架上架与优化 · 执行详情\n\n> 墙上只展示目标与阶段进度；这里是完整的执行说明、交付要求和验收标准。\n\n## 当前目标\n\n完成折叠电脑支架的商品资料核验、内容制作、上架授权与经营观察。所有对外图片与文案统一使用已确认参数：售价 **79 元**，适用 **13–16 英寸**笔记本，六档高度调节。\n\n## 执行步骤\n\n1. 核对商品参数与供应商资料，保留参数来源。\n2. 制作标题、主图、尺寸图与详情文案，保持参数一致。\n3. 完成上架检查，等待负责人授权后模拟上架。\n4. 观察首个 24 小时窗口，汇总访问、订单与购买咨询。\n5. 根据用户选择补充尺寸说明或验证优惠，再观察第二个窗口。\n\n## 阶段交付物\n\n| 阶段 | 交付物 | 验收要求 |\n| --- | --- | --- |\n| 商品与上架 | 标题、主图、详情、价格 | 参数一致，无夸大描述 |\n| 销量与反馈 | 首轮经营数据与咨询分类 | 保留统计口径与起止时间 |\n| 优化与复盘 | 改动清单、两轮对比、复盘结论 | 改动有依据，结论不夸大因果 |\n\n## 验收要求\n\n- [x] 标题、主图、详情与价格完成复核。\n- [x] 13–16 英寸适用范围已补齐。\n- [ ] 退款与售后数据接入。\n- [ ] 延长观察窗口后再决定是否扩大推广。\n\n## 注意事项\n\n- 所有店铺操作与经营数据均为本地模拟，不连接真实店铺，不产生费用。\n- 两个观察窗口不是随机对照实验，不能把订单增长直接归因于单次改动。\n- 未核验的承重、散热和销量描述不对外展示。",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "listing",
+            "title": "商品与上架",
+            "progress": 100
+          },
+          {
+            "id": "observation",
+            "title": "销量与反馈",
+            "progress": 100
+          },
+          {
+            "id": "improvement",
+            "title": "优化与复盘",
+            "progress": 100
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "电脑支架首轮经营复盘",
+          "status": "verified",
+          "summary": "尺寸说明补齐后，订单从 9 单增至 14 单，成交率 2.5% → 4.0%。",
+          "verdict": "标题、主图、详情与价格已复核；两轮为同口径模拟窗口，尚不能证明因果关系。",
+          "owner": "王明 · 电商运营负责人",
+          "producedAt": "2026-10-19 14:32",
+          "metrics": [
+            {
+              "id": "impressions",
+              "label": "曝光",
+              "value": "10,000",
+              "unit": "次",
+              "kind": "auto",
+              "emphasis": "normal",
+              "previous": "10,000 次",
+              "change": "+0.0%",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "visits",
+              "label": "商品访问",
+              "value": "350",
+              "unit": "次",
+              "kind": "auto",
+              "emphasis": "normal",
+              "previous": "360 次",
+              "change": "-2.8%",
+              "trend": "down",
+              "tone": "neutral",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "orders",
+              "label": "订单",
+              "value": "14",
+              "unit": "单",
+              "kind": "auto",
+              "emphasis": "primary",
+              "previous": "9 单",
+              "change": "+5 单",
+              "trend": "up",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "conversion",
+              "label": "访问成交率",
+              "value": "4.0",
+              "unit": "%",
+              "kind": "auto",
+              "emphasis": "normal",
+              "previous": "2.5%",
+              "change": "+1.5pp",
+              "trend": "up",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "revenue",
+              "label": "成交额",
+              "value": "1,106",
+              "unit": "元",
+              "kind": "auto",
+              "emphasis": "normal",
+              "previous": "711 元",
+              "change": "+55.6%",
+              "trend": "up",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "price",
+              "label": "成交单价",
+              "value": "79",
+              "unit": "元",
+              "kind": "auto",
+              "emphasis": "normal",
+              "previous": "79 元",
+              "change": "保持不变",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "",
+              "targetStatus": ""
+            }
+          ],
+          "metricsTitle": "关键指标",
+          "metricsCaption": "首轮观察 → 更新后观察",
+          "artifacts": [
+            {
+              "id": "page-changes",
+              "kind": "document",
+              "title": "商品页改动清单",
+              "description": "标题、主图、尺寸说明与详情顺序的 6 项改动。",
+              "content": "## 已完成的改动\n\n| 位置 | 改动 | 状态 |\n| --- | --- | --- |\n| 商品标题 | 补充“六档调节・便携收纳” | 已上线 |\n| 主图 | 首图展示完整商品，去掉遮挡装饰 | 已上线 |\n| 尺寸说明 | 新增 13–16 英寸适用范围 | 已上线 |\n| 详情顺序 | 尺寸信息移到材质说明之前 | 已上线 |\n| 折叠说明 | 增加折叠前后尺寸测量图 | 待补拍 |\n| 注意事项 | 说明摆放与收纳要求 | 已上线 |\n\n> 所有对外参数必须与供应商资料一致；未核验的承重与散热描述不对外展示。",
+              "url": ""
+            },
+            {
+              "id": "comparison",
+              "kind": "data",
+              "title": "两轮经营对比",
+              "description": "同一口径的两个模拟 24 小时观察窗口。",
+              "content": "| 指标 | 首轮 | 更新后 | 变化 |\n| --- | ---: | ---: | ---: |\n| 曝光 | 10,000 | 10,000 | 0.0% |\n| 商品访问 | 360 | 350 | -2.8% |\n| 订单 | 9 | 14 | +5 单 |\n| 访问成交率 | 2.5% | 4.0% | +1.5pp |\n| 成交额 | 711 元 | 1,106 元 | +55.6% |\n\n两个窗口不是随机对照实验，访问量还略有下降。结论仅描述本次样例，不证明因果。",
+              "url": ""
+            },
+            {
+              "id": "size-guide",
+              "kind": "image",
+              "title": "尺寸图与适用说明",
+              "description": "13–16 英寸适用 / 不适用机型清单，随主图一起发布。",
+              "content": "## 尺寸图交付说明\n\n- 标注折叠前：长 26 cm × 宽 4.5 cm。\n- 标注展开后：最高 14 cm，六档可调。\n- 明确适用 13–16 英寸笔记本，不承诺 17 英寸机型。\n- 图片与文字使用同一组尺寸，测量误差 ±0.5 cm。\n\n图片文件由商品视觉团队提供，本页仅保留交付说明。",
+              "url": ""
+            },
+            {
+              "id": "review-report",
+              "kind": "document",
+              "title": "经营复盘报告",
+              "description": "问题、假设、动作与下一轮观察计划。",
+              "content": "## 复盘摘要\n\n首轮 10 条购买咨询中有 6 条涉及适用尺寸，说明商品页的尺寸信息不足是一个待验证假设。本轮选择补充尺寸图与适用说明，售价保持 79 元。\n\n## 观察结果\n\n- 订单从 9 单增加到 14 单，成交率从 2.5% 提升到 4.0%。\n- 访问量从 360 次降到 350 次，曝光没有变化。\n- 成交额从 711 元增加到 1,106 元，未计入广告、退货与固定成本。\n\n## 尚不能得出的结论\n\n样本窗口短、没有对照组，不能把订单增长直接归因于尺寸说明。需要延长观察窗口，并核对退款与售后数据。",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "copy",
+              "label": "标题、主图、详情与价格完成复核",
+              "status": "passed"
+            },
+            {
+              "id": "size",
+              "label": "13–16 英寸适用范围已补齐",
+              "status": "passed"
+            },
+            {
+              "id": "window",
+              "label": "两轮观察窗口口径一致",
+              "status": "passed"
+            },
+            {
+              "id": "refund",
+              "label": "退款与售后数据接入",
+              "status": "pending"
+            },
+            {
+              "id": "extend",
+              "label": "延长观察窗口后再决定是否扩大推广",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "listing",
+              "question": "是否按 79 元上架电脑支架？",
+              "choice": "确认上架",
+              "at": "10-19 14:02"
+            },
+            {
+              "id": "strategy",
+              "question": "电脑支架下一步怎么优化？",
+              "choice": "补充尺寸说明，保持 79 元",
+              "at": "10-19 14:18"
+            }
+          ],
+          "next": [
+            "延长第二个观察窗口至 72 小时，核对退款与售后数据。",
+            "补拍折叠前后尺寸照片，替换详情页中的临时示意图。",
+            "下周复盘后，再决定是否扩大投放或调整价格。"
+          ],
+          "note": "以上为本地模拟数据，不连接真实店铺，不产生费用。两个观察窗口不是随机对照实验，不能据此证明优化效果。"
+        }
+      }
+    },
+    {
+      "id": "content",
+      "label": "文案交付",
+      "description": "没有量化指标，页面以交付物和验收为主。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "新品文案交付",
+        "status": "completed",
+        "tagline": "内容交付 · 模拟数据",
+        "description": "按品牌规范撰写标题与详情文案，完成调性检查。",
+        "note": "本任务以交付物和验收为主，不设量化指标。",
+        "summary": "完成 3 篇文案与详情页，等待运营确认。",
+        "detail": "",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "brief",
+            "title": "需求对齐",
+            "progress": 100
+          },
+          {
+            "id": "write",
+            "title": "文案撰写",
+            "progress": 100
+          },
+          {
+            "id": "check",
+            "title": "品牌校验",
+            "progress": 100
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "新品文案交付复盘",
+          "status": "ready",
+          "summary": "3 篇文案与 1 套详情页已交付，品牌调性校验通过。",
+          "verdict": "内容已按品牌规范验收；等待运营确认最终投放版本。",
+          "owner": "陈书 · 文案撰写",
+          "producedAt": "2026-10-19 16:05",
+          "metrics": [],
+          "metricsTitle": "",
+          "metricsCaption": "",
+          "artifacts": [
+            {
+              "id": "titles",
+              "kind": "document",
+              "title": "标题文案 3 版",
+              "description": "场景型、功能型、价格型各一版。",
+              "content": "## 备选标题\n\n1. 六档调节，桌面终于清爽了\n2. 折叠收纳的铝合金电脑支架\n3. 79 元价位的桌面升级方案\n\n投放前需运营确认主标题。",
+              "url": ""
+            },
+            {
+              "id": "detail",
+              "kind": "document",
+              "title": "详情页文案",
+              "description": "使用场景、材质尺寸、调节收纳与注意事项。",
+              "content": "## 详情结构\n\n- 使用场景：办公、宿舍、出差\n- 材质与尺寸：铝合金，13–16 英寸\n- 六档调节与折叠收纳\n- 注意事项：摆放与收纳要求",
+              "url": ""
+            },
+            {
+              "id": "tone",
+              "kind": "document",
+              "title": "品牌调性检查",
+              "description": "语气、用词与禁用表达检查结果。",
+              "content": "## 检查结果\n\n- [x] 语气与品牌一致\n- [x] 无绝对化用语\n- [x] 未出现未经核验的承重与销量\n- [ ] 运营确认最终投放版本",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "tone",
+              "label": "品牌调性一致",
+              "status": "passed"
+            },
+            {
+              "id": "claim",
+              "label": "无夸大或未验证卖点",
+              "status": "passed"
+            },
+            {
+              "id": "version",
+              "label": "运营确认最终投放版本",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "headline",
+              "question": "主标题用哪一版？",
+              "choice": "用场景型标题",
+              "at": "10-19 15:40"
+            }
+          ],
+          "next": [
+            "等运营确认投放版本后更新商品页。",
+            "补充一条 15 秒短视频脚本。"
+          ],
+          "note": "本轮交付物为文本内容，不包含点击与成交指标。"
+        }
+      }
+    },
+    {
+      "id": "audit",
+      "label": "内容审核",
+      "description": "状态指标与达标进度，而不是数字对比。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "内容审核",
+        "status": "completed",
+        "tagline": "内容审核 · 模拟数据",
+        "description": "按规范逐项审核，记录通过项与高风险项。",
+        "note": "审核类任务以状态和清单为主，不强行做前后对比。",
+        "summary": "14 项检查完成，2 项高风险退回。",
+        "detail": "",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "receive",
+            "title": "接收材料",
+            "progress": 100
+          },
+          {
+            "id": "review",
+            "title": "逐项审核",
+            "progress": 100
+          },
+          {
+            "id": "return",
+            "title": "退回处理",
+            "progress": 100
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "内容审核复盘",
+          "status": "verified",
+          "summary": "审核完成：12 项通过，2 项高风险退回。",
+          "verdict": "通过项已放行，高风险项退回修改；修改后再复核一次。",
+          "owner": "赵审 · 内容审核",
+          "producedAt": "2026-10-19 17:20",
+          "metrics": [
+            {
+              "id": "result",
+              "label": "审核结果",
+              "value": "通过（有条件）",
+              "unit": "",
+              "kind": "status",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "high",
+              "label": "高风险项",
+              "value": "2",
+              "unit": "项",
+              "kind": "value",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "negative",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "passed",
+              "label": "通过项",
+              "value": "12",
+              "unit": "项",
+              "kind": "value",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "rate",
+              "label": "一次通过率",
+              "value": "86",
+              "unit": "%",
+              "kind": "target",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "90%",
+              "targetStatus": "at-risk",
+              "progress": 86
+            }
+          ],
+          "metricsTitle": "审核结论",
+          "metricsCaption": "本轮审核",
+          "artifacts": [
+            {
+              "id": "records",
+              "kind": "document",
+              "title": "审核记录",
+              "description": "14 项检查的逐条结果。",
+              "content": "| 检查项 | 结果 |\n| --- | --- |\n| 标题规范 | 通过 |\n| 主图与文字一致 | 通过 |\n| 尺寸说明 | 通过 |\n| 价格与优惠 | 高风险退回 |\n| 售后承诺 | 高风险退回 |",
+              "url": ""
+            },
+            {
+              "id": "returns",
+              "kind": "document",
+              "title": "退回清单",
+              "description": "2 项高风险的具体原因与处理人。",
+              "content": "- 价格与优惠：券后价与页面价不一致，退回定价负责人。\n- 售后承诺：缺少退换说明，退回运营负责人。",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "title",
+              "label": "标题与主图符合规范",
+              "status": "passed"
+            },
+            {
+              "id": "size",
+              "label": "尺寸说明完整",
+              "status": "passed"
+            },
+            {
+              "id": "price",
+              "label": "价格与优惠口径一致",
+              "status": "failed"
+            },
+            {
+              "id": "service",
+              "label": "售后承诺可核验",
+              "status": "failed"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "risk",
+              "question": "高风险项是否直接驳回？",
+              "choice": "退回修改后再复核",
+              "at": "10-19 17:05"
+            }
+          ],
+          "next": [
+            "定价负责人修正券后价后重新提交。",
+            "运营补充退换说明，进入二次复核。"
+          ],
+          "note": "审核结论为本地演示数据，不连接真实审核系统。"
+        }
+      }
+    },
+    {
+      "id": "research",
+      "label": "用户调研",
+      "description": "目标、单值与定性指标混合。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "用户调研",
+        "status": "running",
+        "tagline": "用户研究 · 模拟数据",
+        "description": "围绕折叠电脑支架的使用场景与价格预期开展访谈。",
+        "note": "调研仍在进行，结论为草稿。",
+        "summary": "18/20 位用户完成访谈，价格结论待验证。",
+        "detail": "",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "design",
+            "title": "访谈设计",
+            "progress": 100
+          },
+          {
+            "id": "interview",
+            "title": "用户访谈",
+            "progress": 90
+          },
+          {
+            "id": "analyze",
+            "title": "结论整理",
+            "progress": 60
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "用户调研结论",
+          "status": "draft",
+          "summary": "18 位用户完成访谈，价格敏感度高于预期。",
+          "verdict": "样本接近目标，但价格结论仍需在更大样本中验证。",
+          "owner": "李研 · 用户研究",
+          "producedAt": "2026-10-19 18:10",
+          "metrics": [
+            {
+              "id": "samples",
+              "label": "完成访谈",
+              "value": "18",
+              "unit": "位",
+              "kind": "target",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "20 位",
+              "targetStatus": "at-risk",
+              "progress": 90
+            },
+            {
+              "id": "feedback",
+              "label": "有效反馈",
+              "value": "42",
+              "unit": "条",
+              "kind": "value",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "price",
+              "label": "价格敏感度",
+              "value": "高于预期",
+              "unit": "",
+              "kind": "text",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "neutral",
+              "target": "",
+              "targetStatus": ""
+            },
+            {
+              "id": "intent",
+              "label": "推荐意愿",
+              "value": "7.2",
+              "unit": "/10",
+              "kind": "value",
+              "emphasis": "normal",
+              "previous": "",
+              "change": "",
+              "trend": "flat",
+              "tone": "positive",
+              "target": "",
+              "targetStatus": ""
+            }
+          ],
+          "metricsTitle": "调研完成度",
+          "metricsCaption": "本轮 20 个目标样本",
+          "artifacts": [
+            {
+              "id": "notes",
+              "kind": "document",
+              "title": "访谈记录摘要",
+              "description": "18 位用户的关键原话与问题归类。",
+              "content": "## 主要问题\n\n1. 折叠后尺寸是否适合背包？\n2. 六档调节是否稳定？\n3. 79 元是否包含收纳袋？\n\n## 价格反馈\n\n12 位用户主动提到价格，其中 7 位认为需要对比竞品后再决定。",
+              "url": ""
+            },
+            {
+              "id": "plan",
+              "kind": "document",
+              "title": "后续验证计划",
+              "description": "扩大样本与价格测试的设计草案。",
+              "content": "- 追加 20 位目标用户访谈。\n- 用两个价格锚点做小范围测试。\n- 观察咨询中的价格异议比例。",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "samples",
+              "label": "完成目标样本量",
+              "status": "pending"
+            },
+            {
+              "id": "bias",
+              "label": "访谈提纲未引导价格答案",
+              "status": "passed"
+            },
+            {
+              "id": "verify",
+              "label": "价格结论扩大样本验证",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "next",
+              "question": "是否现在启动价格测试？",
+              "choice": "先补样本再测试",
+              "at": "10-19 18:00"
+            }
+          ],
+          "next": [
+            "追加 20 位目标用户访谈。",
+            "补充竞品价格对比后再设计价格测试。"
+          ],
+          "note": "调研数据为本地模拟，不包含真实用户隐私信息。"
+        }
+      }
+    }
+  ]
+}

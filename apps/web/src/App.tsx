@@ -130,7 +130,7 @@ function DemoApp({ whiteboardDemo = false }: { whiteboardDemo?: boolean }) {
 }
 
 function App() {
-  if (ResultPreview && new URLSearchParams(location.search).get('result-preview') === '1') return <Suspense fallback={null}><ResultPreview /></Suspense>
+  if (ResultPreview && new URLSearchParams(location.search).get('result-preview') === '1') return <Suspense fallback={<div role="status" style={{ display: 'grid', placeItems: 'center', height: '100dvh', background: '#eceeec', color: '#6f7b73', font: '13px system-ui' }}>正在加载成果预览…</div>}><ResultPreview /></Suspense>
   if (import.meta.env.DEV && new URLSearchParams(location.search).get('whiteboard-demo') === '1') return <DemoApp whiteboardDemo />
   const relayUrl = sceneRelayUrl()
   return relayUrl ? <ConnectedOfficeWorkspace baseUrl={relayUrl} renderOffice={props => <OfficeApp dataSource={props.session.source} {...props} />} /> : <DemoApp />

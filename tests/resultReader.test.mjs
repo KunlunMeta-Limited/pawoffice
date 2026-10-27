@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import { after, before, test } from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
 let server, schema, resultSchema, emptyResult, ResultReader, WhiteboardReader, WhiteboardProgress
-let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard, WhiteboardBoardView, preview
+let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard, WhiteboardBoardView, preview, previewCases
 
 before(async () => {
   server = await createTestServer()
@@ -18,6 +19,7 @@ before(async () => {
   ;({ CommerceOfficeDataSource } = await server.ssrLoadModule('/apps/web/src/dashboard/CommerceOfficeDataSource.ts'))
   ;({ renderWhiteboardContent: renderBoard } = await server.ssrLoadModule('/packages/scene-office/src/taskBoard.ts'))
   preview = await server.ssrLoadModule('/apps/web/src/dev/resultPreviewData.ts')
+  previewCases = preview.parseResultPreviewPayload(JSON.parse(await readFile(new URL('../apps/web/src/dev/mock/result-preview.json', import.meta.url), 'utf8')))
   format = await server.ssrLoadModule('/apps/web/src/results/format.ts')
 })
 after(() => server?.close())
@@ -110,23 +112,32 @@ test('the metric layout and heading follow the number and structure of metrics',
   assert(noMetrics.includes('交付物'))
 })
 
-test('the preview demo is driven by four structured task datasets', () => {
-  assert.equal(preview.resultPreviewCases.length, 4)
-  for (const item of preview.resultPreviewCases) {
+test('the preview demo is driven by four structured mock task datasets', () => {
+  assert.equal(previewCases.length, 4)
+  for (const item of previewCases) {
     assert(resultSchema.safeParse(item.result).success, item.id)
     assert(schema.safeParse(item.board).success, item.id)
     assert(item.result.title.length > 0)
   }
-  const content = preview.resultPreviewCases.find(item => item.id === 'content')
+  const content = previewCases.find(item => item.id === 'content')
   assert.equal(content.result.metrics.length, 0, 'content task has no metrics')
   assert(content.result.artifacts.length > 0)
-  const audit = preview.resultPreviewCases.find(item => item.id === 'audit')
+  const audit = previewCases.find(item => item.id === 'audit')
   assert(audit.result.metrics.some(metric => metric.kind === 'status'))
   assert(audit.result.metrics.some(metric => metric.kind === 'target'))
-  const research = preview.resultPreviewCases.find(item => item.id === 'research')
+  const research = previewCases.find(item => item.id === 'research')
   assert(research.result.metrics.some(metric => metric.kind === 'text'))
   assert.equal(research.result.status, 'draft')
-  assert(preview.findResultPreviewCase('missing').id === 'operations')
+})
+
+test('the mock parser rejects broken payloads instead of rendering half a page', () => {
+  const valid = { cases: [{ id: 'one', label: '任务', description: '说明', whiteboard: { template: 'task-board-v1', title: '任务', status: 'completed', steps: [] } }] }
+  assert.equal(preview.parseResultPreviewPayload(valid)[0].id, 'one')
+  assert.throws(() => preview.parseResultPreviewPayload(null), /cases/)
+  assert.throws(() => preview.parseResultPreviewPayload({ cases: [] }), /至少需要/)
+  assert.throws(() => preview.parseResultPreviewPayload({ cases: [{ ...valid.cases[0], id: '' }] }), /id/)
+  assert.throws(() => preview.parseResultPreviewPayload({ cases: [valid.cases[0], valid.cases[0]] }), /重复/)
+  assert.throws(() => preview.parseResultPreviewPayload({ cases: [{ ...valid.cases[0], whiteboard: { template: 'task-board-v1', title: '任务', status: 'completed', steps: [{ id: 'bad', title: 'x', progress: 200 }] } }] }), /whiteboard/)
 })
 
 test('the result page leads with the conclusion and renders metrics, artifacts, acceptance and next steps', () => {

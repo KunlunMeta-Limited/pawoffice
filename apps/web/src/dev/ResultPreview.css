@@ -25,6 +25,55 @@
 .result-preview-title span { font-size: 13px; font-weight: 650; }
 .result-preview-title small { color: #8a958c; font-size: 11px; }
 
+.result-preview-mock-label { padding: 0 10px; color: #8a958c; font-size: 11px; }
+.result-preview-source { min-width: 0; margin: 0; overflow: hidden; color: #7e8a81; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.result-preview-source code { padding: 0 3px; color: #5b6a60; font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.result-preview-source span { color: #98a39b; }
+.result-preview-data-toggle:disabled { opacity: .5; cursor: not-allowed; }
+
+.result-preview-message {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: min(1040px, 100%);
+  min-height: 320px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  border: 1px solid #dfe6de;
+  border-radius: 22px;
+  background: #fff;
+  color: #7c8880;
+  font-size: 12px;
+  text-align: center;
+}
+
+.result-preview-message p { margin: 0; }
+.result-preview-message small { color: #9aa69d; font-size: 10.5px; }
+.result-preview-message.is-error { border-color: #ecdbd5; color: #a35b4f; }
+.result-preview-message button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  margin-top: 4px;
+  padding: 0 11px;
+  border: 1px solid #dfe6de;
+  border-radius: 8px;
+  background: #fff;
+  color: #4f5f54;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.result-preview-message button:hover { border-color: #bfd0c2; color: #3f6b53; }
+.is-spin { animation: result-preview-spin 1s linear infinite; }
+
+@keyframes result-preview-spin { to { transform: rotate(360deg); } }
+
 .result-preview-cases,
 .result-preview-statuses {
   display: flex;

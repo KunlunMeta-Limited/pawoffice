@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -43,6 +44,20 @@ export default defineConfig({
           req.url = `/@fs${path.resolve(root, '../..')}${req.url}`
         }
         next()
+      })
+    },
+  }, {
+    name: 'result-preview-mock',
+    // Dev-only mock endpoint for ?result-preview=1. Edit the JSON and reload the page.
+    configureServer(server) {
+      const file = path.resolve(root, 'src/dev/mock/result-preview.json')
+      server.middlewares.use((req, res, next) => {
+        if ((req.url ?? '').split('?')[0].split('/').filter(Boolean).pop() !== 'result-preview.json') { next(); return }
+        readFile(file, 'utf8').then(body => {
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.setHeader('Cache-Control', 'no-store')
+          res.end(body)
+        }).catch(next)
       })
     },
   }],
