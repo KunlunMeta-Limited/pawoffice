@@ -1,6 +1,6 @@
 import type { DashboardConversation, DashboardTask } from '@pawoffice/protocol/dashboard'
 import { officeResultSchema } from '@pawoffice/protocol/office-ui'
-import type { OfficeResult } from '@pawoffice/protocol/office-ui'
+import type { OfficeResult, OfficeResultInput } from '@pawoffice/protocol/office-ui'
 import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 
 export type CommerceStage = 'ready' | 'dispatching' | 'preparing' | 'approval' | 'observing' | 'decision' | 'optimizing' | 'reviewing' | 'updated' | 'completed' | 'paused' | 'rejected' | 'expired' | 'stopped'
@@ -45,7 +45,7 @@ export function commerceResult(team: CommerceTeam, strategy: Exclude<CommerceStr
     id: 'comparison', kind: 'data' as const, title: '两轮经营对比', description: '同一口径的两个模拟 24 小时观察窗口。', url: '',
     content: `| 指标 | 首轮 | 更新后 | 变化 |\n| --- | ---: | ---: | ---: |\n| 曝光 | 10,000 | 10,000 | 0.0% |\n| 商品访问 | ${first.visits} | ${current.visits} | ${percentChange(current.visits, first.visits)} |\n| 订单 | ${first.orders} | ${current.orders} | +${current.orders - first.orders} 单 |\n| 访问成交率 | ${conversion(first).toFixed(1)}% | ${conversion(current).toFixed(1)}% | +${(conversion(current) - conversion(first)).toFixed(1)}pp |\n| 成交额 | ${revenue(first)} 元 | ${revenue(current).toLocaleString('en-US')} 元 | ${percentChange(revenue(current), revenue(first))} |\n\n两个观察窗口不是随机对照实验，不能据此证明优化效果。`,
   }
-  const artifacts: Record<CommerceTeam, OfficeResult['artifacts']> = {
+  const artifacts: Record<CommerceTeam, NonNullable<OfficeResultInput['artifacts']>> = {
     operations: [comparison,
       { id: 'page-changes', kind: 'document', title: '商品页改动清单', description: '标题、主图、尺寸说明与详情顺序的改动记录。', url: '',
         content: '## 已完成\n\n- 标题补充“六档调节・便携收纳”。\n- 首图展示完整商品，去掉遮挡装饰。\n- 新增 13–16 英寸适用范围说明。\n- 详情顺序调整：尺寸信息移到材质说明之前。\n\n## 待完成\n\n- 补拍折叠前后尺寸测量图。\n- 复核售后与退换说明。' },
@@ -62,7 +62,7 @@ export function commerceResult(team: CommerceTeam, strategy: Exclude<CommerceStr
       { id: 'funnel-review', kind: 'data', title: '转化漏斗复盘', description: '曝光 → 访问 → 订单的分层数据。', url: '',
         content: `| 层级 | 首轮 | 更新后 |\n| --- | ---: | ---: |\n| 曝光 | 10,000 | 10,000 |\n| 访问 | ${first.visits} | ${current.visits} |\n| 订单 | ${first.orders} | ${current.orders} |\n\n访问量没有同步增长，订单增长不能简单归因于流量扩大。` }],
   }
-  const checks: Record<CommerceTeam, OfficeResult['checks']> = {
+  const checks: Record<CommerceTeam, NonNullable<OfficeResultInput['checks']>> = {
     operations: [
       { id: 'copy', label: '标题、主图、详情与价格完成复核', status: 'passed' },
       { id: 'size', label: '13–16 英寸适用范围已补齐', status: 'passed' },

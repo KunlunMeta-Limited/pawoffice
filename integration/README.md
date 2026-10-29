@@ -10,6 +10,9 @@ integration/
   clients/
     client.mjs                 初始化、任务更新和用户确认示例
     ui-client.mjs              领取用户操作并返回展示结果
+    send-result-demo.ps1       PowerShell 7 三轮交付与固定版本演示
+  fixtures/
+    result-deliveries.json     当前成果、历史交付及文档版本数据
   docs/
     office-integration.md      HTTP 接入协议与完整流程图
     dashboard-integration.md   业务快照和白板字段
@@ -58,6 +61,8 @@ PAWOFFICE_URL=http://127.0.0.1:3000 PAWOFFICE_API_KEY=your-private-key npm run i
 纯静态演示 `npm run dev:vite` 不接收外部业务请求。公网部署应配置私有密钥及页面访问控制。
 
 ## 实现与验收
+
+多轮成果联调沿用上述两个服务，另运行 `pwsh -NoProfile -File .\integration\clients\send-result-demo.ps1 -Round 3`，选择“成果联调办公室”→“登录模块交付演示”→“当前成果”。可依次发送 `-Round 1`、`2`、`3` 查看积累和更新；协议升级后需按原命令重启开发服务。数据职责、外部版本 URL 与字段说明见[交付与版本预览](../docs/architecture/result-deliveries.md)。
 
 - [公共协议 Schema](../packages/protocol/src/office-integration.ts)
 - [PawOffice 服务端实现](../server/src/)

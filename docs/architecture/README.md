@@ -6,6 +6,8 @@
 
 首次拆包见 [拆包验收记录](./package-migration.md)；增补见 [场景隔离与按需装配](./scene-isolation.md) 和 [双产品架构](./dual-products.md)。
 
+成果展示的数据边界、历史交付与文档预览见 [交付与版本协议](./result-deliveries.md)，前端产品能力现状见 [对照评审](../research/frontend-gap-review-2026-10-28.md)。
+
 ## 目录与责任
 
 ```text

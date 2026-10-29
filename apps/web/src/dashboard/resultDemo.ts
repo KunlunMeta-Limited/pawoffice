@@ -10,7 +10,7 @@ const metrics: ResultMetricInput[] = [
   { id: 'price', label: '成交单价', value: '79', unit: '元', previous: '79 元', change: '保持不变', trend: 'flat', tone: 'neutral' },
 ]
 
-const artifacts: OfficeResult['artifacts'] = [
+const artifacts: NonNullable<OfficeResultInput['artifacts']> = [
   {
     id: 'page-changes', kind: 'document', title: '商品页改动清单',
     description: '标题、主图、尺寸说明与详情顺序的 6 项改动。',
@@ -75,7 +75,7 @@ const artifacts: OfficeResult['artifacts'] = [
   },
 ]
 
-const checks: OfficeResult['checks'] = [
+const checks: NonNullable<OfficeResultInput['checks']> = [
   { id: 'copy', label: '标题、主图、详情与价格完成复核', status: 'passed' },
   { id: 'size', label: '13–16 英寸适用范围已补齐', status: 'passed' },
   { id: 'window', label: '两轮观察窗口口径一致', status: 'passed' },
@@ -141,42 +141,61 @@ export function createResultDemoBoard(status: OfficeResult['status'] = 'verified
     summary: '统一商品参数，补齐尺寸说明，完成上架、观察与优化。',
     description: '按首轮约定复核商品内容，补齐尺寸说明后再观察一轮。',
     note: '点击白板查看执行详情与本轮成果。',
-    detail: `# 折叠电脑支架上架与优化 · 执行详情
-
-> 墙上只展示目标与阶段进度；这里是完整的执行说明、交付要求和验收标准。
-
-## 当前目标
-
-完成折叠电脑支架的商品资料核验、内容制作、上架授权与经营观察。所有对外图片与文案统一使用已确认参数：售价 **79 元**，适用 **13–16 英寸**笔记本，六档高度调节。
-
-## 执行步骤
-
-1. 核对商品参数与供应商资料，保留参数来源。
-2. 制作标题、主图、尺寸图与详情文案，保持参数一致。
-3. 完成上架检查，等待负责人授权后模拟上架。
-4. 观察首个 24 小时窗口，汇总访问、订单与购买咨询。
-5. 根据用户选择补充尺寸说明或验证优惠，再观察第二个窗口。
-
-## 阶段交付物
-
-| 阶段 | 交付物 | 验收要求 |
-| --- | --- | --- |
-| 商品与上架 | 标题、主图、详情、价格 | 参数一致，无夸大描述 |
-| 销量与反馈 | 首轮经营数据与咨询分类 | 保留统计口径与起止时间 |
-| 优化与复盘 | 改动清单、两轮对比、复盘结论 | 改动有依据，结论不夸大因果 |
-
-## 验收要求
-
-- [x] 标题、主图、详情与价格完成复核。
-- [x] 13–16 英寸适用范围已补齐。
-- [ ] 退款与售后数据接入。
-- [ ] 延长观察窗口后再决定是否扩大推广。
-
-## 注意事项
-
-- 所有店铺操作与经营数据均为本地模拟，不连接真实店铺，不产生费用。
-- 两个观察窗口不是随机对照实验，不能把订单增长直接归因于单次改动。
-- 未核验的承重、散热和销量描述不对外展示。`,
+    detailSections: [
+      {
+        id: 'goal', title: '当前目标', layout: 'stack', blocks: [
+          { type: 'text', text: '完成折叠电脑支架的商品资料核验、内容制作、上架授权与经营观察。所有对外图片与文案统一使用已确认参数：售价 **79 元**，适用 **13–16 英寸**笔记本，六档高度调节。' },
+          { type: 'stats', items: [
+            { label: '售价', value: '79', unit: '元' },
+            { label: '适用范围', value: '13–16', unit: '英寸' },
+            { label: '高度调节', value: '6', unit: '档' },
+          ] },
+        ],
+      },
+      {
+        id: 'steps', title: '执行步骤', layout: 'stack', blocks: [
+          { type: 'list', ordered: true, items: [
+            { text: '核对商品参数与供应商资料，保留参数来源。' },
+            { text: '制作标题、主图、尺寸图与详情文案，保持参数一致。' },
+            { text: '完成上架检查，等待负责人授权后模拟上架。' },
+            { text: '观察首个 24 小时窗口，汇总访问、订单与购买咨询。' },
+            { text: '根据用户选择补充尺寸说明或验证优惠，再观察第二个窗口。' },
+          ] },
+        ],
+      },
+      {
+        id: 'deliverables', title: '阶段交付物', caption: '3 个阶段', layout: 'stack', blocks: [
+          { type: 'table', columns: [
+            { key: 'stage', label: '阶段' },
+            { key: 'artifact', label: '交付物' },
+            { key: 'accept', label: '验收要求' },
+          ], rows: [
+            { stage: '商品与上架', artifact: '标题、主图、详情、价格', accept: '参数一致，无夸大描述' },
+            { stage: '销量与反馈', artifact: '首轮经营数据与咨询分类', accept: '保留统计口径与起止时间' },
+            { stage: '优化与复盘', artifact: '改动清单、两轮对比、复盘结论', accept: '改动有依据，结论不夸大因果' },
+          ] },
+        ],
+      },
+      {
+        id: 'acceptance', title: '验收要求', layout: 'stack', blocks: [
+          { type: 'list', items: [
+            { text: '标题、主图、详情与价格完成复核。', status: 'passed' },
+            { text: '13–16 英寸适用范围已补齐。', status: 'passed' },
+            { text: '退款与售后数据接入。', status: 'pending' },
+            { text: '延长观察窗口后再决定是否扩大推广。', status: 'pending' },
+          ] },
+        ],
+      },
+      {
+        id: 'cautions', title: '注意事项', layout: 'stack', blocks: [
+          { type: 'callout', tone: 'warning', title: '数据说明', text: '所有店铺操作与经营数据均为本地模拟，不连接真实店铺，不产生费用。' },
+          { type: 'list', items: [
+            { text: '两个观察窗口不是随机对照实验，不能把订单增长直接归因于单次改动。' },
+            { text: '未核验的承重、散热和销量描述不对外展示。' },
+          ] },
+        ],
+      },
+    ],
     steps: [
       { id: 'listing', title: '商品与上架', progress: 100 },
       { id: 'observation', title: '销量与反馈', progress: 100 },

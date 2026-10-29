@@ -1,13 +1,15 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import Markdown, { type Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { useContext, useEffect, useId, useRef, useState } from 'react'
 import {
   ArrowDownRight, ArrowUpRight, BadgeCheck, CalendarDays, Check, CheckCircle2, CircleDashed, CircleX,
   ClipboardCheck, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Info, Link2, Minus,
   PackageCheck, PencilLine, Table2, Target, UserRound,
 } from 'lucide-react'
 import type { OfficeResult, ResultArtifact, ResultCheck, ResultMetric } from '@pawoffice/protocol/office-ui'
-import { resultFileBase, resultHasContent, resultReport, resultStatusLabels, resultSummaryText } from '../results/format.ts'
+import { formatResultTimestamp, resultFileBase, resultHasContent, resultReport, resultStatusLabels, resultSummaryText } from '../results/format.ts'
+import { ResultMarkdown } from './ResultMarkdown.tsx'
+import type { ResultDocumentMetadata } from '../results/presentation.ts'
+import { resultChecks } from '../results/presentation.ts'
+import { ArtifactPreviewContext } from '../results/artifactContext.ts'
 import './ResultReader.css'
 
 const statusIcons = { verified: BadgeCheck, ready: PackageCheck, draft: PencilLine, rejected: CircleX } as const
@@ -20,12 +22,6 @@ const checkLabels = { passed: '已通过', pending: '待补充', failed: '未通
 const artifactIcons = { document: FileText, image: ImageIcon, link: Link2, data: Table2 } as const
 
 type ResolvedMetricKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
-
-const markdownComponents: Components = {
-  a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</a>,
-  table: ({ children }) => <div className="result-artifact-table" role="region" aria-label="交付物表格" tabIndex={0}><table>{children}</table></div>,
-  img: ({ src, alt, title }) => typeof src === 'string' && src ? <img src={src} alt={alt ?? ''} title={title} loading="lazy" /> : <span>{alt}</span>,
-}
 
 function downloadText(filename: string, content: string, type = 'text/markdown;charset=utf-8') {
   const url = URL.createObjectURL(new Blob([content], { type }))
@@ -109,11 +105,14 @@ function MetricCard({ metric }: { metric: ResultMetric }) {
   </article>
 }
 
-function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload }: {
+function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload, metadata }: {
   artifact: ResultArtifact; expanded: boolean; copied: string
   onToggle: () => void; onCopy: () => void; onDownload: () => void
+  metadata?: ResultDocumentMetadata
 }) {
   const Icon = artifactIcons[artifact.kind]
+  const preview = useContext(ArtifactPreviewContext)
+  const versioned = Boolean(preview && artifact.versionId)
   const isCopied = copied === artifact.id
   return <article className="result-artifact" data-kind={artifact.kind} data-expanded={expanded}>
     <div className="result-artifact-main">
@@ -121,16 +120,22 @@ function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload
       <div className="result-artifact-copy">
         <h4>{artifact.title}</h4>
         {artifact.description && <p>{artifact.description}</p>}
+        {(metadata || artifact.versionId) && <p className="result-artifact-document-meta">{[
+          artifact.version || metadata?.version || artifact.versionId,
+          artifact.producedAt ? formatResultTimestamp(artifact.producedAt) : metadata?.at,
+          metadata && { done: '已完成', active: '进行中', pending: '待开始' }[metadata.status],
+        ].filter(Boolean).join(' · ')}</p>}
       </div>
     </div>
-    {expanded && artifact.content && <div className="result-artifact-preview">
-      <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents} skipHtml>{artifact.content}</Markdown>
+    {!versioned && expanded && artifact.content && <div className="result-artifact-preview">
+      <ResultMarkdown content={artifact.content} />
     </div>}
-    {(artifact.content || artifact.url) && <div className="result-artifact-actions">
-      {artifact.content && <button type="button" aria-expanded={expanded} onClick={onToggle}>{expanded ? <Minus size={13} /> : <FileText size={13} />}{expanded ? '收起' : '查看'}</button>}
+    {(artifact.content || artifact.url || versioned) && <div className="result-artifact-actions">
+      {versioned ? <button type="button" aria-haspopup="dialog" onClick={event => preview!.open(artifact, event.currentTarget)}><FileText size={13} />查看</button>
+        : artifact.content && <button type="button" aria-expanded={expanded} onClick={onToggle}>{expanded ? <Minus size={13} /> : <FileText size={13} />}{expanded ? '收起' : '查看'}</button>}
       {artifact.content && <button type="button" onClick={onCopy}>{isCopied ? <Check size={13} /> : <Copy size={13} />}{isCopied ? '已复制' : '复制'}</button>}
       {artifact.content && <button type="button" onClick={onDownload}><Download size={13} />下载</button>}
-      {artifact.url && <a href={artifact.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} />打开</a>}
+      {artifact.url && !versioned && <a href={artifact.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} />打开</a>}
     </div>}
   </article>
 }
@@ -140,7 +145,11 @@ function CheckRow({ check }: { check: ResultCheck }) {
   return <li data-status={check.status}><Icon size={15} strokeWidth={2} /><span>{check.label}</span><em>{checkLabels[check.status]}</em></li>
 }
 
-export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; onOpenBoard?: () => void }) {
+export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta }: {
+  result: OfficeResult; onOpenBoard?: () => void
+  view?: 'full' | 'overview' | 'deliverables' | 'process' | 'metrics' | 'actions' | 'featured' | 'next'
+  documentMeta?: ReadonlyMap<string, ResultDocumentMetadata>
+}) {
   const baseId = useId()
   const [copied, setCopied] = useState('')
   const [expanded, setExpanded] = useState('')
@@ -150,7 +159,8 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
 
   const status = { label: resultStatusLabels[result.status], Icon: statusIcons[result.status] }
   const StatusIcon = status.Icon
-  const passed = result.checks.filter(check => check.status === 'passed').length
+  const checks = resultChecks(result)
+  const passed = checks.filter(check => check.status === 'passed').length
   const metrics = result.metrics
   const kinds = metrics.map(resolveMetricKind)
   const metricsTitle = result.metricsTitle || '关键指标'
@@ -165,17 +175,22 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
     } catch { setCopied('') }
   }
   const fileBase = resultFileBase(result)
+  const overview = view === 'full' || view === 'overview'
+  const deliverables = view === 'full' || view === 'deliverables' || view === 'featured'
+  const process = view === 'full' || view === 'process'
+  const artifacts = view === 'featured' ? result.artifacts.slice(0, 3) : result.artifacts
 
-  return <div className="result-reader" data-status={result.status}>
+  return <div className="result-reader" data-status={result.status} data-view={view}>
     <span className="result-sr-only" role="status">{copied ? '已复制到剪贴板' : ''}</span>
-    <section className="result-hero" aria-label="成果摘要">
-      <div className="result-hero-meta">
+    {(overview || view === 'actions') && <section className="result-hero" aria-label="成果摘要操作">
+      {view === 'full' && <div className="result-hero-meta">
         <span className={`result-status is-${result.status}`}><StatusIcon size={14} strokeWidth={2.2} />{status.label}</span>
         {result.owner && <span className="result-meta-item"><UserRound size={13} />{result.owner}</span>}
-        {result.producedAt && <span className="result-meta-item"><CalendarDays size={13} />{result.producedAt}</span>}
-      </div>
-      {result.summary && <p className="result-conclusion">{result.summary}</p>}
-      {result.verdict && <p className="result-verdict"><StatusIcon size={15} strokeWidth={2} />{result.verdict}</p>}
+        {result.producedAt && <span className="result-meta-item"><CalendarDays size={13} /><time dateTime={result.producedAt}
+          title="产出时间（本地时区）">{formatResultTimestamp(result.producedAt)}</time></span>}
+      </div>}
+      {view === 'full' && result.summary && <p className="result-conclusion">{result.summary}</p>}
+      {view === 'full' && result.verdict && <p className="result-verdict"><StatusIcon size={15} strokeWidth={2} />{result.verdict}</p>}
       <div className="result-hero-actions">
         {onOpenBoard && <button type="button" className="result-action is-primary" onClick={onOpenBoard}><ClipboardCheck size={15} />查看任务白板</button>}
         <button type="button" className="result-action" onClick={() => void copy('summary', resultSummaryText(result))}>
@@ -183,10 +198,10 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
         </button>
         <button type="button" className="result-action" onClick={() => downloadText(`${fileBase}.md`, resultReport(result))}><Download size={15} />下载报告</button>
       </div>
-      {result.status === 'verified' && <span className="result-seal" aria-hidden="true">验收通过</span>}
-    </section>
+      {view === 'full' && result.status === 'verified' && <span className="result-seal" aria-hidden="true">验收通过</span>}
+    </section>}
 
-    {!!metricCount && <section className="result-section" aria-labelledby={`${baseId}-metrics`}>
+    {(overview || view === 'metrics') && !!metricCount && <section className="result-section" aria-labelledby={`${baseId}-metrics`}>
       <header className="result-section-head">
         <h3 id={`${baseId}-metrics`}>{metricsTitle}</h3>
         {metricsCaption && <small>{metricsCaption}</small>}
@@ -196,19 +211,19 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
       </div>
     </section>}
 
-    {!!result.artifacts.length && <section className="result-section" aria-labelledby={`${baseId}-artifacts`}>
-      <header className="result-section-head"><h3 id={`${baseId}-artifacts`}>交付物</h3><small>{result.artifacts.length} 项</small></header>
-      <div className="result-artifacts">{result.artifacts.map(artifact => <ArtifactCard key={artifact.id} artifact={artifact}
+    {deliverables && !!result.artifacts.length && <section className="result-section" aria-labelledby={`${baseId}-artifacts`}>
+      {view !== 'featured' && <header className="result-section-head"><h3 id={`${baseId}-artifacts`}>交付物</h3><small>{result.artifacts.length} 项</small></header>}
+      <div className="result-artifacts">{artifacts.map(artifact => <ArtifactCard key={artifact.id} artifact={artifact} metadata={documentMeta?.get(artifact.id)}
         expanded={expanded === artifact.id} copied={copied}
         onToggle={() => setExpanded(current => current === artifact.id ? '' : artifact.id)}
         onCopy={() => { void copy(artifact.id, artifact.content) }}
         onDownload={() => downloadText(`${fileBase}-${artifact.id}.md`, `# ${artifact.title}\n\n${artifact.content || artifact.description}`)} />)}</div>
     </section>}
 
-    {(!!result.checks.length || !!result.decisions.length) && <div className={`result-columns${result.checks.length && result.decisions.length ? '' : ' is-single'}`}>
+    {process && (!!result.checks.length || !!result.decisions.length) && <div className={`result-columns${result.checks.length && result.decisions.length ? '' : ' is-single'}`}>
       {!!result.checks.length && <section className="result-card" aria-labelledby={`${baseId}-checks`}>
         <header className="result-card-head"><h3 id={`${baseId}-checks`}>验收清单</h3><span>{passed}/{result.checks.length} 通过</span></header>
-        <ul className="result-check-list">{result.checks.map(check => <CheckRow key={check.id} check={check} />)}</ul>
+        <ul className="result-check-list">{checks.map(check => <CheckRow key={check.id} check={check} />)}</ul>
       </section>}
       {!!result.decisions.length && <section className="result-card" aria-labelledby={`${baseId}-decisions`}>
         <header className="result-card-head"><h3 id={`${baseId}-decisions`}>过程决策</h3><span>{result.decisions.length} 项</span></header>
@@ -219,11 +234,11 @@ export function ResultReader({ result, onOpenBoard }: { result: OfficeResult; on
       </section>}
     </div>}
 
-    {!!result.next.length && <section className="result-section" aria-labelledby={`${baseId}-next`}>
+    {(overview || view === 'next') && !!result.next.length && <section className="result-section" aria-labelledby={`${baseId}-next`}>
       <header className="result-section-head"><h3 id={`${baseId}-next`}>下一步</h3><small>{result.next.length} 项行动</small></header>
       <ol className="result-next-list">{result.next.map((item, index) => <li key={item}><span>{index + 1}</span><p>{item}</p></li>)}</ol>
     </section>}
 
-    {result.note && <p className="result-note"><Info size={14} strokeWidth={2} /><span>{result.note}</span></p>}
+    {process && result.note && <p className="result-note"><Info size={14} strokeWidth={2} /><span>{result.note}</span></p>}
   </div>
 }

@@ -27,7 +27,9 @@ export function renderTaskBoard(data: WhiteboardTaskBoardData, surface: Whiteboa
   }).join('')
   const result = data.result
   const hasResult = Boolean(result && ((result.title ?? '').trim() || (result.summary ?? '').trim() || (result.verdict ?? '').trim()
-    || result.metrics?.length || result.artifacts?.length || result.checks?.length))
+    || result.metrics?.length || result.artifacts?.length || result.checks?.length || result.decisions?.length
+    || result.sections?.length || result.tasks?.length || result.versions?.length || result.risks?.length
+    || result.next?.length || result.note?.trim()))
   const link = data.link?.url
     ? `<a href="${escape(data.link.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:.25em;color:#6288b4;font-size:.8em;line-height:${wall ? '1.2' : 'inherit'};text-decoration:none">${escape(data.link.label ?? '')}${icon('arrow', '1em', '#6288b4')}</a>`
     : `<a href="#whiteboard-steps" style="display:inline-flex;align-items:center;gap:.25em;color:#6288b4;font-size:.8em;line-height:${wall ? '1.2' : 'inherit'};text-decoration:none">${hasResult && data.status === 'completed' ? '查看成果' : '查看任务拆解'}${icon('arrow', '1em', '#6288b4')}</a>`

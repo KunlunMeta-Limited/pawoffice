@@ -114,6 +114,7 @@ export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, conn
       <div className="office-stage" inert={covered}>{canvas}</div>
       {uiSession && <OfficeUiPanel session={uiSession} />}
       <OfficeChat key={runtime.sceneId} session={chatSession} expanded={covered} onExpandedChange={setChatExpanded} hidden={!!snapshot.editor}
+        onOpenDelivery={controller.openDelivery}
         decisionSession={decisionSession} decisionOpenToken={decisionOpenToken}
         decisionPreview={dataMode === 'example' && chatSession.source.kind === 'preview'}
         onReplayDemo={dataMode === 'example' && simulation ? () => { simulation.setDemo(false); simulation.setDemo(true) } : undefined}

@@ -46,7 +46,7 @@
             {
               "id": "impressions",
               "label": "曝光",
-              "value": "10,000",
+              "value": "100",
               "unit": "次",
               "kind": "auto",
               "emphasis": "normal",
@@ -211,6 +211,146 @@
             "下周复盘后，再决定是否扩大投放或调整价格。"
           ],
           "note": "以上为本地模拟数据，不连接真实店铺，不产生费用。两个观察窗口不是随机对照实验，不能据此证明优化效果。"
+        }
+      }
+    },
+    {
+      "id": "onboarding",
+      "label": "入职培训",
+      "description": "不是曝光/对比类指标：状态、人数、目标达成与定性反馈。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "新员工入职培训",
+        "status": "completed",
+        "tagline": "培训交付 · 模拟数据",
+        "summary": "12 位新员工完成培训，考核通过率 92%。",
+        "description": "完成课程交付、考核与权限开通交接。",
+        "note": "本任务以交付和验收为主，不使用前后对比指标。",
+        "steps": [
+          {
+            "id": "prepare",
+            "title": "需求确认",
+            "progress": 100
+          },
+          {
+            "id": "deliver",
+            "title": "课程交付",
+            "progress": 100
+          },
+          {
+            "id": "review",
+            "title": "考核复盘",
+            "progress": 100
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "status": "verified",
+          "title": "新员工入职培训复盘",
+          "summary": "12 位新员工完成培训，考核通过率 92%，权限开通仍在跟进。",
+          "verdict": "课程与考核已完成验收；3 位同事的账号权限尚未开通，作为下一步处理。",
+          "owner": "陈书 · 培训负责人",
+          "producedAt": "2026-10-20 17:30",
+          "metricsTitle": "培训结果",
+          "metricsCaption": "本轮 12 位新员工",
+          "metrics": [
+            {
+              "id": "delivery",
+              "label": "培训状态",
+              "value": "已完成",
+              "kind": "status",
+              "tone": "positive"
+            },
+            {
+              "id": "people",
+              "label": "参与人数",
+              "value": "12",
+              "unit": "人",
+              "kind": "value"
+            },
+            {
+              "id": "pass",
+              "label": "考核通过率",
+              "value": "92",
+              "unit": "%",
+              "kind": "target",
+              "target": "90%",
+              "targetStatus": "met",
+              "progress": 100
+            },
+            {
+              "id": "feedback",
+              "label": "学员反馈",
+              "value": "流程清晰，但权限开通偏慢",
+              "kind": "text"
+            },
+            {
+              "id": "materials",
+              "label": "交付材料",
+              "value": "4",
+              "unit": "份",
+              "kind": "value"
+            }
+          ],
+          "artifacts": [
+            {
+              "id": "materials",
+              "kind": "document",
+              "title": "培训材料清单",
+              "description": "入职手册、系统权限说明、安全规范与答疑记录。",
+              "content": "## 已交付材料\n\n- 入职手册 v2\n- 系统与权限说明\n- 信息安全规范\n- 常见问题答疑记录\n\n所有材料已同步到团队知识库。"
+            },
+            {
+              "id": "records",
+              "kind": "data",
+              "title": "签到与考核记录",
+              "description": "12 位新员工的签到、考核结果与权限状态。",
+              "content": "| 项目 | 数量 |\n| --- | ---: |\n| 应到人数 | 12 |\n| 实到人数 | 12 |\n| 考核通过 | 11 |\n| 权限已开通 | 9 |\n| 权限待开通 | 3 |"
+            },
+            {
+              "id": "followup",
+              "kind": "document",
+              "title": "待办与改进清单",
+              "description": "权限开通、材料更新和下次培训的改进项。",
+              "content": "## 待办\n\n- [ ] 跟进 3 位同事的账号权限。\n- [ ] 把权限开通移到培训前一天。\n- [ ] 补充一节常见故障排查。\n\n## 下次改进\n\n把系统实操安排在课程前半段，避免最后集中提问。"
+            }
+          ],
+          "checks": [
+            {
+              "id": "course",
+              "label": "课程按计划完成",
+              "status": "passed"
+            },
+            {
+              "id": "exam",
+              "label": "考核通过率达到 90%",
+              "status": "passed"
+            },
+            {
+              "id": "feedback",
+              "label": "学员反馈已收集",
+              "status": "passed"
+            },
+            {
+              "id": "access",
+              "label": "全部账号权限已开通",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "format",
+              "question": "培训采用哪种形式？",
+              "choice": "线上课程 + 线下答疑",
+              "at": "10-20 09:10"
+            }
+          ],
+          "next": [
+            "本周内完成 3 位同事的账号权限开通。",
+            "把权限开通环节前置到培训前一天。",
+            "两周后回访新员工的系统使用情况。"
+          ],
+          "note": "以上为本地模拟数据，不包含真实员工信息。"
         }
       }
     },
@@ -629,6 +769,1399 @@
           ],
           "note": "调研数据为本地模拟，不包含真实用户隐私信息。"
         }
+      }
+    },
+    {
+      "id": "login-module",
+      "label": "登录模块",
+      "description": "任务详情布局：页面原型、文档、接口、部署与测试交付。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "登录模块开发",
+        "status": "running",
+        "tagline": "前端组 · 登录与认证",
+        "summary": "完成登录、注册、找回密码等核心功能的开发与上线，提供安全、稳定、便捷的用户认证体验。",
+        "description": "登录、注册、找回密码与用户认证体验的完整开发与交付。",
+        "note": "点击白板查看执行详情与本轮成果。",
+        "detail": "# 登录模块开发 · 执行详情\n\n## 当前目标\n\n完成登录、注册、找回密码等核心功能的开发与上线，提供安全、稳定、便捷的用户认证体验。\n\n## 执行步骤\n\n1. 完成登录、注册、找回密码的页面与交互开发。\n2. 联调登录、退出、用户信息与短信验证码接口。\n3. 完成测试、缺陷修复并准备生产环境发布验收。\n\n## 验收要求\n\n- [x] 登录、注册、找回密码主流程可用。\n- [x] 接口文档与测试报告已交付。\n- [ ] 生产环境发布验收。",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "plan",
+            "title": "登录与方案",
+            "progress": 99,
+            "state": "done"
+          },
+          {
+            "id": "develop",
+            "title": "功能开发",
+            "progress": 90,
+            "state": "active"
+          },
+          {
+            "id": "verify",
+            "title": "测试与审查",
+            "progress": 75,
+            "state": "pending"
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "登录模块开发",
+          "status": "ready",
+          "summary": "登录、注册、找回密码核心功能已完成开发，测试通过率 96%，等待上线验收。",
+          "verdict": "主流程与异常场景已通过测试，3 个缺陷待修复后进入生产发布。",
+          "owner": "王明",
+          "team": "前端组",
+          "teamSize": 3,
+          "producedAt": "2024-06-20 14:30",
+          "updatedAt": "2024-06-20 14:30",
+          "metrics": [
+            {
+              "id": "cases",
+              "label": "用例总数",
+              "value": "86",
+              "unit": "个",
+              "kind": "value"
+            },
+            {
+              "id": "pass",
+              "label": "通过率",
+              "value": "96",
+              "unit": "%",
+              "kind": "target",
+              "target": "95%",
+              "targetStatus": "met",
+              "progress": 96
+            },
+            {
+              "id": "defects",
+              "label": "缺陷数",
+              "value": "3",
+              "unit": "个",
+              "kind": "status",
+              "tone": "negative"
+            }
+          ],
+          "artifacts": [
+            {
+              "id": "prd",
+              "kind": "document",
+              "title": "登录模块 PRD",
+              "description": "登录、注册、找回密码的流程、字段与异常处理约定。",
+              "content": "## 登录模块 PRD\n\n- 登录：密码 + 短信验证码双通道。\n- 注册：手机号验证码校验后创建账号。\n- 找回密码：通过手机验证码重置密码。\n- 异常处理：密码错误次数限制，验证码 5 分钟内有效。",
+              "url": ""
+            },
+            {
+              "id": "api-doc",
+              "kind": "link",
+              "title": "接口文档",
+              "description": "登录、退出、用户信息与验证码接口的请求与响应字段。",
+              "content": "## 接口清单\n\n| 接口 | 方法 | 说明 |\n| --- | --- | --- |\n| `/login` | POST | 账号密码 + 短信验证码登录 |\n| `/logout` | POST | 退出登录并失效令牌 |\n| `/user/profile` | GET | 获取当前用户信息 |\n| `/send-code` | POST | 发送短信验证码 |",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "flow",
+              "label": "登录、注册、找回密码主流程可用",
+              "status": "passed"
+            },
+            {
+              "id": "docs",
+              "label": "接口文档与测试报告已交付",
+              "status": "passed"
+            },
+            {
+              "id": "defect-fix",
+              "label": "3 个缺陷修复并完成回归",
+              "status": "pending"
+            },
+            {
+              "id": "release",
+              "label": "生产环境发布验收",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "sms",
+              "question": "是否采用短信验证码登录？",
+              "choice": "采用短信验证码 + 密码双通道",
+              "at": "06-12 10:00"
+            }
+          ],
+          "sections": [
+            {
+              "kind": "changes",
+              "id": "code-changes",
+              "title": "文件变更",
+              "files": [
+                {
+                  "path": "src/features/auth/LoginForm.tsx",
+                  "status": "modified",
+                  "added": 6,
+                  "deleted": 2,
+                  "diff": "diff --git a/src/features/auth/LoginForm.tsx b/src/features/auth/LoginForm.tsx\n--- a/src/features/auth/LoginForm.tsx\n+++ b/src/features/auth/LoginForm.tsx\n@@ -12,6 +12,10 @@\n export function LoginForm() {\n   const [error, setError] = useState('')\n-  const submit = () => login()\n+  const [submitting, setSubmitting] = useState(false)\n+  const submit = async () => {\n+    setSubmitting(true)\n+    try { await login() } finally { setSubmitting(false) }\n+  }\n   return (\n-    <button onClick={submit}>登录</button>\n+    <button disabled={submitting} onClick={submit}>登录</button>\n   )\n"
+                },
+                {
+                  "path": "src/features/auth/useLogin.ts",
+                  "status": "added",
+                  "added": 7,
+                  "deleted": 0,
+                  "diff": "--- /dev/null\n+++ b/src/features/auth/useLogin.ts\n@@ -0,0 +1,7 @@\n+import { api } from '../../api'\n+\n+export async function login() {\n+  const response = await api.post('/auth/login')\n+  if (!response.ok) throw new Error('登录失败')\n+  return response.json()\n+}\n"
+                },
+                {
+                  "path": "tests/auth/login.test.ts",
+                  "status": "added",
+                  "added": 5,
+                  "deleted": 0,
+                  "diff": "--- /dev/null\n+++ b/tests/auth/login.test.ts\n@@ -0,0 +1,5 @@\n+test('提交过程中禁用登录按钮', async () => {\n+  render(<LoginForm />)\n+  await user.click(screen.getByRole('button', { name: '登录' }))\n+  expect(screen.getByRole('button')).toBeDisabled()\n+})\n"
+                },
+                {
+                  "path": "src/features/auth/legacyLogin.ts",
+                  "status": "deleted",
+                  "added": 0,
+                  "deleted": 3,
+                  "diff": "--- a/src/features/auth/legacyLogin.ts\n+++ /dev/null\n@@ -1,3 +0,0 @@\n-export function legacyLogin() {\n-  return window.localStorage.getItem('legacy-token')\n-}\n"
+                },
+                {
+                  "path": "src/features/auth/session.ts",
+                  "previousPath": "src/features/auth/storage.ts",
+                  "status": "renamed",
+                  "added": 1,
+                  "deleted": 1,
+                  "diff": "rename from src/features/auth/storage.ts\nrename to src/features/auth/session.ts\n--- a/src/features/auth/storage.ts\n+++ b/src/features/auth/session.ts\n@@ -1,3 +1,3 @@\n-export const sessionKey = 'legacy-token'\n+export const sessionKey = 'access-token'\n export const readSession = () => localStorage.getItem(sessionKey)\n export const clearSession = () => localStorage.removeItem(sessionKey)\n"
+                },
+                {
+                  "path": "docs/login-flow.png",
+                  "status": "added",
+                  "added": 0,
+                  "deleted": 0,
+                  "binary": true
+                }
+              ]
+            },
+            {
+              "kind": "gallery",
+              "id": "pages",
+              "title": "页面原型 / 页面预览",
+              "caption": "查看全部 →",
+              "items": [
+                {
+                  "id": "login-page",
+                  "title": "登录页原型",
+                  "meta": "登录页",
+                  "status": "done",
+                  "image": ""
+                },
+                {
+                  "id": "register-page",
+                  "title": "注册页原型",
+                  "meta": "注册页",
+                  "status": "done",
+                  "image": ""
+                },
+                {
+                  "id": "forgot-password",
+                  "title": "忘记密码页原型",
+                  "meta": "忘记密码",
+                  "status": "active",
+                  "image": ""
+                },
+                {
+                  "id": "profile-entry",
+                  "title": "个人中心入口",
+                  "meta": "个人中心",
+                  "status": "done",
+                  "image": ""
+                }
+              ]
+            },
+            {
+              "kind": "documents",
+              "id": "documents",
+              "title": "产品文档",
+              "caption": "查看全部 →",
+              "items": [
+                {
+                  "id": "prd-doc",
+                  "title": "登录模块 PRD",
+                  "version": "v1.2",
+                  "at": "2024-06-10",
+                  "status": "done"
+                },
+                {
+                  "id": "requirements",
+                  "title": "需求说明书",
+                  "version": "v1.0",
+                  "at": "2024-05-28",
+                  "status": "done"
+                },
+                {
+                  "id": "acceptance",
+                  "title": "验收标准",
+                  "version": "v1.0",
+                  "at": "2024-06-08",
+                  "status": "active"
+                }
+              ]
+            },
+            {
+              "kind": "tests",
+              "id": "tests",
+              "title": "测试与验收",
+              "caption": "查看详情 →",
+              "metrics": [
+                {
+                  "id": "cases",
+                  "label": "用例总数",
+                  "value": "86",
+                  "unit": "个",
+                  "tone": "neutral"
+                },
+                {
+                  "id": "pass",
+                  "label": "通过率",
+                  "value": "96",
+                  "unit": "%",
+                  "tone": "positive"
+                },
+                {
+                  "id": "defects",
+                  "label": "缺陷数",
+                  "value": "3",
+                  "unit": "个",
+                  "tone": "negative"
+                }
+              ],
+              "progress": 96,
+              "progressLabel": "测试进度",
+              "checks": [
+                {
+                  "id": "login",
+                  "label": "登录功能测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "register",
+                  "label": "注册流程测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "reset",
+                  "label": "找回密码测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "security",
+                  "label": "安全性测试（XSS/CSRF）",
+                  "status": "passed"
+                },
+                {
+                  "id": "exception",
+                  "label": "异常场景测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "compatibility",
+                  "label": "兼容性测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "performance",
+                  "label": "性能压力测试",
+                  "status": "passed"
+                },
+                {
+                  "id": "ui",
+                  "label": "界面交互验收",
+                  "status": "pending"
+                }
+              ]
+            },
+            {
+              "kind": "api",
+              "id": "api",
+              "title": "接口交付",
+              "caption": "查看全部 →",
+              "rows": [
+                {
+                  "id": "login",
+                  "endpoint": "/login",
+                  "method": "POST",
+                  "status": "done",
+                  "at": "06-18 10:20"
+                },
+                {
+                  "id": "logout",
+                  "endpoint": "/logout",
+                  "method": "POST",
+                  "status": "done",
+                  "at": "06-18 11:03"
+                },
+                {
+                  "id": "profile",
+                  "endpoint": "/user/profile",
+                  "method": "GET",
+                  "status": "done",
+                  "at": "06-17 16:20"
+                },
+                {
+                  "id": "send-code",
+                  "endpoint": "/send-code",
+                  "method": "POST",
+                  "status": "active",
+                  "at": "06-20 14:10"
+                }
+              ]
+            },
+            {
+              "kind": "environments",
+              "id": "deployments",
+              "title": "部署与发布",
+              "caption": "查看详情 →",
+              "items": [
+                {
+                  "id": "dev",
+                  "name": "开发环境",
+                  "status": "running",
+                  "version": "v1.2.0",
+                  "at": "06-18 10:20"
+                },
+                {
+                  "id": "test",
+                  "name": "测试环境",
+                  "status": "running",
+                  "version": "v1.2.0-rc1",
+                  "at": "06-19 16:30"
+                },
+                {
+                  "id": "prod",
+                  "name": "生产环境",
+                  "status": "pending",
+                  "version": "v1.2.0",
+                  "at": ""
+                }
+              ]
+            },
+            {
+              "kind": "files",
+              "id": "files",
+              "title": "文件与附件",
+              "caption": "上传文件 →",
+              "items": [
+                {
+                  "id": "login-design",
+                  "name": "登录页设计稿",
+                  "kind": "image",
+                  "size": "12.5 MB",
+                  "url": ""
+                },
+                {
+                  "id": "api-doc-file",
+                  "name": "接口文档",
+                  "kind": "document",
+                  "size": "2.3 MB",
+                  "url": ""
+                },
+                {
+                  "id": "test-report",
+                  "name": "测试报告",
+                  "kind": "report",
+                  "size": "1.8 MB",
+                  "url": ""
+                },
+                {
+                  "id": "release-notes",
+                  "name": "发布说明",
+                  "kind": "report",
+                  "size": "856 KB",
+                  "url": ""
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            {
+              "id": "login-permission",
+              "title": "登录与权限方案",
+              "owner": "王明",
+              "status": "done",
+              "progress": 100
+            },
+            {
+              "id": "login-page",
+              "title": "登录页开发",
+              "owner": "王明",
+              "status": "doing",
+              "progress": 80
+            },
+            {
+              "id": "register-flow",
+              "title": "注册流程开发",
+              "owner": "陈书",
+              "status": "doing",
+              "progress": 60
+            },
+            {
+              "id": "reset-page",
+              "title": "找回密码页面设计",
+              "owner": "陈书",
+              "status": "doing",
+              "progress": 40,
+              "note": "等待交互稿确认"
+            },
+            {
+              "id": "api-integration",
+              "title": "登录接口联调",
+              "owner": "周理",
+              "status": "doing",
+              "progress": 70
+            },
+            {
+              "id": "test-review",
+              "title": "测试用例评审",
+              "owner": "李妍",
+              "status": "done",
+              "progress": 100
+            },
+            {
+              "id": "gray-release",
+              "title": "生产环境灰度发布",
+              "owner": "张曦",
+              "status": "blocked",
+              "progress": 0,
+              "note": "等待运维审批"
+            },
+            {
+              "id": "regression",
+              "title": "回归测试执行",
+              "owner": "李妍",
+              "status": "todo",
+              "progress": 0,
+              "note": "等待缺陷修复完成"
+            }
+          ],
+          "versions": [
+            {
+              "id": "v09",
+              "version": "v0.9",
+              "note": "初版方案",
+              "at": "06-10",
+              "author": "王明",
+              "status": "released"
+            },
+            {
+              "id": "v11",
+              "version": "v1.1",
+              "note": "登录/注册主流程",
+              "at": "06-15",
+              "author": "陈书",
+              "status": "released"
+            },
+            {
+              "id": "v12",
+              "version": "v1.2",
+              "note": "找回密码与个人中心",
+              "at": "06-20",
+              "author": "王明",
+              "status": "released"
+            }
+          ],
+          "risks": [
+            {
+              "id": "sms-service",
+              "title": "生产环境依赖第三方短信服务，尚未完成压力验证",
+              "level": "high",
+              "status": "open",
+              "owner": "周理",
+              "note": "发布前补充压测与降级方案"
+            },
+            {
+              "id": "reset-cases",
+              "title": "找回密码流程缺少异常场景用例",
+              "level": "medium",
+              "status": "mitigating",
+              "owner": "李妍",
+              "note": "本迭代补齐 6 条异常用例"
+            },
+            {
+              "id": "icons",
+              "title": "设计稿图标资源尚未归档",
+              "level": "low",
+              "status": "closed",
+              "owner": "陈书",
+              "note": "已归档到团队素材库"
+            }
+          ],
+          "next": [
+            "完成 /send-code 接口开发与联调。",
+            "修复 3 个缺陷并完成回归测试。",
+            "准备生产环境发布与验收材料。"
+          ],
+          "note": "以上为本地模拟数据，不连接真实账号服务。"
+        }
+      }
+    },
+    {
+      "id": "security-audit",
+      "label": "安全审查",
+      "description": "原语组合演示：统计、表格、图表、Markdown、清单自由拼装。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "登录模块安全审查",
+        "status": "running",
+        "tagline": "安全组 · 认证链路",
+        "summary": "完成登录、注册、找回密码三条链路的 XSS/CSRF/越权检查，2 个中危问题修复中。",
+        "description": "认证链路安全审查与问题修复。",
+        "note": "点击白板查看执行详情与本轮成果。",
+        "detail": "# 登录模块安全审查 · 执行详情\n\n## 审查范围\n\n覆盖登录、注册、找回密码三条链路，重点检查 XSS、CSRF、越权与敏感信息泄露。\n\n## 执行步骤\n\n1. 使用 SAST 扫描并人工验证认证链路。\n2. 修复中危问题并回归。\n3. 输出审查报告与修复清单。\n\n## 验收要求\n\n- [x] 三条链路完成扫描。\n- [x] 高危问题为 0。\n- [ ] 2 个中危问题关闭并通过回归。",
+        "link": {
+          "label": "",
+          "url": ""
+        },
+        "steps": [
+          {
+            "id": "scan",
+            "title": "安全检查",
+            "progress": 100,
+            "state": "done"
+          },
+          {
+            "id": "fix",
+            "title": "漏洞修复",
+            "progress": 66,
+            "state": "active"
+          },
+          {
+            "id": "report",
+            "title": "报告输出",
+            "progress": 20,
+            "state": "pending"
+          }
+        ],
+        "result": {
+          "template": "result-v1",
+          "title": "登录模块安全审查",
+          "status": "ready",
+          "summary": "覆盖 3 条认证链路，发现 2 个中危、5 个低危问题，高危 0，修复进度 66%。",
+          "verdict": "中危问题需在发布前关闭，低危问题已登记到下个迭代。",
+          "owner": "周理",
+          "team": "安全组",
+          "teamSize": 2,
+          "producedAt": "2024-06-21 11:20",
+          "updatedAt": "2024-06-21 11:20",
+          "metrics": [
+            {
+              "id": "high",
+              "label": "高危",
+              "value": "0",
+              "unit": "个",
+              "kind": "value",
+              "tone": "positive"
+            },
+            {
+              "id": "medium",
+              "label": "中危",
+              "value": "2",
+              "unit": "个",
+              "kind": "value",
+              "tone": "negative"
+            },
+            {
+              "id": "coverage",
+              "label": "覆盖接口",
+              "value": "12",
+              "unit": "个",
+              "kind": "value"
+            }
+          ],
+          "artifacts": [
+            {
+              "id": "security-report",
+              "kind": "document",
+              "title": "安全审查报告",
+              "description": "三条认证链路的检查项、证据与结论。",
+              "content": "## 审查结论\n\n- 高危问题 0 个。\n- 中危问题 2 个：验证码可重放、退出登录未失效旧令牌。\n- 低危问题 5 个，已登记到下个迭代。",
+              "url": ""
+            }
+          ],
+          "checks": [
+            {
+              "id": "scan",
+              "label": "三条认证链路完成扫描",
+              "status": "passed"
+            },
+            {
+              "id": "high",
+              "label": "高危问题为 0",
+              "status": "passed"
+            },
+            {
+              "id": "medium",
+              "label": "2 个中危问题关闭",
+              "status": "pending"
+            },
+            {
+              "id": "regression",
+              "label": "修复后回归通过",
+              "status": "pending"
+            }
+          ],
+          "decisions": [
+            {
+              "id": "accept-low",
+              "question": "低危问题是否阻塞发布？",
+              "choice": "登记责任人，下个迭代关闭",
+              "at": "06-21 10:40"
+            }
+          ],
+          "sections": [
+            {
+              "kind": "custom",
+              "id": "overview",
+              "title": "审查概览",
+              "caption": "自动生成",
+              "span": "full",
+              "column": "auto",
+              "emphasis": "primary",
+              "layout": "columns",
+              "blocks": [
+                {
+                  "type": "text",
+                  "text": "## 审查结论\n\n覆盖 **登录、注册、找回密码** 三条链路，重点检查 XSS、CSRF、越权与敏感信息泄露。高危 **0** 个，中危 **2** 个，低危 **5** 个。"
+                },
+                {
+                  "type": "stats",
+                  "label": "问题分布",
+                  "items": [
+                    {
+                      "label": "高危",
+                      "value": "0",
+                      "unit": "个",
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "中危",
+                      "value": "2",
+                      "unit": "个",
+                      "tone": "negative"
+                    },
+                    {
+                      "label": "低危",
+                      "value": "5",
+                      "unit": "个",
+                      "tone": "neutral"
+                    },
+                    {
+                      "label": "覆盖接口",
+                      "value": "12",
+                      "unit": "个",
+                      "tone": "neutral"
+                    }
+                  ]
+                },
+                {
+                  "type": "callout",
+                  "tone": "warning",
+                  "title": "发布前必须关闭",
+                  "text": "中危问题 2 个：验证码可重放、退出登录未失效旧令牌。修复后需回归验证。"
+                },
+                {
+                  "type": "keyValue",
+                  "label": "审查信息",
+                  "items": [
+                    {
+                      "label": "审查范围",
+                      "value": "认证 / 授权"
+                    },
+                    {
+                      "label": "基线",
+                      "value": "OWASP ASVS 4.0"
+                    },
+                    {
+                      "label": "工具",
+                      "value": "SAST + 手工验证"
+                    },
+                    {
+                      "label": "负责人",
+                      "value": "周理"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "custom",
+              "id": "auth-flow",
+              "title": "认证链路",
+              "caption": "Mermaid · Pele 渲染",
+              "span": "full",
+              "column": "auto",
+              "emphasis": "normal",
+              "layout": "stack",
+              "blocks": [
+                {
+                  "type": "diagram",
+                  "alt": "登录认证链路流程图",
+                  "caption": "登录、令牌与找回密码链路（Mermaid flowchart）",
+                  "source": "flowchart LR\n  A[登录页] --> B{凭证校验}\n  B -->|通过| C[签发 JWT]\n  B -->|失败| D[错误提示]\n  C --> E[进入个人中心]\n  E --> F[注册 / 找回密码]"
+                }
+              ]
+            },
+            {
+              "kind": "changes",
+              "id": "changes",
+              "title": "文件变更",
+              "caption": "本轮 · git 工作树",
+              "files": [
+                {
+                  "path": "apps/web/src/components/WhiteboardDetail.tsx",
+                  "status": "modified",
+                  "added": 22,
+                  "deleted": 12
+                },
+                {
+                  "path": "apps/web/src/components/WhiteboardDetail.css",
+                  "status": "added",
+                  "added": 49
+                },
+                {
+                  "path": "packages/protocol/src/office-ui.ts",
+                  "status": "modified",
+                  "added": 36,
+                  "deleted": 2
+                },
+                {
+                  "path": "tests/whiteboardDetails.test.mjs",
+                  "status": "modified",
+                  "added": 81,
+                  "deleted": 35
+                },
+                {
+                  "path": "apps/web/src/dashboard/whiteboardDemo.ts",
+                  "status": "modified",
+                  "added": 189,
+                  "deleted": 94
+                },
+                {
+                  "path": "apps/web/src/components/WhiteboardBoardView.tsx",
+                  "status": "modified",
+                  "added": 7,
+                  "deleted": 3
+                },
+                {
+                  "path": "integration/docs/office-integration.md",
+                  "status": "modified",
+                  "added": 378,
+                  "deleted": 35
+                },
+                {
+                  "path": "docs/whiteboard-detail.png",
+                  "status": "added",
+                  "binary": true
+                }
+              ]
+            },
+            {
+              "kind": "custom",
+              "id": "findings",
+              "title": "问题清单",
+              "caption": "查看全部 →",
+              "span": "half",
+              "column": "main",
+              "emphasis": "normal",
+              "layout": "stack",
+              "blocks": [
+                {
+                  "type": "table",
+                  "label": "按等级排序",
+                  "columns": [
+                    {
+                      "key": "issue",
+                      "label": "问题",
+                      "format": "text",
+                      "align": "left"
+                    },
+                    {
+                      "key": "level",
+                      "label": "等级",
+                      "format": "status",
+                      "align": "left"
+                    },
+                    {
+                      "key": "owner",
+                      "label": "负责人",
+                      "format": "owner",
+                      "align": "left"
+                    },
+                    {
+                      "key": "status",
+                      "label": "状态",
+                      "format": "status",
+                      "align": "left"
+                    }
+                  ],
+                  "rows": [
+                    {
+                      "issue": "验证码可重放",
+                      "level": "medium",
+                      "owner": "周理",
+                      "status": "active"
+                    },
+                    {
+                      "issue": "退出登录未失效旧令牌",
+                      "level": "medium",
+                      "owner": "陈书",
+                      "status": "active"
+                    },
+                    {
+                      "issue": "日志包含手机号",
+                      "level": "low",
+                      "owner": "李妍",
+                      "status": "done"
+                    },
+                    {
+                      "issue": "错误提示泄露账号是否存在",
+                      "level": "low",
+                      "owner": "陈书",
+                      "status": "done"
+                    },
+                    {
+                      "issue": "缺少登录频率限制",
+                      "level": "low",
+                      "owner": "周理",
+                      "status": "pending"
+                    }
+                  ]
+                },
+                {
+                  "type": "progress",
+                  "label": "修复进度",
+                  "value": 66,
+                  "tone": "positive"
+                },
+                {
+                  "type": "list",
+                  "label": "下一步",
+                  "ordered": true,
+                  "items": [
+                    {
+                      "text": "关闭 2 个中危问题并回归",
+                      "status": "pending"
+                    },
+                    {
+                      "text": "补充登录频率限制",
+                      "status": "pending"
+                    },
+                    {
+                      "text": "归档低危问题到下个迭代",
+                      "status": "passed"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "custom",
+              "id": "distribution",
+              "title": "风险分布",
+              "caption": "按链路统计",
+              "span": "half",
+              "column": "aside",
+              "emphasis": "normal",
+              "layout": "stack",
+              "blocks": [
+                {
+                  "type": "chart",
+                  "label": "问题按链路分布",
+                  "chart": "bar",
+                  "unit": "个",
+                  "series": [
+                    {
+                      "label": "登录",
+                      "value": 3,
+                      "tone": "negative"
+                    },
+                    {
+                      "label": "注册",
+                      "value": 2,
+                      "tone": "neutral"
+                    },
+                    {
+                      "label": "找回密码",
+                      "value": 2,
+                      "tone": "neutral"
+                    }
+                  ]
+                },
+                {
+                  "type": "chart",
+                  "label": "问题等级占比",
+                  "chart": "pie",
+                  "series": [
+                    {
+                      "label": "高危",
+                      "value": 0,
+                      "tone": "positive"
+                    },
+                    {
+                      "label": "中危",
+                      "value": 2,
+                      "tone": "negative"
+                    },
+                    {
+                      "label": "低危",
+                      "value": 5,
+                      "tone": "neutral"
+                    }
+                  ]
+                },
+                {
+                  "type": "image",
+                  "url": "",
+                  "alt": "认证链路架构图",
+                  "caption": "架构图待补充"
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "text",
+                  "text": "> 低危问题不阻塞发布，但需登记责任人并在下个迭代关闭。"
+                }
+              ]
+            },
+            {
+              "kind": "documents",
+              "id": "documents",
+              "title": "审查文档",
+              "caption": "查看全部 →",
+              "span": "half",
+              "column": "aside",
+              "emphasis": "normal",
+              "items": [
+                {
+                  "id": "security-report",
+                  "title": "安全审查报告",
+                  "version": "v1.0",
+                  "at": "2024-06-21",
+                  "status": "done"
+                },
+                {
+                  "id": "fix-list",
+                  "title": "修复清单",
+                  "version": "v0.3",
+                  "at": "2024-06-21",
+                  "status": "active"
+                }
+              ]
+            },
+            {
+              "kind": "tests",
+              "id": "regression",
+              "title": "回归验证",
+              "caption": "查看详情 →",
+              "span": "half",
+              "column": "main",
+              "emphasis": "normal",
+              "metrics": [
+                {
+                  "id": "scanned",
+                  "label": "覆盖接口",
+                  "value": "12",
+                  "unit": "个",
+                  "tone": "neutral"
+                },
+                {
+                  "id": "medium",
+                  "label": "中危遗留",
+                  "value": "2",
+                  "unit": "个",
+                  "tone": "negative"
+                }
+              ],
+              "progress": 66,
+              "progressLabel": "修复进度",
+              "checks": [
+                {
+                  "id": "xss",
+                  "label": "XSS 用例通过",
+                  "status": "passed"
+                },
+                {
+                  "id": "csrf",
+                  "label": "CSRF 用例通过",
+                  "status": "passed"
+                },
+                {
+                  "id": "replay",
+                  "label": "验证码重放回归",
+                  "status": "pending"
+                },
+                {
+                  "id": "logout",
+                  "label": "旧令牌失效回归",
+                  "status": "pending"
+                }
+              ]
+            }
+          ],
+          "tasks": [
+            {
+              "id": "scan-chains",
+              "title": "扫描认证链路",
+              "owner": "周理",
+              "status": "done",
+              "progress": 100
+            },
+            {
+              "id": "replay",
+              "title": "修复验证码重放",
+              "owner": "周理",
+              "status": "doing",
+              "progress": 70
+            },
+            {
+              "id": "token",
+              "title": "失效旧令牌",
+              "owner": "陈书",
+              "status": "doing",
+              "progress": 40
+            },
+            {
+              "id": "rate-limit",
+              "title": "补充登录频率限制",
+              "owner": "周理",
+              "status": "todo",
+              "progress": 0
+            },
+            {
+              "id": "regression",
+              "title": "修复后回归验证",
+              "owner": "李妍",
+              "status": "blocked",
+              "progress": 0,
+              "note": "等待中危问题关闭"
+            }
+          ],
+          "versions": [
+            {
+              "id": "v01",
+              "version": "v0.1",
+              "note": "初次扫描与问题清单",
+              "at": "06-20",
+              "author": "周理",
+              "status": "released"
+            },
+            {
+              "id": "v02",
+              "version": "v0.2",
+              "note": "中危问题修复中",
+              "at": "06-21",
+              "author": "周理",
+              "status": "released"
+            }
+          ],
+          "risks": [
+            {
+              "id": "replay",
+              "title": "验证码可重放，存在暴力尝试风险",
+              "level": "medium",
+              "status": "open",
+              "owner": "周理",
+              "note": "发布前必须关闭"
+            },
+            {
+              "id": "token",
+              "title": "退出登录未失效旧令牌",
+              "level": "medium",
+              "status": "mitigating",
+              "owner": "陈书",
+              "note": "修复中，回归后关闭"
+            },
+            {
+              "id": "log",
+              "title": "日志包含手机号明文",
+              "level": "low",
+              "status": "closed",
+              "owner": "李妍",
+              "note": "已脱敏并归档"
+            }
+          ],
+          "next": [
+            "关闭 2 个中危问题并通过回归。",
+            "补充登录频率限制。",
+            "把低危问题登记到下个迭代。"
+          ],
+          "note": "以上为本地模拟数据，不包含真实系统与账号信息。"
+        }
+      }
+    },
+    {
+      "id": "multi-round",
+      "label": "多轮交付",
+      "description": "第二轮 v1 / 第三轮 v2；当前成果保留未修改的接口文档；旧版验证显示为待重验。",
+      "whiteboard": {
+        "template": "task-board-v1",
+        "title": "登录模块开发与验收",
+        "status": "running",
+        "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+        "steps": [
+          {
+            "id": "docs",
+            "title": "文档交付",
+            "progress": 100
+          },
+          {
+            "id": "review",
+            "title": "变更复核",
+            "progress": 40
+          }
+        ],
+        "result": {
+          "runId": "delivery-3",
+          "title": "登录模块开发与验收",
+          "status": "ready",
+          "owner": "王明",
+          "team": "研发组",
+          "teamSize": 2,
+          "producedAt": "2026-10-28T12:00:00+08:00",
+          "updatedAt": "2026-10-28T12:00:00+08:00",
+          "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+          "verdict": "需求新增了请求限制与退出清理要求，旧版检查不能验证当前版本。",
+          "artifacts": [
+            {
+              "id": "prd",
+              "kind": "document",
+              "title": "登录模块需求说明",
+              "description": "功能范围、交互规则和验收标准。",
+              "versionId": "prd-v2",
+              "version": "v2.0",
+              "runId": "delivery-3",
+              "producedAt": "2026-10-28T12:00:00+08:00",
+              "mimeType": "text/markdown",
+              "sha256": "cf375c1fe73f99fb76fb203299eb11bdd82055c6a9d1141352c7e336cf69713c",
+              "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n- 退出登录与角色权限校验\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n连续失败 5 次后限制请求 10 分钟。\n退出后清除会话。\n"
+            },
+            {
+              "id": "api",
+              "kind": "document",
+              "title": "登录接口文档",
+              "description": "请求字段、返回值与错误处理约定。",
+              "versionId": "api-v1",
+              "version": "v1.0",
+              "runId": "delivery-2",
+              "producedAt": "2026-10-28T11:00:00+08:00",
+              "mimeType": "text/markdown",
+              "sha256": "73e5dd2b3ede4f5d04098a323da378863217bf88dd4d2456531f325f465bfa62",
+              "content": "# 登录接口文档\n\n## POST /api/auth/login\n请求字段：account、password。\n成功返回：accessToken、expiresIn。\n错误反馈：账号密码错误、验证码过期、请求过于频繁。\n\n本文件在第三轮未修改，当前成果仍保留第二轮的交付版本。\n"
+            },
+            {
+              "id": "report",
+              "kind": "document",
+              "title": "验收报告",
+              "description": "验证对象与结论，保留对应的产物版本。",
+              "versionId": "report-v1",
+              "version": "v1.0",
+              "runId": "delivery-3",
+              "producedAt": "2026-10-28T12:00:00+08:00",
+              "mimeType": "text/markdown",
+              "sha256": "5dd2c232287bca661107d021887ab0a0a4f53d50c9c24c225e8003f2a971499d",
+              "content": "# 验收报告\n\n原需求说明 prd-v1 的范围检查已通过。\n第三轮新增频率限制要求，需要针对 prd-v2 重新验证。\n"
+            }
+          ],
+          "checks": [
+            {
+              "id": "scope-review",
+              "label": "需求范围检查",
+              "status": "passed",
+              "artifactId": "prd",
+              "versionId": "prd-v1"
+            }
+          ],
+          "next": [
+            "针对需求说明 v2.0 重新完成范围检查。"
+          ]
+        },
+        "deliveries": [
+          {
+            "id": "delivery-1",
+            "sequence": 1,
+            "title": "第 1 轮 · 确认目标",
+            "createdAt": "2026-10-28T10:00:00+08:00",
+            "board": {
+              "title": "登录模块开发与验收",
+              "status": "running",
+              "steps": [
+                {
+                  "id": "scope",
+                  "title": "需求对齐",
+                  "progress": 100
+                }
+              ]
+            },
+            "result": {
+              "runId": "delivery-1",
+              "title": "登录模块开发与验收",
+              "status": "draft",
+              "owner": "王明",
+              "producedAt": "2026-10-28T10:00:00+08:00",
+              "updatedAt": "2026-10-28T10:00:00+08:00",
+              "summary": "已确认登录模块的目标与交付范围，尚未产生文档。",
+              "note": "本轮为范围确认，没有创建空文档。"
+            }
+          },
+          {
+            "id": "delivery-2",
+            "sequence": 2,
+            "title": "第 2 轮 · 首次文档交付",
+            "createdAt": "2026-10-28T11:00:00+08:00",
+            "board": {
+              "title": "登录模块开发与验收",
+              "status": "running",
+              "steps": [
+                {
+                  "id": "docs",
+                  "title": "文档交付",
+                  "progress": 100
+                }
+              ],
+              "detail": "第二轮已交付需求说明和接口文档，后续根据反馈继续修改。"
+            },
+            "result": {
+              "runId": "delivery-2",
+              "title": "登录模块开发与验收",
+              "status": "ready",
+              "owner": "王明",
+              "team": "研发组",
+              "teamSize": 2,
+              "producedAt": "2026-10-28T11:00:00+08:00",
+              "updatedAt": "2026-10-28T11:00:00+08:00",
+              "summary": "首次交付需求说明 v1.0 与接口文档 v1.0。",
+              "verdict": "本轮需求范围检查通过。",
+              "artifacts": [
+                {
+                  "id": "prd",
+                  "kind": "document",
+                  "title": "登录模块需求说明",
+                  "description": "功能范围、交互规则和验收标准。",
+                  "versionId": "prd-v1",
+                  "version": "v1.0",
+                  "runId": "delivery-2",
+                  "producedAt": "2026-10-28T11:00:00+08:00",
+                  "mimeType": "text/markdown",
+                  "sha256": "1a53d5d7ab8ee13105d84d451e33f5d18eca5b795e024681f9ae7cb457005f82",
+                  "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n"
+                },
+                {
+                  "id": "api",
+                  "kind": "document",
+                  "title": "登录接口文档",
+                  "description": "请求字段、返回值与错误处理约定。",
+                  "versionId": "api-v1",
+                  "version": "v1.0",
+                  "runId": "delivery-2",
+                  "producedAt": "2026-10-28T11:00:00+08:00",
+                  "mimeType": "text/markdown",
+                  "sha256": "73e5dd2b3ede4f5d04098a323da378863217bf88dd4d2456531f325f465bfa62",
+                  "content": "# 登录接口文档\n\n## POST /api/auth/login\n请求字段：account、password。\n成功返回：accessToken、expiresIn。\n错误反馈：账号密码错误、验证码过期、请求过于频繁。\n\n本文件在第三轮未修改，当前成果仍保留第二轮的交付版本。\n"
+                }
+              ],
+              "checks": [
+                {
+                  "id": "scope-review",
+                  "label": "需求范围检查",
+                  "status": "passed",
+                  "artifactId": "prd",
+                  "versionId": "prd-v1"
+                }
+              ],
+              "next": [
+                "根据反馈补充异常处理与请求限制。"
+              ]
+            }
+          },
+          {
+            "id": "delivery-3",
+            "sequence": 3,
+            "title": "第 3 轮 · 更新需求与验收",
+            "createdAt": "2026-10-28T12:00:00+08:00",
+            "board": {
+              "title": "登录模块开发与验收",
+              "status": "running",
+              "steps": [
+                {
+                  "id": "docs",
+                  "title": "文档交付",
+                  "progress": 100
+                },
+                {
+                  "id": "review",
+                  "title": "变更复核",
+                  "progress": 40
+                }
+              ],
+              "detail": "第三轮新增请求限制与退出清理要求。第二轮未修改的接口文档继续保留。"
+            },
+            "result": {
+              "runId": "delivery-3",
+              "title": "登录模块开发与验收",
+              "status": "ready",
+              "owner": "王明",
+              "team": "研发组",
+              "teamSize": 2,
+              "producedAt": "2026-10-28T12:00:00+08:00",
+              "updatedAt": "2026-10-28T12:00:00+08:00",
+              "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+              "verdict": "需求新增了请求限制与退出清理要求，旧版检查不能验证当前版本。",
+              "artifacts": [
+                {
+                  "id": "prd",
+                  "kind": "document",
+                  "title": "登录模块需求说明",
+                  "description": "功能范围、交互规则和验收标准。",
+                  "versionId": "prd-v2",
+                  "version": "v2.0",
+                  "runId": "delivery-3",
+                  "producedAt": "2026-10-28T12:00:00+08:00",
+                  "mimeType": "text/markdown",
+                  "sha256": "cf375c1fe73f99fb76fb203299eb11bdd82055c6a9d1141352c7e336cf69713c",
+                  "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n- 退出登录与角色权限校验\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n连续失败 5 次后限制请求 10 分钟。\n退出后清除会话。\n"
+                },
+                {
+                  "id": "report",
+                  "kind": "document",
+                  "title": "验收报告",
+                  "description": "验证对象与结论，保留对应的产物版本。",
+                  "versionId": "report-v1",
+                  "version": "v1.0",
+                  "runId": "delivery-3",
+                  "producedAt": "2026-10-28T12:00:00+08:00",
+                  "mimeType": "text/markdown",
+                  "sha256": "5dd2c232287bca661107d021887ab0a0a4f53d50c9c24c225e8003f2a971499d",
+                  "content": "# 验收报告\n\n原需求说明 prd-v1 的范围检查已通过。\n第三轮新增频率限制要求，需要针对 prd-v2 重新验证。\n"
+                }
+              ],
+              "checks": [
+                {
+                  "id": "scope-review",
+                  "label": "需求范围检查",
+                  "status": "passed",
+                  "artifactId": "prd",
+                  "versionId": "prd-v1"
+                }
+              ],
+              "next": [
+                "针对需求说明 v2.0 重新完成范围检查。"
+              ]
+            }
+          }
+        ]
       }
     }
   ]

@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Braces, Check, Copy, Download, FileText, LoaderCircle, RotateCcw, Sparkles, X } from 'lucide-react'
+import { Braces, Check, Copy, Download, LoaderCircle, RotateCcw, X } from 'lucide-react'
 import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
-import { renderWhiteboardContent } from '@pawoffice/scene-office/task-board'
 import type { OfficeResult } from '@pawoffice/protocol/office-ui'
 import { resultFileBase, resultStatusLabels } from '../results/format.ts'
-import { ResultReader } from '../components/ResultReader.tsx'
-import { WhiteboardBoardView } from '../components/WhiteboardBoardView.tsx'
+import { ResultWorkspace, type WorkspaceTab } from '../components/ResultWorkspace.tsx'
 import { parseResultPreviewPayload, resultPreviewMockUrl, resultPreviewStatuses } from './resultPreviewData.ts'
 import type { ResultPreviewCase } from './resultPreviewData.ts'
 import '../components/WhiteboardReader.css'
 import './ResultPreview.css'
 
-type PreviewView = 'board' | 'result'
+type PreviewView = WorkspaceTab
+
+function initialView(): PreviewView {
+  const value = new URLSearchParams(location.search).get('view')
+  return value === 'board' || value === 'process' ? 'process' : value === 'detail' || value === 'deliverables' ? 'deliverables' : 'overview'
+}
 
 function downloadJson(filename: string, value: unknown) {
   const url = URL.createObjectURL(new Blob([stringifyDocumentObject(value, 2)], { type: 'application/json;charset=utf-8' }))
@@ -26,7 +29,7 @@ export function ResultPreview() {
   const [reloadKey, setReloadKey] = useState(0)
   const [caseId, setCaseId] = useState(() => new URLSearchParams(location.search).get('case') ?? '')
   const [status, setStatus] = useState<OfficeResult['status']>('verified')
-  const [view, setView] = useState<PreviewView>('result')
+  const [view, setView] = useState<PreviewView>(initialView)
   const [dataOpen, setDataOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -56,16 +59,25 @@ export function ResultPreview() {
 
   const result = useMemo<OfficeResult | null>(() => current ? { ...current.result, status } : null, [current, status])
   const board = useMemo(() => current && result ? { ...current.board, result } : null, [current, result])
-  const boardHtml = useMemo(() => board ? renderWhiteboardContent({ taskBoard: board }) : '', [board])
-  const showResult = view === 'result'
+  const switchView = (next: PreviewView) => {
+    setView(next)
+    const url = new URL(location.href)
+    if (next === 'overview') url.searchParams.delete('view')
+    else url.searchParams.set('view', next)
+    history.replaceState(null, '', url)
+  }
   const download = () => {
     if (!board || !result) return
-    downloadJson(showResult ? `${resultFileBase(result)}-result.json` : 'whiteboard.json', showResult ? result : board)
+    downloadJson(resultFileBase(result) + '-whiteboard.json', board)
   }
   const selectCase = (id: string) => {
-    setCaseId(id); setView('result')
+    setCaseId(id)
+    const nextView: PreviewView = 'overview'
+    setView(nextView)
     const url = new URL(location.href)
     url.searchParams.set('case', id)
+    if (nextView === 'overview') url.searchParams.delete('view')
+    else url.searchParams.set('view', nextView)
     history.replaceState(null, '', url)
   }
   const copyData = async () => {
@@ -95,22 +107,16 @@ export function ResultPreview() {
         {loadError ? <><p>{loadError}</p><button type="button" onClick={() => setReloadKey(value => value + 1)}><RotateCcw size={14} />重新加载 mock 数据</button></>
           : <><LoaderCircle size={20} className="is-spin" /><p>正在读取 mock 数据…</p><small>{resultPreviewMockUrl}</small></>}
       </div>
-      : <div className={`whiteboard-reader result-preview-panel${showResult ? ' is-result' : ''}`} data-view={showResult ? 'result' : 'board'}>
+      : <div className="whiteboard-reader result-preview-panel is-result">
         <header>
-          <div className="whiteboard-reader-heading">
-            <h2 title={showResult ? result.title : board.detail ? '白板详情' : '协作白板'}>{showResult ? result.title : board.detail ? '白板详情' : '协作白板'}</h2>
-            <div className="whiteboard-reader-switch" role="tablist" aria-label="白板视图">
-              <button type="button" role="tab" aria-selected={!showResult} tabIndex={showResult ? -1 : 0} onClick={() => setView('board')}><FileText size={13} strokeWidth={2} />任务白板</button>
-              <button type="button" role="tab" aria-selected={showResult} tabIndex={showResult ? 0 : -1} onClick={() => setView('result')}><Sparkles size={13} strokeWidth={2} />成果</button>
-            </div>
-          </div>
+          <div className="whiteboard-reader-heading"><h2>当前成果</h2></div>
           <div className="whiteboard-reader-actions">
-            <button type="button" aria-label={showResult ? '下载成果数据' : '下载白板数据'} title={showResult ? '下载成果数据' : '下载白板数据'} onClick={download}><Download size={18} /></button>
+            <button type="button" aria-label="下载完整成果与白板数据" title="下载完整成果与白板数据" onClick={download}><Download size={18} /></button>
             <button type="button" aria-label="关闭" title="关闭" onClick={() => window.location.assign(import.meta.env.BASE_URL)}><X size={20} /></button>
           </div>
         </header>
-        <article className={`whiteboard-reader-content${showResult ? ' is-result' : ''}`} tabIndex={0} aria-label={showResult ? '成果内容' : '白板内容'}>
-          {showResult ? <ResultReader result={result} onOpenBoard={() => setView('board')} /> : <WhiteboardBoardView detail={board.detail ?? ''} html={boardHtml} />}
+        <article className="whiteboard-reader-content is-result" aria-label="当前成果内容">
+          <ResultWorkspace key={current.id} board={board} result={result} initialTab={view} onTabChange={switchView} />
         </article>
       </div>}
     {dataOpen && board && current && <aside className="result-preview-data" aria-label="驱动数据">

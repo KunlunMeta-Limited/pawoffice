@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import type { OfficeSceneController } from '../controller/useOfficeSceneController.ts'
 import { SceneSurface } from '../../../shared/scene/SceneSurface.tsx'
 import './OfficeCanvas.css'
-import { WhiteboardReader } from './WhiteboardReader.tsx'
+const WhiteboardReader = lazy(() => import('./WhiteboardReader.tsx').then(module => ({ default: module.WhiteboardReader })))
 
 export function OfficeCanvas({ controller, editing = false, catalogOpen = false, children }: {
   controller: OfficeSceneController; editing?: boolean; catalogOpen?: boolean; children?: ReactNode
@@ -17,6 +17,8 @@ export function OfficeCanvas({ controller, editing = false, catalogOpen = false,
     </div>}
       {notice && <div className="runtime-scene-notice" role="alert">{notice}<button type="button" aria-label="关闭提示" onClick={() => setNotice(null)}><X size={14} /></button></div>}
     {children}
-    {!editing && controller.whiteboard && <WhiteboardReader boardId={controller.whiteboard.id} state={controller.whiteboard.state} progress={controller.whiteboardProgress} onClose={controller.closeWhiteboard} />}
+    {!editing && controller.whiteboard && <Suspense fallback={<div className="office-loading" role="status">正在打开当前成果…</div>}>
+      <WhiteboardReader key={JSON.stringify([controller.readerScope, controller.initialDeliveryId])} initialDeliveryId={controller.initialDeliveryId} boardId={controller.whiteboard.id} state={controller.whiteboard.state} progress={controller.whiteboardProgress} onClose={controller.closeWhiteboard} />
+    </Suspense>}
   </div>
 }

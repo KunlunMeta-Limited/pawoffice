@@ -6,8 +6,7 @@
   min-height: 100dvh;
   padding: 16px 20px 18px;
   overflow: hidden;
-  background:
-    radial-gradient(110% 80% at 8% 0%, #f7f9f5 0%, #e9ede7 52%, #e1e6e0 100%);
+  background: #eceeec;
   color: #303632;
   font: 13px/1.5 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
@@ -38,7 +37,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: min(1040px, 100%);
+  width: min(960px, 100%);
   min-height: 320px;
   margin: 0 auto;
   padding: 40px 24px;
@@ -136,13 +135,11 @@
 .whiteboard-reader.result-preview-panel {
   display: flex;
   flex-direction: column;
-  width: min(1040px, 100%);
+  width: min(960px, 100%);
   height: min(calc(100dvh - 158px), 1040px);
   max-height: none;
   margin: 0 auto;
 }
-
-.whiteboard-reader.result-preview-panel:not(.is-result) { width: min(860px, 100%); }
 
 .result-preview-data {
   position: fixed;

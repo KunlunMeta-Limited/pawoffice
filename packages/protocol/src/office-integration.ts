@@ -53,7 +53,7 @@ const layoutDefinitions = [
 ]
 export function describeOfficeLayouts(state: OfficeLayoutState = defaultOfficeLayout) { return { ...state, layouts: layoutDefinitions } }
 export const officeLayoutSyncSchema = z.strictObject({ type: z.literal('office.layout.sync'), layout: officeLayoutStateSchema })
-export const officeReasonSchema = z.enum(['INVALID_MESSAGE', 'INVALID_REPLY', 'OFFICE_NOT_INITIALIZED', 'ACTOR_NOT_FOUND', 'INVALID_BINDING',
+export const officeReasonSchema = z.enum(['INVALID_MESSAGE', 'INVALID_REPLY', 'RESULT_HISTORY_CONFLICT', 'OFFICE_NOT_INITIALIZED', 'ACTOR_NOT_FOUND', 'INVALID_BINDING',
   'OFFICE_LIMIT', 'CACHE_FULL', 'STALE_SEQ', 'DUPLICATE_SEQ', 'SEQ_CONFLICT', 'REQUEST_TIMEOUT', 'NO_RECEIVER', 'RECEIVER_UNAVAILABLE',
   'BUSINESS_QUEUE_FULL', 'DECISION_DUPLICATE', 'DECISION_EXPIRED', 'DECISION_QUEUE_FULL', 'SERVER_CLOSING', 'CALLER_DISCONNECTED',
   'SCENE_SYNC_FAILED', 'BUSINESS_ERROR', 'UI_REQUEST_EXPIRED', 'UI_QUEUE_FULL', 'UI_WAIT_BUSY', 'UNSUPPORTED_UI_ACTION', 'SNAPSHOT_REQUIRED',

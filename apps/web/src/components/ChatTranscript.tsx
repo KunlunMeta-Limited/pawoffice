@@ -4,16 +4,21 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Check, ChevronUp, Copy, LoaderCircle, MessageCircle, RefreshCw } from 'lucide-react'
 import type { ChatSession, ChatSnapshot } from '../chat/ChatSession.ts'
 import { ChatMarkdown } from './ChatMarkdown.tsx'
+import type { ResultDelivery } from '@pawoffice/protocol/office-ui'
+import { deliveriesByTurn } from '../results/chatDeliveries.ts'
+import { ChatDeliveries } from './ChatDeliveries.tsx'
 
 export type ChatTranscriptHandle = { toBottom: () => void }
 
-export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit }: {
+export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit, deliveries, onOpenDelivery }: {
   ref: Ref<ChatTranscriptHandle>; session: ChatSession; chat: ChatSnapshot; expanded: boolean
   leaderName: string; storageError: string | null; onAtBottomChange: (value: boolean) => void; onEdit: () => void
+  deliveries?: readonly ResultDelivery[]; onOpenDelivery?: (deliveryId: string) => boolean
 }) {
   'use no memo'
   const scroll = useRef<HTMLDivElement>(null), lastScrollTop = useRef(0)
   const [atStart, setAtStart] = useState(false)
+  const turnDeliveries = useMemo(() => deliveriesByTurn(deliveries ?? []), [deliveries])
   const [copied, setCopied] = useState(''), copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(copyTimer.current), [])
   const rows = useMemo(() => [
@@ -57,6 +62,7 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
                 {row.message.state === 'stopped' && <small className="office-chat-interrupted">已停止生成</small>}
                 {row.message.state === 'error' && <small className="office-chat-interrupted">回复未完成</small>}
               </div>
+              {row.message.role === 'assistant' && row.message.turnId && <ChatDeliveries deliveries={turnDeliveries.get(row.message.turnId) ?? []} onOpen={onOpenDelivery} />}
             </div>
           </article>}
           {row.kind === 'empty' && <div className="office-chat-empty"><MessageCircle size={30} /><h2>今天一起做点什么？</h2></div>}

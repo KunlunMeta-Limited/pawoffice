@@ -1,0 +1,257 @@
+{
+  "template": "task-board-v1",
+  "title": "登录模块开发与验收",
+  "status": "running",
+  "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+  "steps": [
+    {
+      "id": "docs",
+      "title": "文档交付",
+      "progress": 100
+    },
+    {
+      "id": "review",
+      "title": "变更复核",
+      "progress": 40
+    }
+  ],
+  "result": {
+    "runId": "delivery-3",
+    "title": "登录模块开发与验收",
+    "status": "ready",
+    "owner": "王明",
+    "team": "研发组",
+    "teamSize": 2,
+    "producedAt": "2026-10-28T12:00:00+08:00",
+    "updatedAt": "2026-10-28T12:00:00+08:00",
+    "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+    "verdict": "需求新增了请求限制与退出清理要求，旧版检查不能验证当前版本。",
+    "artifacts": [
+      {
+        "id": "prd",
+        "kind": "document",
+        "title": "登录模块需求说明",
+        "description": "功能范围、交互规则和验收标准。",
+        "versionId": "prd-v2",
+        "version": "v2.0",
+        "runId": "delivery-3",
+        "producedAt": "2026-10-28T12:00:00+08:00",
+        "mimeType": "text/markdown",
+        "sha256": "cf375c1fe73f99fb76fb203299eb11bdd82055c6a9d1141352c7e336cf69713c",
+        "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n- 退出登录与角色权限校验\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n连续失败 5 次后限制请求 10 分钟。\n退出后清除会话。\n"
+      },
+      {
+        "id": "api",
+        "kind": "document",
+        "title": "登录接口文档",
+        "description": "请求字段、返回值与错误处理约定。",
+        "versionId": "api-v1",
+        "version": "v1.0",
+        "runId": "delivery-2",
+        "producedAt": "2026-10-28T11:00:00+08:00",
+        "mimeType": "text/markdown",
+        "sha256": "73e5dd2b3ede4f5d04098a323da378863217bf88dd4d2456531f325f465bfa62",
+        "content": "# 登录接口文档\n\n## POST /api/auth/login\n请求字段：account、password。\n成功返回：accessToken、expiresIn。\n错误反馈：账号密码错误、验证码过期、请求过于频繁。\n\n本文件在第三轮未修改，当前成果仍保留第二轮的交付版本。\n"
+      },
+      {
+        "id": "report",
+        "kind": "document",
+        "title": "验收报告",
+        "description": "验证对象与结论，保留对应的产物版本。",
+        "versionId": "report-v1",
+        "version": "v1.0",
+        "runId": "delivery-3",
+        "producedAt": "2026-10-28T12:00:00+08:00",
+        "mimeType": "text/markdown",
+        "sha256": "5dd2c232287bca661107d021887ab0a0a4f53d50c9c24c225e8003f2a971499d",
+        "content": "# 验收报告\n\n原需求说明 prd-v1 的范围检查已通过。\n第三轮新增频率限制要求，需要针对 prd-v2 重新验证。\n"
+      }
+    ],
+    "checks": [
+      {
+        "id": "scope-review",
+        "label": "需求范围检查",
+        "status": "passed",
+        "artifactId": "prd",
+        "versionId": "prd-v1"
+      }
+    ],
+    "next": [
+      "针对需求说明 v2.0 重新完成范围检查。"
+    ]
+  },
+  "deliveries": [
+    {
+      "id": "delivery-1",
+      "sequence": 1,
+      "title": "第 1 轮 · 确认目标",
+      "createdAt": "2026-10-28T10:00:00+08:00",
+      "board": {
+        "title": "登录模块开发与验收",
+        "status": "running",
+        "steps": [
+          {
+            "id": "scope",
+            "title": "需求对齐",
+            "progress": 100
+          }
+        ]
+      },
+      "result": {
+        "runId": "delivery-1",
+        "title": "登录模块开发与验收",
+        "status": "draft",
+        "owner": "王明",
+        "producedAt": "2026-10-28T10:00:00+08:00",
+        "updatedAt": "2026-10-28T10:00:00+08:00",
+        "summary": "已确认登录模块的目标与交付范围，尚未产生文档。",
+        "note": "本轮为范围确认，没有创建空文档。"
+      }
+    },
+    {
+      "id": "delivery-2",
+      "sequence": 2,
+      "title": "第 2 轮 · 首次文档交付",
+      "createdAt": "2026-10-28T11:00:00+08:00",
+      "board": {
+        "title": "登录模块开发与验收",
+        "status": "running",
+        "steps": [
+          {
+            "id": "docs",
+            "title": "文档交付",
+            "progress": 100
+          }
+        ],
+        "detail": "第二轮已交付需求说明和接口文档，后续根据反馈继续修改。"
+      },
+      "result": {
+        "runId": "delivery-2",
+        "title": "登录模块开发与验收",
+        "status": "ready",
+        "owner": "王明",
+        "team": "研发组",
+        "teamSize": 2,
+        "producedAt": "2026-10-28T11:00:00+08:00",
+        "updatedAt": "2026-10-28T11:00:00+08:00",
+        "summary": "首次交付需求说明 v1.0 与接口文档 v1.0。",
+        "verdict": "本轮需求范围检查通过。",
+        "artifacts": [
+          {
+            "id": "prd",
+            "kind": "document",
+            "title": "登录模块需求说明",
+            "description": "功能范围、交互规则和验收标准。",
+            "versionId": "prd-v1",
+            "version": "v1.0",
+            "runId": "delivery-2",
+            "producedAt": "2026-10-28T11:00:00+08:00",
+            "mimeType": "text/markdown",
+            "sha256": "1a53d5d7ab8ee13105d84d451e33f5d18eca5b795e024681f9ae7cb457005f82",
+            "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n"
+          },
+          {
+            "id": "api",
+            "kind": "document",
+            "title": "登录接口文档",
+            "description": "请求字段、返回值与错误处理约定。",
+            "versionId": "api-v1",
+            "version": "v1.0",
+            "runId": "delivery-2",
+            "producedAt": "2026-10-28T11:00:00+08:00",
+            "mimeType": "text/markdown",
+            "sha256": "73e5dd2b3ede4f5d04098a323da378863217bf88dd4d2456531f325f465bfa62",
+            "content": "# 登录接口文档\n\n## POST /api/auth/login\n请求字段：account、password。\n成功返回：accessToken、expiresIn。\n错误反馈：账号密码错误、验证码过期、请求过于频繁。\n\n本文件在第三轮未修改，当前成果仍保留第二轮的交付版本。\n"
+          }
+        ],
+        "checks": [
+          {
+            "id": "scope-review",
+            "label": "需求范围检查",
+            "status": "passed",
+            "artifactId": "prd",
+            "versionId": "prd-v1"
+          }
+        ],
+        "next": [
+          "根据反馈补充异常处理与请求限制。"
+        ]
+      }
+    },
+    {
+      "id": "delivery-3",
+      "sequence": 3,
+      "title": "第 3 轮 · 更新需求与验收",
+      "createdAt": "2026-10-28T12:00:00+08:00",
+      "board": {
+        "title": "登录模块开发与验收",
+        "status": "running",
+        "steps": [
+          {
+            "id": "docs",
+            "title": "文档交付",
+            "progress": 100
+          },
+          {
+            "id": "review",
+            "title": "变更复核",
+            "progress": 40
+          }
+        ],
+        "detail": "第三轮新增请求限制与退出清理要求。第二轮未修改的接口文档继续保留。"
+      },
+      "result": {
+        "runId": "delivery-3",
+        "title": "登录模块开发与验收",
+        "status": "ready",
+        "owner": "王明",
+        "team": "研发组",
+        "teamSize": 2,
+        "producedAt": "2026-10-28T12:00:00+08:00",
+        "updatedAt": "2026-10-28T12:00:00+08:00",
+        "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+        "verdict": "需求新增了请求限制与退出清理要求，旧版检查不能验证当前版本。",
+        "artifacts": [
+          {
+            "id": "prd",
+            "kind": "document",
+            "title": "登录模块需求说明",
+            "description": "功能范围、交互规则和验收标准。",
+            "versionId": "prd-v2",
+            "version": "v2.0",
+            "runId": "delivery-3",
+            "producedAt": "2026-10-28T12:00:00+08:00",
+            "mimeType": "text/markdown",
+            "sha256": "cf375c1fe73f99fb76fb203299eb11bdd82055c6a9d1141352c7e336cf69713c",
+            "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n- 退出登录与角色权限校验\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n连续失败 5 次后限制请求 10 分钟。\n退出后清除会话。\n"
+          },
+          {
+            "id": "report",
+            "kind": "document",
+            "title": "验收报告",
+            "description": "验证对象与结论，保留对应的产物版本。",
+            "versionId": "report-v1",
+            "version": "v1.0",
+            "runId": "delivery-3",
+            "producedAt": "2026-10-28T12:00:00+08:00",
+            "mimeType": "text/markdown",
+            "sha256": "5dd2c232287bca661107d021887ab0a0a4f53d50c9c24c225e8003f2a971499d",
+            "content": "# 验收报告\n\n原需求说明 prd-v1 的范围检查已通过。\n第三轮新增频率限制要求，需要针对 prd-v2 重新验证。\n"
+          }
+        ],
+        "checks": [
+          {
+            "id": "scope-review",
+            "label": "需求范围检查",
+            "status": "passed",
+            "artifactId": "prd",
+            "versionId": "prd-v1"
+          }
+        ],
+        "next": [
+          "针对需求说明 v2.0 重新完成范围检查。"
+        ]
+      }
+    }
+  ]
+}

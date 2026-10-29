@@ -112,8 +112,9 @@ test('the metric layout and heading follow the number and structure of metrics',
   assert(noMetrics.includes('交付物'))
 })
 
-test('the preview demo is driven by four structured mock task datasets', () => {
-  assert.equal(previewCases.length, 4)
+test('the preview demo is driven by structured mock task datasets', () => {
+  assert(previewCases.length >= 4)
+  assert.equal(new Set(previewCases.map(item => item.id)).size, previewCases.length)
   for (const item of previewCases) {
     assert(resultSchema.safeParse(item.result).success, item.id)
     assert(schema.safeParse(item.board).success, item.id)
@@ -154,11 +155,11 @@ test('the result page leads with the conclusion and renders metrics, artifacts, 
   assert(rejected.includes('data-status="rejected"'))
 })
 
-test('a completed goal with a result opens the reader on the result view and keeps the board one tab away', () => {
+test('a completed goal opens the shared overview and preserves result and board content', () => {
   const html = reader(createResultDemoBoard('verified'))
   assert(html.includes('role="tablist"'))
   assert(html.includes('is-result'))
-  assert(html.includes('result-conclusion'))
+  assert(html.includes('result-workspace-conclusion'))
   assert(html.includes('电脑支架首轮经营复盘'))
   assert(!html.includes('whiteboard-reader-fallback'))
   const boardTab = html.indexOf('任务白板')
@@ -166,21 +167,25 @@ test('a completed goal with a result opens the reader on the result view and kee
   assert(html.includes('aria-selected="true"'))
 })
 
-test('a running or draft goal keeps the board view while the result stays available', () => {
+test('unfinished goals keep stable navigation and distinguish draft from no result', () => {
   const html = reader(createResultDemoBoard('draft'))
-  assert(html.includes('执行详情'))
+  assert(html.includes('whiteboard-detail'))
+  assert(html.includes('当前目标'))
   assert(!html.includes('result-conclusion'))
   assert(html.includes('role="tablist"'))
   const legacy = reader({ template: 'task-board-v1', title: '旧白板', status: 'running', description: '原有说明', steps: [] })
   assert(legacy.includes('原有说明'))
   assert(legacy.includes('whiteboard-reader-fallback'))
-  assert(!legacy.includes('role="tablist"'), 'boards without a result do not grow a result tab')
+  assert.equal((legacy.match(/role="tablist"/g) ?? []).length, 1)
+  assert(legacy.includes('成果 · 正在产出'))
+  assert(html.includes('成果 · 草稿'))
 })
 
-test('detail fallback behaviour is unchanged when a result exists but the board has a detail document', () => {
+test('a legacy Markdown detail never overrides the structured board body', () => {
   const board = { ...createResultDemoBoard('draft'), detail: '# 执行详情\n\n完整内容' }
   const html = reader(board)
-  assert(html.includes('<h1>执行详情</h1>'))
+  assert(!html.includes('执行详情'), 'deprecated Markdown is not rendered')
+  assert(html.includes('验收要求'))
   assert(!html.includes('result-conclusion'))
 })
 
@@ -208,14 +213,16 @@ test('the result can be exported as a portable Markdown report and summary', () 
   assert(!mixedReport.includes('| 首轮 |'), 'mixed metric kinds use a list, not a comparison table')
 })
 
-test('the authored detail page is what the board tab shows, while the result page stays separate', () => {
+test('the authored structured detail is what the board tab shows, while the result page stays separate', () => {
   const board = createResultDemoBoard('verified')
-  assert(board.detail.includes('执行详情'))
-  assert(board.detail.includes('验收要求'))
-  const boardHtml = renderToStaticMarkup(createElement(WhiteboardBoardView, { detail: board.detail, html: '<p>compact fallback</p>' }))
-  assert(boardHtml.includes('<h1>折叠电脑支架上架与优化 · 执行详情</h1>'))
+  assert(board.detailSections.length > 0)
+  assert(JSON.stringify(board.detailSections).includes('验收要求'))
+  const boardHtml = renderToStaticMarkup(createElement(WhiteboardBoardView, { sections: board.detailSections, html: '<p>compact fallback</p>' }))
+  assert(boardHtml.includes('whiteboard-detail'))
+  assert(boardHtml.includes('当前目标'))
+  assert(boardHtml.includes('验收要求'))
   assert(!boardHtml.includes('compact fallback'))
-  const fallback = renderToStaticMarkup(createElement(WhiteboardBoardView, { detail: '', html: '<p>compact fallback</p>' }))
+  const fallback = renderToStaticMarkup(createElement(WhiteboardBoardView, { sections: [], html: '<p>compact fallback</p>' }))
   assert(fallback.includes('compact fallback'))
 })
 

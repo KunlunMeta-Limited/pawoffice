@@ -1,99 +1,67 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
-import { Download, FileText, Sparkles, X } from 'lucide-react'
+import { Download, X } from 'lucide-react'
 import { whiteboardTaskBoard } from '@pawoffice/scene-office/whiteboard'
 import type { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
 import { renderWhiteboardContent } from '@pawoffice/scene-office/task-board'
 import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
 import { officeResultSchema } from '@pawoffice/protocol/office-ui'
-import { WhiteboardBoardView } from './WhiteboardBoardView.tsx'
-import { ResultReader } from './ResultReader.tsx'
-import { resultFileBase, resultHasContent } from '../results/format.ts'
+import { ResultWorkspace } from './ResultWorkspace.tsx'
+import { resultFileBase } from '../results/format.ts'
 import './WhiteboardReader.css'
 
-type ReaderView = 'board' | 'result'
-
-export function WhiteboardReader({ state, boardId, progress, onClose }: { state: Record<string, unknown>; boardId: string; progress: WhiteboardProgress; onClose: () => void }) {
+export function WhiteboardReader({ state, boardId, progress, onClose, initialDeliveryId }: {
+  state: Record<string, unknown>; boardId: string; progress: WhiteboardProgress; onClose: () => void
+  initialDeliveryId?: string
+}) {
   const dialog = useRef<HTMLDialogElement>(null)
   const content = useRef<HTMLElement>(null)
-  const boardTab = useRef<HTMLButtonElement>(null)
-  const resultTab = useRef<HTMLButtonElement>(null)
   const serialized = JSON.stringify(state)
   const board = useMemo(() => whiteboardTaskBoard(JSON.parse(serialized)), [serialized])
-  const result = useMemo(() => board?.result ? officeResultSchema.parse(board.result) : undefined, [board])
-  const hasResult = resultHasContent(result)
-  const completed = board?.status === 'completed'
-  const [view, setView] = useState<ReaderView>(() => resultHasContent(result) && board?.status === 'completed' ? 'result' : 'board')
-  const showResult = view === 'result' && hasResult && Boolean(board)
-  const detail = board?.detail?.trim() ? board.detail : ''
+  const result = useMemo(() => officeResultSchema.parse(board?.result ?? {}), [board])
   const [frame, setFrame] = useState(0)
   const html = useMemo(() => {
     void frame
     return renderWhiteboardContent(board ? { taskBoard: progress.project(boardId, board) } : {})
   }, [board, boardId, progress, frame])
-
-  // A goal that finishes while the board is open reveals its result once; manual switches are preserved.
-  const autoRevealed = useRef(false)
   useEffect(() => {
-    if (!completed || !hasResult) { autoRevealed.current = false; return }
-    if (autoRevealed.current) return
-    autoRevealed.current = true
-    setView('result')
-  }, [completed, hasResult])
-  useEffect(() => {
-    if (showResult || detail || board?.status !== 'running') return
+    if (board?.status !== 'running' || board.detail?.trim() || board.detailSections?.length) return
     const timer = setInterval(() => setFrame(value => value + 1), 250)
     return () => clearInterval(timer)
-  }, [board?.status, detail, showResult])
-  // Live updates should not interrupt someone reading farther down the board.
-  useEffect(() => { content.current?.scrollTo(0, 0) }, [boardId])
-  useEffect(() => { content.current?.scrollTo(0, 0) }, [view])
+  }, [board?.status, board?.detail, board?.detailSections?.length])
   useEffect(() => {
     const element = dialog.current!
+    const trigger = document.activeElement
     element.showModal()
-    return () => { element.close() }
-  }, [])
-
-  const switchView = (next: ReaderView) => {
-    setView(next)
-    requestAnimationFrame(() => (next === 'result' ? resultTab : boardTab).current?.focus())
-  }
-  const onTabKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-      event.preventDefault()
-      switchView(showResult ? 'board' : 'result')
+    return () => {
+      element.close()
+      requestAnimationFrame(() => {
+        if (trigger instanceof HTMLElement && trigger.isConnected && !document.querySelector('dialog[open]')) trigger.focus()
+      })
     }
-    if (event.key === 'Home') { event.preventDefault(); switchView('board') }
-    if (event.key === 'End') { event.preventDefault(); switchView('result') }
-  }
+  }, [])
   const download = () => {
     if (!board) return
-    const value = showResult && result ? result : board
-    const filename = showResult && result ? `${resultFileBase(result)}-result.json` : 'whiteboard.json'
-    const url = URL.createObjectURL(new Blob([stringifyDocumentObject(value, 2)], { type: 'application/json;charset=utf-8' }))
+    const url = URL.createObjectURL(new Blob([stringifyDocumentObject(board, 2)], { type: 'application/json;charset=utf-8' }))
     const link = document.createElement('a')
-    link.href = url; link.download = filename; link.click()
+    link.href = url; link.download = resultFileBase({ ...result, title: board.title }) + '-whiteboard.json'; link.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-
-  const title = showResult ? (result?.title || '成果阅读') : detail ? '白板详情' : '协作白板'
-  return <dialog className={`whiteboard-reader${showResult ? ' is-result' : ''}`} ref={dialog} aria-labelledby="whiteboard-reader-title" data-view={showResult ? 'result' : 'board'} onCancel={onClose}
-    onClick={event => { if (event.target === event.currentTarget) { const rect = event.currentTarget.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose() } }}>
+  return <dialog className="whiteboard-reader is-result" ref={dialog} aria-labelledby="whiteboard-reader-title" onCancel={onClose}
+    onClick={event => {
+      if (event.target !== event.currentTarget) return
+      const rect = event.currentTarget.getBoundingClientRect()
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose()
+    }}>
     <header>
-      <div className="whiteboard-reader-heading">
-        <h2 id="whiteboard-reader-title" title={title}>{title}</h2>
-        {hasResult && <div className="whiteboard-reader-switch" role="tablist" aria-label="白板视图" onKeyDown={onTabKeyDown}>
-          <button ref={boardTab} type="button" role="tab" aria-selected={!showResult} tabIndex={showResult ? -1 : 0} onClick={() => switchView('board')}><FileText size={13} strokeWidth={2} />任务白板</button>
-          <button ref={resultTab} type="button" role="tab" aria-selected={showResult} tabIndex={showResult ? 0 : -1} onClick={() => switchView('result')}><Sparkles size={13} strokeWidth={2} />成果</button>
-        </div>}
-      </div>
+      <div className="whiteboard-reader-heading"><h2 id="whiteboard-reader-title">当前成果</h2></div>
       <div className="whiteboard-reader-actions">
-        <button type="button" aria-label={showResult ? '下载成果数据' : '下载白板数据'} title={showResult ? '下载成果数据' : '下载白板数据'} disabled={!board} onClick={download}><Download size={18} /></button>
-        <button type="button" aria-label="关闭白板" title="关闭白板" onClick={onClose}><X size={20} /></button>
+        <button type="button" aria-label="下载完整成果与白板数据" title="下载完整成果与白板数据" disabled={!board} onClick={download}><Download size={18} /></button>
+        <button type="button" aria-label="关闭当前成果" title="关闭" onClick={onClose}><X size={20} /></button>
       </div>
     </header>
-    <article className={`whiteboard-reader-content${showResult ? ' is-result' : ''}`} ref={content} tabIndex={0} aria-label={showResult ? '成果内容' : '白板内容'}>
-      {showResult && result ? <ResultReader result={result} onOpenBoard={() => switchView('board')} /> : <WhiteboardBoardView detail={detail} html={html} />}
+    <article className="whiteboard-reader-content is-result" ref={content} aria-label="当前成果内容">
+      {board ? <ResultWorkspace key={boardId} board={board} result={result} initialDeliveryId={initialDeliveryId} boardHtml={html} onTabChange={() => content.current?.scrollTo(0, 0)} />
+        : <p className="result-workspace-empty">当前没有可读取的任务信息。</p>}
     </article>
   </dialog>
 }

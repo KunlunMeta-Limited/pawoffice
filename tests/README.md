@@ -8,6 +8,9 @@
 | --- | --- |
 | `tests/*.test.mjs` | 协议、运行时、场景、界面、资源与目录的 Node 回归测试 |
 | `tests/helpers/` | 测试公共工具 |
+| `tests/browser/resultWorkspace.mjs` | 成果阅读器的本地浏览器回归，自动启动 Vite；支持 `--channel=msedge` |
+| `tests/browser/resultChanges.mjs` | PowerShell → HTTP → 正式办公室的文件清单、悬停差异、焦点和手机验证 |
+| `tests/browser/resultHistory.mjs` | 外部历史快照与文档版本、实时更新、下载、比较、错误恢复和手机验证 |
 | `tests/fixtures/` | 测试页面、包消费者和固定输入 |
 | `tests/integration-e2e/` | 外部 HTTP 客户端、真实浏览器及 Docker 端到端验收 |
 | `scripts/check-relay-service.mjs` | 已启动服务的页面、鉴权和 SSE 检查 |
@@ -27,6 +30,16 @@ node --test tests/integrationDirectory.test.mjs tests/protocolNullAudit.test.mjs
 ```
 
 其他检查：
+
+成果浏览器回归使用临时端口和独立服务，不修改正在运行的办公室数据：
+
+```sh
+node tests/browser/resultWorkspace.mjs --channel=msedge
+node tests/browser/resultChanges.mjs --channel=msedge
+node tests/browser/resultHistory.mjs --channel=msedge
+```
+
+截图写入已忽略的 `test-results/result-workspace/`。运行前先构建公共包及服务端。
 
 | 命令 | 用途 |
 | --- | --- |
