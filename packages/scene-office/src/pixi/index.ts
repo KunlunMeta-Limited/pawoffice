@@ -72,7 +72,8 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
       const world = preview ?? runtime.readWorld(), props = world.props
       return base.projectActors(runtime, world).map(actor => {
         const supplied = options.taskForActor?.(actor.id)
-        const task: ActorTaskPresentation = supplied && (!actor.title || supplied.title === actor.title) ? supplied
+        const task: ActorTaskPresentation | undefined = runtime.hasPendingExecution && supplied?.status === 'queued' ? undefined
+          : supplied && (!actor.title || supplied.title === actor.title) ? supplied
           : actor.title ? { title: actor.title, status: actor.status === 'thinking' ? 'blocked' : 'running', progressMode: 'activity' }
           : { title: '待命', status: 'idle' }
         const workstation = props.find(prop => prop.id === actor.furniture?.propId && prop.templateId === 'office.reference-workstation')

@@ -1,6 +1,7 @@
 export { SceneRuntime } from './SceneRuntime.ts'
 export type { SceneReadPort } from './ports.ts'
 export type { SceneRuntimeOptions } from './SceneRuntime.ts'
+export type { OrderedEffect } from './OrderedExecution.ts'
 export { createSceneRuntime } from './createSceneRuntime.ts'
 export type { CreateSceneRuntimeOptions } from './createSceneRuntime.ts'
 export { scenePackManifestSchema } from './scenePack.ts'

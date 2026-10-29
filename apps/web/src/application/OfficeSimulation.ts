@@ -30,7 +30,7 @@ export class OfficeSimulation {
   tick(elapsedMs: number) {
     this.runtime.tick(elapsedMs)
     if (this.idleCoffee) {
-      if (!this.idleRunning || this.isDemoRunning || this.runtime.isEditing) this.idleCoffee.suspend()
+      if (!this.idleRunning || this.isDemoRunning || this.runtime.isEditing || this.runtime.hasPendingExecution) this.idleCoffee.suspend()
       else this.idleCoffee.resume()
       this.idleCoffee.tick(elapsedMs)
     }

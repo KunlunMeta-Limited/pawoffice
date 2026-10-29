@@ -134,14 +134,14 @@ test('destroying during renderer initialization cancels mounting and disposes th
   assert.equal(mounted, 0)
 })
 
-test('legacy tour entrypoint reserves future hosts through the runtime', async t => {
+test('legacy visit entrypoints preserve global order and tour reservations', async t => {
   const { OfficeScene } = await loadScene(t)
   const scene = new OfficeScene()
   t.after(() => scene.destroy())
   const tour = scene.requestDeskVisitTour(1, [2, 3])
   assert.equal(tour.status, 'running')
   assert.equal(scene.requestDeskVisit(3, 4, 'wait').status, 'queued')
-  assert.equal(scene.requestDeskVisit(5, 6, 'parallel').status, 'running')
+  assert.equal(scene.requestDeskVisit(5, 6, 'later').status, 'queued')
   assert.equal(scene.runtime.snapshot().resources.find(r => r.resource === 'actor:file-agent:body').holders[0], tour.activityId)
 })
 

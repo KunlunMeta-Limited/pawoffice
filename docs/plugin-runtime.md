@@ -152,6 +152,12 @@ server/src/             Fastify 接口、最新业务快照缓存、连接表、
 
 顺序批次通过前置命令依赖执行，前一步失败则后续报告 `DEPENDENCY_FAILED`。持续活动的启动命令完成后，该活动继续占用资源，后续有冲突的动作进入等待队列。
 
+消息适配器为单条命令和整个批次启用统一顺序执行：前面的有限活动及取消收尾结束后才进入批次，`parallel` 内部并行，后续消息等待整个批次。宿主可使用 `runtime.submitBatch(value, { ordered: true })` 启用同一规则。直接调用默认运行时 API 时仍按资源和显式依赖调度。
+
+`runtime.enqueuePresentation(apply, complete?)` 将本地展示提交接入同一队列。`apply` 仅在轮到该项时调用，其中提交的子命令保留该位置，`complete` 等待子命令结束；`cancelPresentation(id)` 可取消等待的展示。展示队列不持久化回调，关闭运行时时丢弃待执行提交，业务恢复由最新快照负责。`hasPendingExecution` 可用于暂停自动漫游等后台演出。
+
+持续动作默认等待显式停止。办公室宿主可通过提交上下文 `{ ordered: true, continuous: 'yield' }` 选择在实际进入最后一个稳定循环阶段后释放队列位置；后续同人物动作会结束已让出位置的循环。该选择不以启动回执代替到位判定。
+
 ## 外部项目接入
 
 ### 寻路失败诊断

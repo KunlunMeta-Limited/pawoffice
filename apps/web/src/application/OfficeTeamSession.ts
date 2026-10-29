@@ -93,6 +93,7 @@ export class OfficeTeamSession {
     this.chat.subscribe(() => {
       const id = this.chat.getSnapshot().selectedId
       if (id === this.selectedConversationId) return
+      this.bridge.cancelPending()
       this.selectedConversationId = id
       this.whiteboardProgress.setScope(id)
       this.ui.close()
@@ -160,6 +161,7 @@ export class OfficeTeamSession {
   }
 
   stop() {
+    this.bridge.cancelPending()
     this.simulation.pauseIdleCoffee()
     this.decisions.stop()
     this.decisions.clearReceipt()
@@ -241,14 +243,20 @@ export class OfficeTeamSession {
         if (!conversations) this.chat.sync([{ id: dashboard.conversationId ?? 'main', title: dashboard.workspace.name,
           employees: dashboard.employees, tasks: dashboard.tasks, events: dashboard.events, whiteboard: dashboard.whiteboard }])
         if (!this.isCurrent(generation)) return
-        let sceneLinkError: string | null
-        try { sceneLinkError = this.bridge.sync(dashboard, { replayEvents: this.source.replayEvents }).join('；') || null }
-        catch (error) { sceneLinkError = error instanceof Error ? error.message : '场景同步失败' }
-        for (const prop of this.runtime.readWorld().props) {
-          const board = whiteboardTaskBoard(prop.state)
-          if (board) this.whiteboardProgress.project(prop.id, board)
-        }
-        this.update({ dashboard, dashboardError: null, sceneLinkError })
+        const presentationConversationId = this.selectedConversationId
+        try {
+          const errors = this.bridge.sync(dashboard, { replayEvents: this.source.replayEvents, presented: (presented, errors, applied) => {
+            if (!this.isCurrent(generation) || presentationConversationId !== this.selectedConversationId) return
+            if (!applied) { this.update({ sceneLinkError: errors.join('；') || '场景展示未能应用' }); return }
+            for (const prop of this.runtime.readWorld().props) {
+              const board = whiteboardTaskBoard(prop.state)
+              if (board) this.whiteboardProgress.project(prop.id, board)
+            }
+            this.update({ dashboard: presented, dashboardError: null, sceneLinkError: errors.join('；') || null })
+          } })
+          const sceneLinkError = errors.join('；') || null
+          if (this.state.dashboardError !== null || this.state.sceneLinkError !== sceneLinkError) this.update({ dashboardError: null, sceneLinkError })
+        } catch (error) { this.update({ sceneLinkError: error instanceof Error ? error.message : '场景同步失败' }) }
       } catch (error) {
         if (!this.isCurrent(generation)) return
         this.update({ dashboardError: error instanceof Error ? error.message : '页面数据不可用' })

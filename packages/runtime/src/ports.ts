@@ -4,6 +4,6 @@ import type { SceneRuntime } from './SceneRuntime.ts'
 export type SceneReadPort = Pick<SceneRuntime,
   'sceneId' | 'readWorld' | 'readActors' | 'readActivePhases' | 'snapshot' |
   'isEditing' | 'readEditorWorld' | 'editorSnapshot' | 'template' | 'templates' |
-  'subscribe' | 'getRevision'> & {
+  'subscribe' | 'getRevision' | 'hasPendingExecution'> & {
     readonly navigation: Pick<SceneRuntime['navigation'], 'anchor'>
   }

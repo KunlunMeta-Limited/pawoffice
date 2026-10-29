@@ -16,6 +16,8 @@ import { MapDraft, exportMap } from './map/MapDraft.ts'
 import type { MapEdit } from '@pawoffice/protocol/map'
 import { FURNITURE_CELL_SIZE, validateFurnitureFootprints } from './map/furnitureGrid.ts'
 import { restoreBoundActor, restoreInteractionFacing } from './furnitureBinding.ts'
+import { OrderedExecution } from './OrderedExecution.ts'
+import type { OrderedEffect } from './OrderedExecution.ts'
 
 const MAX_RECORDS = 512
 const CONTROL_RECORD_RESERVE = 2
@@ -53,7 +55,23 @@ export class SceneRuntime {
   private world: World
   private resources = new ResourceManager()
   private records = new Map<string, CommandRecord>()
-  private orderedCommands = new Set<string>()
+  private readonly execution = new OrderedExecution({
+    pending: (id, yieldContinuous) => {
+      const record = this.records.get(id), activity = this.activities.get(id)
+      if (yieldContinuous && activity?.status === 'active' && activity.plan.continuous
+        && activity.phaseIndex === activity.plan.phases.length - 1 && activity.phaseStarted && this.phaseReady.has(id)) {
+        this.yieldableActivities.add(id)
+        return false
+      }
+      return Boolean(record && !terminal(record.status) || activity?.status === 'active' || this.settling.has(id))
+    },
+    error: id => this.records.get(id)?.error,
+    cancel: id => { this.submit({ protocolVersion: '2.0', sceneId: this.sceneId, commandId: `cancel-${globalThis.crypto.randomUUID()}`,
+      type: 'command.cancel', targetCommandId: id }) },
+    changed: effect => this.emit('execution.effect', { effectId: effect.id, status: effect.status, errors: effect.errors }),
+    now: () => this.now(),
+  })
+  private yieldableActivities = new Set<string>()
   private stateSources = new Map<string, string>()
   private completedActivities = 0
   private activities = new Map<string, Activity>()
@@ -117,6 +135,7 @@ export class SceneRuntime {
   get isEditing() { return this.editing }
   /** Successful finite activities in this runtime lifetime, independent of bounded history. */
   get completedActivityCount() { return this.completedActivities }
+  get hasPendingExecution() { return this.execution.size > 0 }
   template(id: string) { return this.plugins.template(id) }
   templates() { return this.plugins.templates() }
   exportMap() { return exportMap(this.world) }
@@ -130,6 +149,7 @@ export class SceneRuntime {
       phaseIndex: activity.phaseIndex, phaseCount: activity.plan.phases.length,
       title: activity.plan.phases[activity.phaseIndex]?.title ?? activity.plan.title,
       ready: activity.phaseStarted && this.phaseReady.has(activity.id),
+      continuous: Boolean(activity.plan.continuous),
       actions: structuredClone(activity.plan.phases[activity.phaseIndex]?.actions ?? []),
       progress: Math.min(1, activity.phaseElapsedMs / Math.max(1, activity.plan.phases[activity.phaseIndex]?.durationMs ?? 1)),
     }))
@@ -141,7 +161,7 @@ export class SceneRuntime {
   describe() { return { ...protocolDescription(), sceneId: this.sceneId, furnitureGrid: { cellSize: FURNITURE_CELL_SIZE, origin: { x: 0, y: 0 } }, plugins: this.plugins.describe(), templates: this.templates(), entities: [...this.world.actors.map(a => ({ id: a.id, name: a.name, kind: 'actor' })), ...this.world.props.map(p => ({ id: p.id, name: p.name, kind: 'prop', templateId: p.templateId, anchors: { ...this.plugins.template(p.templateId).anchors, ...p.anchors } }))] } }
 
   /** Ordered submissions share a per-runtime FIFO; stop and cancel always bypass it. */
-  submit(value: unknown, context?: { stateSource?: string; ordered?: boolean }): CommandResult {
+  submit(value: unknown, context?: { stateSource?: string; ordered?: boolean; continuous?: 'hold' | 'yield' }): CommandResult {
     const parsed = commandSchema.safeParse(value)
     if (!parsed.success) return { commandId: typeof value === 'object' && value && 'commandId' in value ? String(value.commandId).slice(0, 100) : '', status: 'rejected', error: { code: 'INVALID_COMMAND', message: parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ').slice(0, 500) } }
     const command = parsed.data
@@ -171,18 +191,56 @@ export class SceneRuntime {
       if (command.type === 'activity.start') this.buildPlan(command)
       this.persist()
       if (this.persistenceError && !control) throw new SceneFault('PERSISTENCE_FAILED', this.persistenceError)
-      if (context?.ordered && !control) this.orderedCommands.add(command.commandId)
+      if ((context?.ordered || this.execution.isCollecting || this.hasPendingExecution && context?.ordered !== false) && !control) {
+        if (!this.execution.isCollecting) this.adoptPendingCommands(command.commandId, context?.continuous === 'yield')
+        this.execution.command(command.commandId, context?.continuous === 'yield')
+      }
       this.emit('command.status', { commandId: command.commandId, status: 'queued' })
       this.pump()
     } catch (error) { this.finish(record, 'rejected', sceneError(error)) }
     return this.result(record)
   }
 
-  submitBatch(value: unknown): CommandResult[] {
+  submitBatch(value: unknown, context?: { ordered?: boolean; continuous?: 'hold' | 'yield' }): CommandResult[] {
     const batch = batchSchema.parse(value)
     const ids = batch.commands.map(c => c.commandId)
     if (new Set(ids).size !== ids.length) throw new SceneFault('DUPLICATE_COMMAND', '批次中的命令 ID 必须唯一')
-    return batch.commands.map((command, i) => this.submit(batch.mode === 'sequence' && i > 0 ? { ...command, after: [...new Set([...(command.after ?? []), ids[i - 1]])] } : command))
+    const submit = () => batch.commands.map((command, i) => this.submit(batch.mode === 'sequence' && i > 0
+      ? { ...command, after: [...new Set([...(command.after ?? []), ids[i - 1]])] } : command, context))
+    if (!(context?.ordered ?? this.hasPendingExecution) && !this.execution.isCollecting) return submit()
+    if (!this.execution.isCollecting) this.adoptPendingCommands(undefined, context?.continuous === 'yield')
+    const pumping = this.pumping
+    this.pumping = true
+    let results: CommandResult[]
+    try { results = this.execution.batch(batch.mode, submit) }
+    finally { this.pumping = pumping }
+    this.pump()
+    return results.map(result => result.status === 'queued' && this.records.has(result.commandId) ? this.result(this.records.get(result.commandId)!) : result)
+  }
+
+  /** Queue a local projection on the same timeline; child commands keep their position in the stream. */
+  enqueuePresentation(apply: () => void, complete?: (effect: OrderedEffect) => void): OrderedEffect {
+    if (this.disposed || this.persistenceError) return { id: '', status: 'failed', errors: [{ code: this.disposed ? 'RUNTIME_DISPOSED' : 'PERSISTENCE_FAILED', message: this.persistenceError ?? '场景已关闭' }] }
+    this.adoptPendingCommands(undefined, true)
+    const effect = this.execution.effect(apply, complete)
+    this.pump()
+    return effect
+  }
+  cancelPresentation(id: string) { this.cancelPresentations([id]) }
+  cancelPresentations(ids: Iterable<string>) {
+    const pumping = this.pumping
+    this.pumping = true
+    try { for (const id of ids) this.execution.cancel(id) }
+    finally { this.pumping = pumping }
+    this.pump()
+  }
+
+  private adoptPendingCommands(except?: string, yieldContinuous = false) {
+    for (const [id, record] of this.records) {
+      if (record.command.type === 'activity.stop' || record.command.type === 'command.cancel') continue
+      if (id === except || this.execution.has(id) || this.yieldableActivities.has(id)) continue
+      if (!terminal(record.status) || this.activities.get(id)?.status === 'active' || this.settling.has(id)) this.execution.command(id, yieldContinuous)
+    }
   }
 
   tick(dtMs: number) {
@@ -263,58 +321,60 @@ export class SceneRuntime {
     return { plan, pluginId }
   }
 
-  /** FIFO is separate from success dependencies: a failed message must not poison the stream. */
-  private nextOrderedCommand() {
-    for (const id of this.orderedCommands) {
-      const record = this.records.get(id)
-      // Continuous starts acknowledge immediately; cancellation can still be settling movement.
-      if ((record && !terminal(record.status)) || this.activities.get(id)?.status === 'active' || this.settling.has(id)) return id
-      this.orderedCommands.delete(id)
-    }
-  }
-
   private pump() {
     if (this.pumping || this.disposed) return
     this.pumping = true
     const blockedResources = new Set<string>()
     try {
-      for (const record of this.records.values()) {
-        if (this.disposed) break
-        if (record.status !== 'queued') continue
-        const command = record.command
-        try {
-          if (this.now() > (command.expiresAt ? Date.parse(command.expiresAt) : record.acceptedAt + 120000)) { this.finish(record, 'expired'); continue }
-          const dependencies = command.after?.map(id => this.records.get(id)) ?? []
-          if (dependencies.some(r => !r || terminal(r.status) && r.status !== 'completed')) throw new SceneFault('DEPENDENCY_FAILED', '前置命令失败，后续命令不会执行')
-          if (dependencies.some(r => r?.status !== 'completed')) continue
-          if (this.orderedCommands.has(command.commandId) && this.nextOrderedCommand() !== command.commandId) continue
-          if (command.type === 'activity.start') {
-            const { plan, pluginId } = this.buildPlan(command)
-            if (plan.claims.some(c => blockedResources.has(c.resource)) || !this.resources.available(plan.claims)) {
-              if (command.busyPolicy === 'reject') throw new SceneFault('BUSY', '参与者或资源正在使用中')
-              plan.claims.forEach(c => blockedResources.add(c.resource)); continue
-            }
-            const activity: Activity = { id: command.commandId, commandId: command.commandId, pluginId, capability: command.capability,
-              participants: command.participants.map(p => p.entityId), plan, phaseIndex: 0, phaseStarted: false, elapsedMs: 0, phaseElapsedMs: 0, status: 'active' }
-            if (this.plugins.capability(command.capability).capability.complete) activity.completionRevisions = Object.fromEntries(this.world.props
-              .filter(prop => plan.claims.some(claim => claim.resource.startsWith(`prop:${prop.id}:`))).map(prop => [prop.id, prop.stateRevision]))
-            this.resources.acquire(activity.id, plan.claims)
-            this.activities.set(activity.id, activity)
-            record.activityId = activity.id; record.status = 'running'
-            this.persist()
-            if (this.persistenceError) throw new SceneFault('PERSISTENCE_FAILED', this.persistenceError)
-            this.emit('command.status', { commandId: command.commandId, activityId: activity.id, status: 'running' })
-            this.advance(activity, 0)
-            if (plan.continuous && activity.status === 'active') this.finish(record, 'completed')
-            else this.persist()
-          } else this.executeImmediate(record)
-        } catch (error) {
-          const activity = this.activities.get(command.commandId)
-          if (activity?.status === 'active') this.endActivity(activity, 'failed', sceneError(error))
-          else this.finish(record, 'failed', sceneError(error))
+      let previousRevision: number
+      do {
+        previousRevision = this.revision
+        blockedResources.clear()
+        this.execution.allowed()
+        for (const record of this.records.values()) {
+          if (this.disposed) break
+          if (record.status !== 'queued') continue
+          const command = record.command
+          try {
+            if (this.now() > (command.expiresAt ? Date.parse(command.expiresAt) : record.acceptedAt + 120000)) { this.finish(record, 'expired'); continue }
+            const dependencies = command.after?.map(id => this.records.get(id)) ?? []
+            if (dependencies.some(r => !r || terminal(r.status) && r.status !== 'completed')) throw new SceneFault('DEPENDENCY_FAILED', '前置命令失败，后续命令不会执行')
+            if (dependencies.some(r => r?.status !== 'completed')) continue
+            if (this.execution.has(command.commandId) && !this.execution.allowed().has(command.commandId)) continue
+            if (command.type === 'activity.start') {
+              const { plan, pluginId } = this.buildPlan(command)
+              for (const id of this.yieldableActivities) {
+                const active = this.activities.get(id)
+                if (active?.status === 'active' && (active.participants.some(id => command.participants.some(participant => participant.entityId === id))
+                  || active.plan.claims.some(claim => plan.claims.some(next => next.resource === claim.resource)))) this.endActivity(active, 'cancelled')
+              }
+              if (plan.claims.some(c => blockedResources.has(c.resource)) || !this.resources.available(plan.claims)) {
+                if (command.busyPolicy === 'reject') throw new SceneFault('BUSY', '参与者或资源正在使用中')
+                plan.claims.forEach(c => blockedResources.add(c.resource)); continue
+              }
+              const activity: Activity = { id: command.commandId, commandId: command.commandId, pluginId, capability: command.capability,
+                participants: command.participants.map(p => p.entityId), plan, phaseIndex: 0, phaseStarted: false, elapsedMs: 0, phaseElapsedMs: 0, status: 'active' }
+              if (this.plugins.capability(command.capability).capability.complete) activity.completionRevisions = Object.fromEntries(this.world.props
+                .filter(prop => plan.claims.some(claim => claim.resource.startsWith(`prop:${prop.id}:`))).map(prop => [prop.id, prop.stateRevision]))
+              this.resources.acquire(activity.id, plan.claims)
+              this.activities.set(activity.id, activity)
+              record.activityId = activity.id; record.status = 'running'
+              this.persist()
+              if (this.persistenceError) throw new SceneFault('PERSISTENCE_FAILED', this.persistenceError)
+              this.emit('command.status', { commandId: command.commandId, activityId: activity.id, status: 'running' })
+              this.advance(activity, 0)
+              if (plan.continuous && activity.status === 'active') this.finish(record, 'completed')
+              else this.persist()
+            } else this.executeImmediate(record)
+          } catch (error) {
+            const activity = this.activities.get(command.commandId)
+            if (activity?.status === 'active') this.endActivity(activity, 'failed', sceneError(error))
+            else this.finish(record, 'failed', sceneError(error))
+          }
         }
-      }
-    } finally { this.nextOrderedCommand(); this.pumping = false }
+        if (!this.disposed) this.execution.allowed()
+      } while (!this.disposed && this.revision !== previousRevision)
+    } finally { this.pumping = false }
   }
 
   private advance(activity: Activity, dt: number) {
@@ -368,6 +428,11 @@ export class SceneRuntime {
       case 'actor.presentation.set': {
         const actor = this.actor(command.actorId)
         if (command.sourceRevision <= actor.presentation.sourceRevision) throw new SceneFault('STALE_REVISION', '展示状态版本已过期')
+        for (const id of this.yieldableActivities) {
+          const activity = this.activities.get(id)
+          if (activity?.status === 'active' && activity.participants.includes(actor.id)
+            && (command.status !== 'working' || command.title !== activity.plan.title)) this.endActivity(activity, 'cancelled')
+        }
         actor.presentation = { status: command.status, title: command.title, sourceRevision: command.sourceRevision }
         break
       }
@@ -398,7 +463,11 @@ export class SceneRuntime {
       }
       case 'activity.stop': {
         const activity = this.activities.get(command.activityId)
-        if (!activity) throw new SceneFault('ACTIVITY_NOT_FOUND', command.activityId)
+        if (!activity) {
+          const waiting = this.records.get(command.activityId)
+          if (waiting?.status === 'queued' && waiting.command.type === 'activity.start') { this.finish(waiting, 'cancelled'); break }
+          throw new SceneFault('ACTIVITY_NOT_FOUND', command.activityId)
+        }
         if (activity.status === 'active') this.endActivity(activity, 'cancelled')
         break
       }
@@ -459,6 +528,7 @@ export class SceneRuntime {
       catch (reason) { status = 'failed'; error = sceneError(reason) }
     }
     activity.status = status; activity.error = error
+    this.yieldableActivities.delete(activity.id)
     if (status === 'completed') this.completedActivities++
     this.phaseReady.delete(activity.id)
     const settling: string[] = []
@@ -631,7 +701,7 @@ export class SceneRuntime {
     for (const id of this.settling.keys()) this.resources.release(id)
     this.settling.clear()
     for (const record of this.records.values()) if (!terminal(record.status)) this.finish(record, 'cancelled')
-    this.orderedCommands.clear()
+    this.execution.clear(); this.yieldableActivities.clear()
     this.listeners.clear()
   }
 }

@@ -142,8 +142,8 @@ test('explicit dependencies still fail as requested and cancellation of a queued
   assert.equal(runtime.getRecord('last').status, 'completed')
 })
 
-test('different offices and explicit parallel batches retain independent execution', t => {
-  const { runtime, client, receive } = setup(t)
+test('different offices remain independent and a parallel batch waits for earlier messages', t => {
+  const { runtime, client, receive, advance } = setup(t)
   const other = createOfficeRuntime({ sceneId: 'office-2' })
   t.after(() => other.dispose()); t.after(client.register(other))
   receive(say('first'))
@@ -152,6 +152,9 @@ test('different offices and explicit parallel batches retain independent executi
   assert.equal(runtime.getRecord('queued').status, 'queued')
   assert.equal(other.getRecord('other').status, 'running')
   receive({ mode: 'parallel', commands: [say('parallel-one', 'file-agent'), say('parallel-two', 'app-agent')] })
+  assert.equal(runtime.getRecord('parallel-one').status, 'queued')
+  assert.equal(runtime.getRecord('parallel-two').status, 'queued')
+  advance(600)
   assert.equal(runtime.getRecord('parallel-one').status, 'running')
   assert.equal(runtime.getRecord('parallel-two').status, 'running')
 })

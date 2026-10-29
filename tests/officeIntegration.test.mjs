@@ -651,7 +651,7 @@ test('versioned whiteboards update repeatedly, reject stale/conflicting snapshot
   assert.equal(office.session.runtime.readWorld().props.find(prop => prop.id === 'whiteboard-1').stateRevision, board.stateRevision, 'an unchanged whiteboard must not create a new internal revision')
 })
 
-for (const type of ['office.snapshot', 'offices.initialize']) test(`${type} retries repair a failed equal-seq sync without recreating the runtime or replaying actions`, async t => {
+for (const type of ['office.snapshot', 'offices.initialize']) test(`${type} retries repair a deferred equal-seq presentation failure without recreating the runtime or replaying actions`, async t => {
   const { integration, send } = await setup(t)
   await send('init', { type: 'offices.initialize', offices: [snapshot()] })
   const runtime = integration.getSnapshot().offices[0].session.runtime
@@ -669,10 +669,13 @@ for (const type of ['office.snapshot', 'offices.initialize']) test(`${type} retr
   next.conversations[0].employees[1].sceneActorId = 'code-agent'; next.conversations[0].tasks[0].assigneeId = 'testing'
   next.conversations[0].events = [{ id: 'assignment-once', kind: 'task.assigned', employeeId: 'testing', fromEmployeeId: 'coding', taskId: 'task-one', summary: '任务交接', occurredAt: '2026-10-18T10:00:00Z' }]
   const request = type === 'office.snapshot' ? { type, teamId: 'team-a', snapshot: next } : { type, offices: [next] }
-  const failed = await send('failed', request)
-  assert.equal(failed.result.code, 422); assert.equal(failed.result.data.reasonCode, 'SCENE_SYNC_FAILED')
+  const accepted = await send('accepted', request)
+  assert.equal(accepted.result.code, 200, 'business admission must not wait for animation playback')
   const board = () => runtime.readWorld().props.find(prop => prop.id === 'whiteboard-1')
   assert.notEqual(board().state.taskBoard?.title, next.conversations[0].whiteboard.title)
+  assert.equal(runtime.getRecord('keep-speech').status, 'running')
+  for (let i = 0; i < 2400 && runtime.hasPendingExecution; i++) runtime.tick(50)
+  assert.match(integration.getSnapshot().offices[0].session.getSnapshot().sceneLinkError, /Board unavailable/)
   const previousVisits = visits
   unavailable = false
   const retry = await send('retry', request)
@@ -680,7 +683,7 @@ for (const type of ['office.snapshot', 'offices.initialize']) test(`${type} retr
   if (type === 'office.snapshot') assert.equal(retry.result.data.status, 'applied')
   assert.equal(board().state.taskBoard.title, next.conversations[0].whiteboard.title)
   assert.equal(integration.getSnapshot().offices[0].session.runtime, runtime)
-  assert.equal(runtime.getRecord('keep-speech').status, 'running')
+  assert.equal(runtime.getRecord('keep-speech').status, 'completed')
   assert.equal(visits, previousVisits, 'state retries must not replay task handoffs')
   const revision = board().stateRevision
   assert.equal((await send('again', request)).result.code, 200)

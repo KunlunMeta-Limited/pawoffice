@@ -15,13 +15,51 @@ export class DashboardSceneBridge {
   private seenEvents = new Set<string>()
   private initialized = false
   private readonly whiteboardMode: 'external' | 'demo-summary'
+  private pendingPresentations = new Set<string>()
 
   constructor(runtime: SceneRuntime, options: { whiteboard?: 'external' | 'demo-summary' } = {}) {
     this.runtime = runtime; this.whiteboardMode = options.whiteboard ?? 'external'
   }
 
-  sync(data: DashboardSnapshot, options: { replayEvents?: boolean } = {}): string[] {
+  sync(data: DashboardSnapshot, options: { replayEvents?: boolean; presented?: (data: DashboardSnapshot, errors: string[], applied: boolean) => void } = {}): string[] {
     const errors: string[] = []
+    let applied = false
+    const snapshot = structuredClone(data), replayEvents = options.replayEvents
+    const effect = this.runtime.enqueuePresentation(() => { this.apply(snapshot, { replayEvents }, errors); applied = true }, result => {
+      this.pendingPresentations.delete(result.id)
+      errors.push(...result.errors.map(error => `${error.code}：${error.message}`))
+      options.presented?.(snapshot, errors, applied)
+    })
+    if (effect.status === 'queued' || effect.status === 'running') this.pendingPresentations.add(effect.id)
+    else if (effect.status === 'failed' && !errors.length) errors.push(...effect.errors.map(error => `${error.code}：${error.message}`))
+    return errors
+  }
+
+  cancelPending() {
+    this.runtime.cancelPresentations(this.pendingPresentations)
+    this.pendingPresentations.clear()
+  }
+
+  private apply(data: DashboardSnapshot, options: { replayEvents?: boolean }, errors: string[]) {
+    const actors = new Map(this.runtime.readActors().map(actor => [actor.id, actor]))
+    // Assignment choreography precedes the state/UI commit from the same business message.
+    this.assign(data, actors, options, errors)
+    const tasks = officeActorPrimaryTasks(data)
+    for (const actor of actors.values()) {
+      const task = tasks.get(actor.id)
+      const next: Presentation = task && (task.status === 'running' || task.status === 'blocked') ? {
+        status: task.status === 'running' ? 'working' : 'thinking', title: task.title,
+      } : { status: 'idle', title: '' }
+      const yieldingWork = this.runtime.readActivePhases().some(phase => phase.continuous && phase.participants.includes(actor.id)
+        && (next.status !== 'working' || next.title !== phase.title))
+      if (!yieldingWork && actor.presentation.status === next.status && actor.presentation.title === next.title) continue
+      const result = this.runtime.submit({
+        protocolVersion: '2.0', sceneId: this.runtime.sceneId, commandId: `dashboard-${globalThis.crypto.randomUUID()}`,
+        type: 'actor.presentation.set', actorId: actor.id, status: next.status, title: next.title,
+        sourceRevision: actor.presentation.sourceRevision + 1,
+      }, { ordered: true, continuous: 'yield' })
+      if (result.error) errors.push(`${actor.name}：${result.error.message}`)
+    }
     const board = this.runtime.readWorld().props.find(prop => prop.templateId === 'office.wall-whiteboard')
     if (board && data.whiteboard !== undefined) {
       const state = data.whiteboard.title ? { title: '', taskBoard: whiteboardTaskBoardSchema.parse(data.whiteboard) } : { title: '', tasks: [] }
@@ -41,22 +79,10 @@ export class DashboardSceneBridge {
         if (result.error) errors.push(`协作白板：${result.error.message}`)
       }
     }
-    const actors = new Map(this.runtime.readActors().map(actor => [actor.id, actor]))
-    const tasks = officeActorPrimaryTasks(data)
-    for (const actor of actors.values()) {
-      const task = tasks.get(actor.id)
-      const next: Presentation = task && (task.status === 'running' || task.status === 'blocked') ? {
-        status: task.status === 'running' ? 'working' : 'thinking', title: task.title,
-      } : { status: 'idle', title: '' }
-      if (actor.presentation.status === next.status && actor.presentation.title === next.title) continue
-      const result = this.runtime.submit({
-        protocolVersion: '2.0', sceneId: this.runtime.sceneId, commandId: `dashboard-${globalThis.crypto.randomUUID()}`,
-        type: 'actor.presentation.set', actorId: actor.id, status: next.status, title: next.title,
-        sourceRevision: actor.presentation.sourceRevision + 1,
-      })
-      if (result.error) errors.push(`${actor.name}：${result.error.message}`)
-    }
+    this.initialized = true
+  }
 
+  private assign(data: DashboardSnapshot, actors: Map<string, { id: string }>, options: { replayEvents?: boolean }, errors: string[]) {
     for (const event of [...data.events].reverse()) {
       if (event.kind !== 'task.assigned') continue
       const eventKey = JSON.stringify([data.conversationId ?? '', event.id])
@@ -77,7 +103,5 @@ export class DashboardSceneBridge {
       })
       if (result.error) errors.push(`任务交接：${result.error.message}`)
     }
-    this.initialized = true
-    return errors
   }
 }

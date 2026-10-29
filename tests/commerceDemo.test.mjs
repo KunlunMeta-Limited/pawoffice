@@ -334,18 +334,18 @@ test('stopping records unfinished members without claiming completion and bounds
   assert.equal(new Set(history.events.map(event => event.id)).size, history.events.length)
 })
 
-test('each member waits for its own completed handoff and the leader makes one continuous five-stop circuit', async t => {
+test('business presentation waits for the entire handoff circuit and the leader makes one continuous five-stop circuit', async t => {
   const f = await setup(t)
   f.owner.simulation.setDemo(true)
   await f.advance(50)
   const activity = f.owner.runtime.snapshot().activities.find(activity => activity.capability === 'office.visit')
   const plan = activity.plan, notified = []
   while (!f.pending().length) {
-    const current = f.owner.runtime.readActivePhases().find(phase => phase.activityId === activity.id)
     for (const task of f.owner.getSnapshot().dashboard.tasks.filter(task => task.assigneeId !== 'office-lead')) {
       const reply = plan.phases.findIndex(phase => phase.speech?.some(speech => speech.actorId === task.assigneeId))
       if (task.status === 'running' && !notified.includes(task.assigneeId)) {
-        assert(current && current.phaseIndex > reply, `${task.assigneeId} must finish acknowledging before work`)
+        assert(reply >= 0)
+        assert.equal(f.owner.runtime.getRecord(activity.id).status, 'completed', `${task.assigneeId} must wait for the entire handoff`)
         notified.push(task.assigneeId)
       }
       if (!notified.includes(task.assigneeId)) {
@@ -356,7 +356,7 @@ test('each member waits for its own completed handoff and the leader makes one c
     await f.advance(50)
     assert(Date.now() < 160000, 'the handoff circuit must finish')
   }
-  assert.deepEqual(notified, ['file-agent', 'review-agent', 'code-agent', 'data-agent', 'app-agent'])
+  assert.deepEqual(notified.sort(), ['file-agent', 'review-agent', 'code-agent', 'data-agent', 'app-agent'].sort())
   for (const session of f.sessions) {
     const visits = session.runtime.snapshot().records.filter(record => record.command.capability === 'office.visit')
     assert.equal(visits.length, 1)

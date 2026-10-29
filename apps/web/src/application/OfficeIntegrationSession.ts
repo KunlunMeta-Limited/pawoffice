@@ -47,7 +47,8 @@ export class OfficeIntegrationSession {
   private resyncRequired = false
   private layoutSyncError = false
   private layoutChangeGeneration = 0
-  private bindings = new Map<string, { session: OfficeTeamSession; decisionId: string }>()
+  private bindings = new Map<string, { session: OfficeTeamSession; decisionId: string; effectId?: string }>()
+  private closedRequests = new Set<string>()
   private submitting = new Set<string>()
 
   constructor(options: Options) { this.options = options }
@@ -112,8 +113,12 @@ export class OfficeIntegrationSession {
     this.snapshotBatch = undefined; this.resyncRequired = false
     const disconnect = this.disconnect; this.disconnect = undefined
     try { disconnect?.() } catch (error) { console.warn('[OfficeIntegration] disconnect failed', error) }
-    for (const { session, decisionId } of this.bindings.values()) session.decisions.dismiss(decisionId)
+    for (const { session, decisionId, effectId } of this.bindings.values()) {
+      if (effectId) session.runtime.cancelPresentation(effectId)
+      session.decisions.dismiss(decisionId)
+    }
     this.bindings.clear()
+    this.closedRequests.clear()
     for (const office of this.offices.values()) office.session.stop()
   }
 
@@ -167,19 +172,33 @@ export class OfficeIntegrationSession {
     const closed = officeClosedSchema.safeParse(value)
     if (closed.success) {
       const token = closed.data.responseToken, binding = this.bindings.get(token)
+      this.closedRequests.add(token)
+      if (this.closedRequests.size > 1024) this.closedRequests.delete(this.closedRequests.values().next().value!)
       this.bindings.delete(token)
-      if (binding && !this.submitting.has(token)) binding.session.decisions.dismiss(binding.decisionId)
+      if (binding && !this.submitting.has(token)) {
+        if (binding.effectId) binding.session.runtime.cancelPresentation(binding.effectId)
+        binding.session.decisions.dismiss(binding.decisionId)
+      }
       return
     }
     const scene = relayMessageSchema.safeParse(value)
     if (scene.success) {
-      const session = this.offices.get(scene.data.teamId)?.session
-      if (scene.data.conversationId && session?.chat.getSnapshot().selectedId !== scene.data.conversationId) return
-      const runtime = session?.runtime
-      if (!runtime) return
       const command = scene.data.command
-      const results = 'commands' in command ? runtime.submitBatch(command) : [runtime.submit(command, { ordered: true })]
-      for (const result of results) if (result.error) console.warn('[OfficeIntegration] animation skipped', result)
+      const deliver = () => {
+        const session = this.offices.get(scene.data.teamId)?.session
+        if (scene.data.conversationId && session?.chat.getSnapshot().selectedId !== scene.data.conversationId) return
+        const runtime = session?.runtime
+        if (!runtime) return
+        const context = { ordered: true, continuous: 'yield' as const }
+        const results = 'commands' in command ? runtime.submitBatch(command, context) : [runtime.submit(command, context)]
+        for (const result of results) if (result.error) console.warn('[OfficeIntegration] animation skipped', result)
+      }
+      const runtime = this.offices.get(scene.data.teamId)?.session.runtime
+      const controlTarget = 'commands' in command ? undefined : command.type === 'activity.stop' ? command.activityId
+        : command.type === 'command.cancel' ? command.targetCommandId : undefined
+      // A known stop target can bypass even asynchronous business admission; an unknown one waits for earlier admission.
+      if (!this.pendingWork || controlTarget && runtime?.getRecord(controlTarget)) { this.snapshotBatch = undefined; deliver() }
+      else this.queue(async () => { deliver(); return null }, Boolean(controlTarget))
       return
     }
     const parsed = officeDeliverySchema.safeParse(value)
@@ -235,10 +254,10 @@ export class OfficeIntegrationSession {
     this.update({ error: message })
   }
 
-  private queue(task: () => Promise<OfficeReply | null>) {
+  private queue(task: () => Promise<OfficeReply | null>, control = false) {
     // Reads and synchronization boundaries seal the preceding snapshot batch.
     this.snapshotBatch = undefined
-    if (this.pendingWork >= maxPendingWork) { this.requireResync('前端业务处理队列已满，正在恢复最新状态。'); return false }
+    if (this.pendingWork >= maxPendingWork + (control ? 2 : 0)) { this.requireResync('前端业务处理队列已满，正在恢复最新状态。'); return false }
     const generation = this.generation
     this.pendingWork++
     const work = this.work.then(async () => {
@@ -312,11 +331,14 @@ export class OfficeIntegrationSession {
     for (const snapshot of accepted) {
       const office = this.offices.get(snapshot.workspace.id)!
       const repeated = snapshot.seq === office.source.readSnapshot().seq
-      this.offices.set(office.id, { ...office, name: snapshot.workspace.name }); office.source.update(snapshot, recovery || repeated)
+      const alreadyPresented = repeated && (office.session.getSnapshot().dashboard?.seq ?? 0) >= snapshot.seq
+      this.offices.set(office.id, { ...office, name: snapshot.workspace.name }); office.source.update(snapshot, recovery || alreadyPresented)
       await office.session.start(); await office.session.refresh()
       office.session.setConnection(this.state.connection)
       if (office.session.getSnapshot().dashboardError) throw new IntegrationFault('BUSINESS_ERROR', office.session.getSnapshot().dashboardError!)
-      if (office.session.getSnapshot().sceneLinkError) throw new IntegrationFault('SCENE_SYNC_FAILED', office.session.getSnapshot().sceneLinkError!)
+      const sceneError = office.session.getSnapshot().sceneLinkError
+      if (sceneError) throw new IntegrationFault(sceneError.includes('QUEUE_FULL') ? 'PRESENTATION_QUEUE_FULL' : 'SCENE_SYNC_FAILED', sceneError,
+        sceneError.includes('QUEUE_FULL') ? 503 : 422)
     }
     this.update({ offices: [...this.offices.values()], error: this.resyncRequired ? this.state.error : null })
     if (persist) this.persist()
@@ -348,7 +370,7 @@ export class OfficeIntegrationSession {
       const previous = office.source.readSnapshot()
       await this.initialize([request.snapshot])
       const ignored = request.snapshot.seq < previous.seq
-      return this.result(delivery, 200, ignored ? 'Snapshot ignored' : 'Snapshot applied', { teamId: office.id, seq: Math.max(previous.seq, request.snapshot.seq),
+      return this.result(delivery, 200, ignored ? 'Snapshot ignored' : 'Snapshot accepted', { teamId: office.id, seq: Math.max(previous.seq, request.snapshot.seq),
         status: ignored ? 'ignored' : 'applied', ...(ignored ? { reasonCode: 'STALE_SEQ' } : {}) })
     }
     if (request.type === 'decision.request') this.enqueueDecision(office, request, delivery, timing)
@@ -361,11 +383,14 @@ export class OfficeIntegrationSession {
     const actor = decision.actorId ? office.session.runtime.readActors().find(actor => actor.id === decision.actorId) : office.session.runtime.readActors()[0]
     if (!actor) throw new IntegrationFault('ACTOR_NOT_FOUND', '菜单发起人物不存在')
     const token = delivery.responseToken
+    if (this.closedRequests.has(token)) return
     const entry = { ...decision, teamId: office.id, conversationId: request.conversationId, requester: { name: actor.name, appearanceId: actor.templateId },
       createdAt: timing.expiresAt - request.timeoutMs, expiresAt: timing.expiresAt, deadline: timing.deadline }
-    const reason = office.session.decisions.enqueueError(entry)
+    const reservations = [...this.bindings.values()].filter(binding => binding.session === office.session)
+    const reason = reservations.some(binding => binding.decisionId === decision.id) ? 'DECISION_DUPLICATE'
+      : reservations.length >= 32 ? 'DECISION_QUEUE_FULL' : office.session.decisions.enqueueError(entry)
     if (reason) throw new IntegrationFault(reason, reason === 'DECISION_DUPLICATE' ? '菜单 ID 已使用' : reason === 'DECISION_EXPIRED' ? '菜单已过期' : '菜单等待队列已满', reason === 'DECISION_QUEUE_FULL' ? 503 : 409)
-    const accepted = office.session.decisions.enqueue(entry, async (choiceId, customText) => {
+    const submit = async (choiceId: string, customText?: string) => {
       this.submitting.add(token)
       try {
         const custom = choiceId === 'custom' ? customText?.trim() : undefined
@@ -381,9 +406,25 @@ export class OfficeIntegrationSession {
         }
         throw error
       } finally { this.submitting.delete(token) }
+    }
+    const binding = { session: office.session, decisionId: decision.id, effectId: '' }
+    this.bindings.set(token, binding)
+    const effect = office.session.runtime.enqueuePresentation(() => {
+      if (!this.active || this.bindings.get(token) !== binding) return
+      const reason = office.session.decisions.enqueueError(entry)
+      if (reason) {
+        this.bindings.delete(token)
+        void this.respond(delivery, reason === 'DECISION_QUEUE_FULL' ? 503 : 409,
+          '菜单无法显示', { reasonCode: reason }).catch(error => this.update({ error: `菜单结果发送失败：${String(error)}` }))
+        return
+      }
+      office.session.decisions.enqueue(entry, submit)
     })
-    if (!accepted) throw new IntegrationFault('DECISION_QUEUE_FULL', '菜单等待队列已满')
-    this.bindings.set(token, { session: office.session, decisionId: decision.id })
+    binding.effectId = effect.id
+    if (effect.status === 'failed') {
+      this.bindings.delete(token)
+      throw new IntegrationFault('PRESENTATION_QUEUE_FULL', effect.errors.map(error => error.message).join('；'), 503)
+    }
   }
 
   private describe() {

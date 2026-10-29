@@ -95,10 +95,10 @@ export class OfficeScene extends SceneView {
   get idleCoffeeEnabled() { return this.simulation.idleCoffee?.isEnabled ?? false }
   setIdleCoffee(enabled: boolean) { this.simulation.idleCoffee?.setEnabled(enabled) }
   getAgents() { return projectAgents(this.runtime) }
-  requestDeskVisit(visitor: number, host: number, message: string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, [host], () => message)) }
-  requestDeskVisitTour(visitor: number, hosts: number[], message?: (no: number, name: string) => string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, hosts, message ?? ((_, name) => `${name}，请接手下一步。`))) }
-  setAgentState(id: string, state: AgentState, task?: string) { this.requireActions(); return this.runtime.submit(presentationCommand(this.runtime, id, state, task)) }
-  playAgentAnimation(id: string, animation: string) { this.requireActions(); return this.runtime.submit({ ...commandBase(this.runtime), type: 'activity.start', capability: 'office.emote', participants: [{ entityId: id, role: 'actor' }], params: { animation } }) }
+  requestDeskVisit(visitor: number, host: number, message: string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, [host], () => message), { ordered: true, continuous: 'yield' }) }
+  requestDeskVisitTour(visitor: number, hosts: number[], message?: (no: number, name: string) => string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, hosts, message ?? ((_, name) => `${name}，请接手下一步。`)), { ordered: true, continuous: 'yield' }) }
+  setAgentState(id: string, state: AgentState, task?: string) { this.requireActions(); return this.runtime.submit(presentationCommand(this.runtime, id, state, task), { ordered: true, continuous: 'yield' }) }
+  playAgentAnimation(id: string, animation: string) { this.requireActions(); return this.runtime.submit({ ...commandBase(this.runtime), type: 'activity.start', capability: 'office.emote', participants: [{ entityId: id, role: 'actor' }], params: { animation } }, { ordered: true, continuous: 'yield' }) }
   get isDemoRunning() { return this.simulation.isDemoRunning }
   setWorkstationTrial(enabled: boolean) {
     this.artwork.enabled = enabled

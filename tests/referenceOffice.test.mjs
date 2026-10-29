@@ -215,6 +215,7 @@ test('the local commerce scenario populates the wall board and tracks business s
     source.beginDispatch()
     source.acceptAssignment('file-agent')
     bridge.sync(await source.getSnapshot())
+    for (let i = 0; i < 2400 && runtime.hasPendingExecution; i++) runtime.tick(50)
     assert.equal(runtime.readActors().find(a => a.id === 'file-agent').presentation.status, 'working')
     source.applyStage('approval')
     bridge.sync(await source.getSnapshot())
