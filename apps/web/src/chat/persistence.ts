@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { canonical } from '@pawoffice/protocol'
+import { notifySubscribers } from '../notifications.ts'
 
 export const chatArchiveSchema = z.strictObject({
   version: z.literal(1), teamId: z.string().min(1), conversationId: z.string().min(1), draft: z.string().max(4000),
@@ -27,6 +28,45 @@ export type ChatWorkspaceArchive = z.infer<typeof chatWorkspaceArchiveSchema>
 export interface ChatWorkspacePersistence {
   read(): Promise<unknown>
   write(archive: ChatWorkspaceArchive, expected: unknown): Promise<void>
+  subscribe?(listener: () => void): () => void
+  readSelection?(): string | undefined
+  writeSelection?(id: string): void
+}
+
+const storageListeners = new Map<string, Set<{ sender: symbol; listener: () => void }>>()
+let changeChannel: BroadcastChannel | undefined
+const changeKey = 'pawoffice-chat.changed'
+function notifyStorage(key: string, sender?: symbol) {
+  notifySubscribers([...(storageListeners.get(key) ?? [])].filter(entry => entry.sender !== sender).map(entry => entry.listener), 'ChatPersistence')
+}
+function subscribeStorage(key: string, id: symbol, listener: () => void) {
+  const listeners = storageListeners.get(key) ?? new Set<{ sender: symbol; listener: () => void }>()
+  const subscription = { sender: id, listener }
+  listeners.add(subscription); storageListeners.set(key, listeners)
+  if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined' && !changeChannel) {
+    try {
+      changeChannel = new BroadcastChannel(changeKey)
+      changeChannel.onmessage = event => { if (typeof event.data === 'string') notifyStorage(event.data) }
+    } catch { /* Focus and storage events also refresh tabs when channels are unavailable. */ }
+  }
+  const storage = (event: StorageEvent) => {
+    if (event.key !== changeKey || !event.newValue) return
+    try { if (JSON.parse(event.newValue).key === key) listener() } catch { /* Ignore unrelated storage notifications. */ }
+  }
+  const visible = () => { if (document.visibilityState === 'visible') listener() }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', listener); window.addEventListener('storage', storage)
+    document.addEventListener('visibilitychange', visible)
+  }
+  return () => {
+    listeners.delete(subscription)
+    if (!listeners.size) storageListeners.delete(key)
+    if (!storageListeners.size) { changeChannel?.close(); changeChannel = undefined }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', listener); window.removeEventListener('storage', storage)
+      document.removeEventListener('visibilitychange', visible)
+    }
+  }
 }
 
 export class ChatStorageConflict extends Error {
@@ -62,12 +102,16 @@ function openDatabase() {
 export function browserChatPersistence(teamId: string, sourceKey: string): ChatWorkspacePersistence | undefined {
   if (typeof indexedDB === 'undefined') return undefined
   const key = JSON.stringify(['workspace-v2', sourceKey, teamId])
+  const sender = Symbol(key), selectionKey = `pawoffice-chat.selection:${key}`
   const pageSize = 50
   const pageSchema = chatArchiveSchema.shape.messages.max(pageSize)
   const storedSchema = z.strictObject({ format: z.literal('pages-v1'), revision: z.number().int().nonnegative(),
     directory: chatWorkspaceArchiveSchema, pages: z.record(z.string(), z.number().int().nonnegative()) })
   const revisions = new WeakMap<object, number>()
   return {
+    subscribe: listener => subscribeStorage(key, sender, listener),
+    readSelection() { try { return sessionStorage.getItem(selectionKey) ?? undefined } catch { return undefined } },
+    writeSelection(id) { try { sessionStorage.setItem(selectionKey, id) } catch { /* Selection remains usable without storage. */ } },
     async read() {
       const db = await openDatabase()
       return new Promise((resolve, reject) => {
@@ -143,7 +187,16 @@ export function browserChatPersistence(teamId: string, sourceKey: string): ChatW
           }
           store.put({ format: 'pages-v1', revision, directory, pages }, key)
         }
-        transaction.oncomplete = () => { revisions.set(archive, revision); resolve() }
+        transaction.oncomplete = () => {
+          revisions.set(archive, revision); resolve()
+          queueMicrotask(() => {
+            notifyStorage(key, sender)
+            if (changeChannel) changeChannel.postMessage(key)
+            else if (typeof localStorage !== 'undefined') {
+              try { localStorage.setItem(changeKey, JSON.stringify({ key, change: crypto.randomUUID() })) } catch { /* Focus will refresh other pages. */ }
+            }
+          })
+        }
         transaction.onabort = () => reject(conflict ? new ChatStorageConflict() : transaction.error ?? new Error('Chat storage write failed'))
       })
     },

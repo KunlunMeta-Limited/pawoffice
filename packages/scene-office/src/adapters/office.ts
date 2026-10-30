@@ -1,8 +1,33 @@
 import type { Agent, AgentState } from '../types.ts'
 import type { SceneReadPort } from '@pawoffice/runtime'
 import type { SceneCommand } from '@pawoffice/protocol'
-import type { World } from '@pawoffice/runtime/model'
+import type { Snapshot, World } from '@pawoffice/runtime/model'
 import { actorVisualPose, cellCenter, seatPixels } from '../pixi/projection.ts'
+
+const handoffCache = new WeakMap<SceneReadPort, { revision: number; hosts: ReadonlySet<string> }>()
+
+/** Hold workstation UI and task animations until each receiver finishes their own reply, including queued visits. */
+export function officeHandoffReceivers(runtime: SceneReadPort, snapshot?: Snapshot): ReadonlySet<string> {
+  const revision = runtime.getRevision(), cached = handoffCache.get(runtime)
+  if (cached?.revision === revision) return cached.hosts
+  // Lifecycle revisions change on submission, phase entry and termination, not on every movement frame.
+  const state = snapshot ?? runtime.snapshot(), hosts = new Set<string>()
+  const active = new Map(state.activities.filter(activity => activity.status === 'active').map(activity => [activity.commandId, activity]))
+  for (const { command, status } of state.records) {
+    if (command.type !== 'activity.start' || command.capability !== 'office.visit' || !['queued', 'running'].includes(status)) continue
+    const activity = active.get(command.commandId)
+    for (const participant of command.participants) {
+      if (participant.role !== 'host') continue
+      let replyIndex = -1
+      activity?.plan.phases.forEach((phase, index) => {
+        if (phase.speech?.some(speech => speech.actorId === participant.entityId)) replyIndex = index
+      })
+      if (!activity || replyIndex < 0 || activity.phaseIndex <= replyIndex) hosts.add(participant.entityId)
+    }
+  }
+  handoffCache.set(runtime, { revision, hosts })
+  return hosts
+}
 
 export function commandBase(runtime: SceneReadPort) {
   return { protocolVersion: '2.0' as const, sceneId: runtime.sceneId, commandId: `cmd-${globalThis.crypto.randomUUID()}` }
@@ -26,6 +51,7 @@ export function presentationCommand(runtime: SceneReadPort, id: string, state: A
 }
 export function projectAgents(runtime: SceneReadPort, includeMissions = true, preview?: World): Agent[] {
   const snapshot = includeMissions ? runtime.snapshot() : undefined
+  const receiving = officeHandoffReceivers(runtime, snapshot)
   // Read active phases without copying the full command/event history on every render tick.
   const focused = new Map((runtime.isEditing ? [] : runtime.readActivePhases())
     .filter(phase => phase.capability === 'office.focus' && phase.ready && phase.phaseIndex === phase.phaseCount - 1)
@@ -35,12 +61,13 @@ export function projectAgents(runtime: SceneReadPort, includeMissions = true, pr
     const stepping = transition && ['entering', 'exiting'].includes(transition.stage)
     const next = actor.step?.to ?? (stepping ? transition.target : actor.motion?.path[actor.motion.index])
     const { position, facing } = actorVisualPose(actor), nextPixel = next && cellCenter(next)
+    const seatedState = receiving.has(actor.id) ? 'idle' : focused.has(actor.id) ? 'working' : actor.presentation.status
     const agent: Agent = { id: actor.id, appearanceId: actor.templateId, name: actor.name, color: actor.color, x: position.x, y: position.y,
       targetX: nextPixel?.x, targetY: nextPixel?.y, assignedDeskId: actor.homeId, seated: actor.posture === 'seated',
       seatTransition: transition ? { ...transition, seat: transition.interactionId === 'seat' ? seatPixels(transition.seat) : cellCenter(transition.seat), approach: cellCenter(transition.approach), passage: transition.passage.map(cellCenter), target: transition.target && cellCenter(transition.target) } : undefined,
       facing: facing === 'left' ? -1 : 1, viewFacing: facing, customAnimation: actor.expression,
       bubbleText: actor.speech?.text, currentTask: focused.get(actor.id) ?? actor.presentation.title,
-      state: transition ? stepping && !transition.waiting ? 'walking' : 'idle' : actor.step || actor.motion && !actor.motion.waiting ? 'walking' : actor.expression || actor.speech ? 'talking' : actor.posture === 'seated' ? focused.has(actor.id) ? 'working' : actor.presentation.status : 'idle' }
+      state: transition ? stepping && !transition.waiting ? 'walking' : 'idle' : actor.step || actor.motion && !actor.motion.waiting ? 'walking' : actor.expression || actor.speech ? 'talking' : actor.posture === 'seated' ? seatedState : 'idle' }
     // The office view facade projects runtime activities into its character model.
     const activity = snapshot?.activities.find(a => a.status === 'active' && a.capability === 'office.visit' && a.participants[0] === actor.id)
     if (activity && snapshot) {

@@ -43,6 +43,26 @@ export class ChatSession {
   }
   getSnapshot = () => this.snapshot
   get id() { return this.conversationId }
+  get isReceiving() { return Boolean(this.active) }
+  getArchive(): ChatArchive {
+    return { version: 1, teamId: this.teamId, conversationId: this.conversationId, draft: this.snapshot.draft,
+      activeTurnId: this.activeTurnId, messages: this.snapshot.messages }
+  }
+  applyArchive(archive: ChatArchive) {
+    if (archive.teamId !== this.teamId || archive.conversationId !== this.conversationId) throw new Error('聊天存档身份不匹配')
+    const activeTurnId = this.active ? this.activeTurnId : archive.activeTurnId ?? ''
+    const phase = this.active ? this.snapshot.phase : activeTurnId ? 'thinking' : 'idle'
+    const sameMessages = archive.messages === this.snapshot.messages || archive.messages.length === this.snapshot.messages.length
+      && archive.messages.every((message, index) => {
+        const current = this.snapshot.messages[index]
+        return message === current || message.id === current.id && message.role === current.role && message.content === current.content && message.state === current.state
+      })
+    // An update to another conversation must not replay this view or disturb its pending save.
+    if (sameMessages && archive.draft === this.snapshot.draft && activeTurnId === this.activeTurnId && phase === this.snapshot.phase) return
+    this.activeTurnId = activeTurnId
+    this.persisted = archive; this.dirty = false
+    this.update({ ...this.snapshot, messages: sameMessages ? this.snapshot.messages : archive.messages, draft: archive.draft, phase }, false)
+  }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
   private update(snapshot: ChatSnapshot, persist = true) {
     this.snapshot = snapshot
@@ -122,8 +142,9 @@ export class ChatSession {
     }
   }
   private finish(state: ChatMessage['state'], error: string | null = null) {
+    const assistantId = messageId(this.activeTurnId, 'assistant')
     this.activeTurnId = ''
-    this.update({ ...this.snapshot, phase: 'idle', error, messages: this.snapshot.messages.map(message => message.state === 'pending' ? { ...message, state } : message) })
+    this.update({ ...this.snapshot, phase: 'idle', error, messages: this.snapshot.messages.map(message => message.id === assistantId && message.state === 'pending' ? { ...message, state } : message) })
   }
 
   synchronize(force = false): Promise<void> {

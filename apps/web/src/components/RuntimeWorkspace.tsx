@@ -64,13 +64,22 @@ export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, conn
   const [teamPickerOpen, setTeamPickerOpen] = useState(false)
   const [officeSwitcherTarget, setOfficeSwitcherTarget] = useState<HTMLDivElement | null>(null)
   const [shellKind, setShellKind] = useState(readOfficeShell)
-  const [selection, setSelection] = useState({ teamId: '', employeeId: '' })
+  const [selection, setSelection] = useState({ teamId: '', employeeId: '', actorId: '' })
   const employees = dashboard?.employees ?? []
-  const selectedEmployee = employees.find(employee => selection.teamId === runtime.sceneId && employee.id === selection.employeeId) ?? employees[0]
+  const selectedActor = selection.teamId === runtime.sceneId ? snapshot.world.actors.find(actor => actor.id === selection.actorId) : undefined
+  const selectedEmployee = selectedActor ? employeeForActor(dashboard, selectedActor.id, selection.employeeId)
+    : employees.find(employee => selection.teamId === runtime.sceneId && employee.id === selection.employeeId) ?? employees[0]
+  const selectedActorId = selectedActor?.id ?? selectedEmployee?.sceneActorId ?? snapshot.world.actors[0]?.id
   const selectedLayout = pageLayout?.value ?? shellKind
   const memberLayout = layout === 'full' && !suppliedShell && selectedLayout === 'members'
   const Shell = suppliedShell ?? (memberLayout ? MemberOfficeShell : OfficeShell)
-  const selectEmployee = useCallback((employeeId: string) => setSelection({ teamId: runtime.sceneId, employeeId }), [runtime])
+  const selectEmployee = useCallback((employeeId: string) => setSelection({ teamId: runtime.sceneId, employeeId,
+    actorId: dashboard?.employees.find(employee => employee.id === employeeId)?.sceneActorId ?? '' }), [runtime, dashboard])
+  const selectRosterActor = useCallback((actorId: string) => {
+    if (!runtime.readActors().some(actor => actor.id === actorId)) return
+    const employee = employeeForActor(dashboard, actorId, selectedEmployee?.id)
+    setSelection({ teamId: runtime.sceneId, employeeId: employee?.id ?? '', actorId })
+  }, [runtime, dashboard, selectedEmployee?.id])
   const selectActor = useCallback((actorId: string) => {
     if (!memberLayout) return false
     const employee = employeeForActor(dashboard, actorId, selectedEmployee?.id)
@@ -88,8 +97,8 @@ export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, conn
   const inspectEmployee = useCallback((employeeId: string) => { void uiSession?.request({ action: 'employee.inspect', employeeId }).catch(() => {}) }, [uiSession])
   const controller = useOfficeSceneController(runtime, covered || teamPickerOpen, simulation, dashboard, uiSession?.enabled ? inspectActor : undefined, whiteboardProgress, selectActor)
   useEffect(() => {
-    controller.sceneRef.current?.selectActor(memberLayout ? selectedEmployee?.sceneActorId : undefined)
-  }, [memberLayout, selectedEmployee?.sceneActorId, controller.loaded, controller.sceneRef, runtime])
+    controller.sceneRef.current?.selectActor(memberLayout ? selectedActorId : undefined)
+  }, [memberLayout, selectedActorId, controller.loaded, controller.sceneRef, runtime])
   const canvas = <OfficeCanvas controller={controller} editing={!!snapshot.editor} catalogOpen={mapView.catalogOpen}>
     {layout === 'full' && <OfficeSceneControls runtime={runtime} controller={controller} mapView={mapView} setMapView={setMapView}
       teamSelection={teamSelection} teamName={dashboard?.workspace.name} onTeamPickerOpenChange={setTeamPickerOpen}
@@ -106,6 +115,7 @@ export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, conn
     memberActors={snapshot.world.actors.filter(actor => memberCreation ? memberCreation.availableActorIds.includes(actor.id) : !employees.some(employee => employee.sceneActorId === actor.id)).map(actor => ({ id: actor.id, name: actor.name }))}
     layoutControl={!suppliedShell && <OfficeLayoutSwitch value={selectedLayout} onChange={changeShell} disabled={pageLayout?.busy} />}
     officeSwitcherRef={memberLayout ? setOfficeSwitcherTarget : undefined} selectedEmployeeId={selectedEmployee?.id} onSelectEmployee={selectEmployee}
+    rosterActors={snapshot.world.actors.map(actor => ({ id: actor.id, name: actor.name }))} selectedActorId={selectedActorId} onSelectRosterActor={selectRosterActor}
     canRecoverLayout={snapshot.canRecoverLayout} recoverLayout={() => runtime.recoverLayout()}
     exportCapabilities={() => download(runtime.describe(), 'scene-capabilities.json')}
     exportSnapshot={() => download(runtime.snapshot(), 'scene-snapshot.json')}

@@ -1,6 +1,6 @@
 import type { ScenePresentationPack } from '@pawoffice/renderer-pixi/ScenePresentationPack'
 import type { ActorIntent, ActorTaskPresentation } from '@pawoffice/contracts/presentation'
-import { projectAgents } from '../adapters/office.ts'
+import { officeHandoffReceivers, projectAgents } from '../adapters/office.ts'
 import { apartmentPoseForState } from './posePolicy.ts'
 import { loadOfficeBackground, loadOfficeFurniture } from './assets/loadOfficeAssets.ts'
 import { loadWorkstationTrialAssets } from './assets/loadWorkstationTrialAssets.ts'
@@ -69,10 +69,11 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
     },
     createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress),
     projectActors(runtime, preview) {
-      const world = preview ?? runtime.readWorld(), props = world.props
+      const world = preview ?? runtime.readWorld(), props = world.props, receiving = officeHandoffReceivers(runtime)
       return base.projectActors(runtime, world).map(actor => {
         const supplied = options.taskForActor?.(actor.id)
-        const task: ActorTaskPresentation = supplied && (!actor.title || supplied.title === actor.title) ? supplied
+        const task: ActorTaskPresentation | undefined = receiving.has(actor.id) ? undefined
+          : supplied && (!actor.title || supplied.title === actor.title) ? supplied
           : actor.title ? { title: actor.title, status: actor.status === 'thinking' ? 'blocked' : 'running', progressMode: 'activity' }
           : { title: '待命', status: 'idle' }
         const workstation = props.find(prop => prop.id === actor.furniture?.propId && prop.templateId === 'office.reference-workstation')
