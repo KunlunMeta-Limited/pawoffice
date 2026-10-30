@@ -5,7 +5,7 @@ import type { SceneViewOptions, SceneLoadProgress, SceneActionProgress } from '@
 import { AnimationRegistry } from '@pawoffice/renderer-pixi/animation/AnimationRegistry'
 import { characterAssets } from '@pawoffice/assets-office/frame/resources'
 import { FrameAdapter } from '@pawoffice/animation-frame/FrameAdapter'
-import { createOfficePresentation, createReferenceOfficePresentation } from '@pawoffice/scene-office/pixi'
+import { createOfficePresentation, createReferenceOfficePresentation, type WhiteboardDisplay } from '@pawoffice/scene-office/pixi'
 import { resolveOfficeAppearance } from './officeFrames.ts'
 import { supportsOfficePose } from '@pawoffice/scene-office/core/poseSupport'
 import type { VisualAssetManifest } from '@pawoffice/contracts/animation'
@@ -26,6 +26,7 @@ export type OfficeSceneOptions = Partial<Pick<SceneViewOptions, 'animations' | '
   onAgentClick?: (event: OfficeAgentClick) => void
   taskForActor?: (id: string) => ActorTaskPresentation | undefined
   whiteboardProgress?: WhiteboardProgress
+  whiteboardDisplay?: WhiteboardDisplay
   onDraftChange?: (error: string | null) => void
   onDemoChange?: (enabled: boolean) => void
   onLoadProgress?: (progress: SceneLoadProgress) => void
@@ -57,7 +58,7 @@ export class OfficeScene extends SceneView {
       ...options, runtime,
       onStep: options.simulation ? undefined : elapsedMs => { simulation.tick(elapsedMs); simulation.demoSource?.tick(elapsedMs) },
       dispatchCommand: command => runtime.submit(command),
-      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, workEffects: true, coffeeEffects: coffeeFrames, supportsCoffee }) : createOfficePresentation(() => artwork.enabled, coffeeFrames, supportsCoffee),
+      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, whiteboardDisplay: options.whiteboardDisplay, workEffects: true, coffeeEffects: coffeeFrames, supportsCoffee }) : createOfficePresentation(() => artwork.enabled, coffeeFrames, supportsCoffee),
       animations: options.animations ?? new AnimationRegistry<Container>().register(new FrameAdapter(manifest => characterAssets.acquire(manifest.asset.id, manifest.source.uri))),
       resolveAppearance: async id => {
         const manifest = await (options.resolveAppearance ? options.resolveAppearance(id) : resolveOfficeAppearance(id, { energeticWork: referenceOffice, coffeeFrames }))

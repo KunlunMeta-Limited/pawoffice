@@ -14,6 +14,8 @@ import { createOfficeWorkEffects } from './effects/OfficeWorkEffect.ts'
 import { projectCoffeeActors } from './coffeePresentation.ts'
 import { loadOfficeTexture } from './assets/loadOfficeTexture.ts'
 import type { Texture } from 'pixi.js'
+import type { WhiteboardDisplay } from './views/outputBoard.ts'
+export type { WhiteboardDisplay } from './views/outputBoard.ts'
 export { configureOfficeAssets } from './assets/loadOfficeTexture.ts'
 
 export function createOfficePresentation(trialEnabled: () => boolean = () => true, coffeeEffects = false,
@@ -54,7 +56,7 @@ export function createOfficePresentation(trialEnabled: () => boolean = () => tru
   return pack
 }
 
-export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean } = {}): ScenePresentationPack {
+export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; whiteboardDisplay?: WhiteboardDisplay; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean } = {}): ScenePresentationPack {
   const base = createOfficePresentation(undefined, options.coffeeEffects, options.supportsCoffee)
   const workEffects = options.workEffects ?? false
   let workEffectTexture: Texture | undefined
@@ -67,7 +69,7 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
       await Promise.all([base.loadObjects(report), loadReferenceOfficeObjects(part => report(`reference:${part}`)),
         workEffects ? loadOfficeTexture('office-work-crafting-lite-v1', 'effects/work-crafting-lite-v1').then(texture => { workEffectTexture = texture; report('office-work-crafting-lite-v1') }) : undefined])
     },
-    createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress),
+    createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress, options.whiteboardDisplay),
     projectActors(runtime, preview) {
       const world = preview ?? runtime.readWorld(), props = world.props
       return base.projectActors(runtime, world).map(actor => {

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { idSchema, jsonObjectSchema } from './schema.ts'
 import { dashboardSnapshotSchema, officeMemberInputSchema, validateDashboardSnapshot } from './dashboard.ts'
-import { whiteboardTaskBoardSchema, officeUiManifest, emptyWhiteboard } from './office-ui.ts'
+import { whiteboardTaskBoardSchema, outputBoardSchema, officeUiManifest, emptyWhiteboard } from './office-ui.ts'
 import { officeChatConfigSchema } from './chat.ts'
 
 export const officeIntegrationPaths = { reply: '/api/pawoffice/reply', ui: '/api/pawoffice/ui', layout: '/api/pawoffice/layout' } as const
@@ -29,6 +29,7 @@ export type OfficeConversation = z.infer<typeof officeConversationSchema>
 export const officeSnapshotSchema = z.strictObject({ schemaVersion: z.literal('1.0'), seq: seqSchema,
   workspace: dashboardSnapshotSchema.shape.workspace,
   conversations: z.array(officeConversationSchema).max(100).default([]),
+  outputBoard: outputBoardSchema.optional(),
   system: z.strictObject({ cpuPercent: unknownPercent, memoryPercent: unknownPercent,
     networkKbps: z.union([z.literal(-1), z.number().nonnegative()]).default(-1) }).default({ cpuPercent: -1, memoryPercent: -1, networkKbps: -1 }),
 }).superRefine((snapshot, context) => {

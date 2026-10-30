@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { idSchema } from './schema.ts'
-import { whiteboardTaskBoardSchema } from './office-ui.ts'
+import { whiteboardTaskBoardSchema, outputBoardSchema } from './office-ui.ts'
 // Optional office dashboard domain; other scene products need not import it.
 
 const id = z.string().min(1).max(100)
@@ -50,6 +50,7 @@ export const dashboardSnapshotSchema = z.strictObject({
     networkKbps: z.union([z.literal(-1), z.number().nonnegative()]).optional(),
   }).optional(),
   whiteboard: whiteboardTaskBoardSchema.optional(),
+  outputBoard: outputBoardSchema.optional(),
 }).superRefine(validateDashboardSnapshot)
 
 export function validateDashboardSnapshot(snapshot: { employees: { id: string }[]; tasks: { id: string; assigneeId?: string }[] }, context: z.RefinementCtx) {

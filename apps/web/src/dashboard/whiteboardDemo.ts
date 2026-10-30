@@ -1,4 +1,5 @@
 import { ExampleOfficeDataSource } from './demoSource.ts'
+import { createOutputBoardDemo } from './outputBoardDemo.ts'
 
 const detail = `# 商品上架计划 · 执行详情
 
@@ -78,7 +79,7 @@ export function createWhiteboardDemoSource() {
     tagline: '对齐目标，分步推进', summary: '核对商品资料，完成内容制作与上架审核。', note: '点击白板查看完整执行说明。',
     steps: [{ id: 'collect', title: '商品资料核验', progress: 100 }, { id: 'write', title: '内容制作', progress: 65 }, { id: 'review', title: '上架审核', progress: 0 }] }
   return new ExampleOfficeDataSource(new Date(), {
-    workspace: { id: 'office-whiteboard-demo', name: '白板验收办公室' }, tasks: [],
+    workspace: { id: 'office-whiteboard-demo', name: '白板验收办公室' }, tasks: [], outputBoard: createOutputBoardDemo(),
     conversationTitle: '长详情 · 滚动阅读', whiteboard: { ...base, detail },
     conversations: [
       { id: 'short-detail', title: '短详情 · 独立内容', employees: [], tasks: [], events: [], whiteboard: { ...base,

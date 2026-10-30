@@ -14,6 +14,7 @@ import { createOfficeMonitorScreen, officeMonitorWorking } from '../effects/Offi
 import { renderWhiteboardPreview, WHITEBOARD_PREVIEW_LAYOUT } from '../../taskBoard.ts'
 import { whiteboardTaskBoard, WhiteboardProgress } from '../../whiteboard.ts'
 import type { WhiteboardTaskBoardData } from '../../whiteboard.ts'
+import { createWhiteboardLabels, renderOutputPreview, type WhiteboardDisplay } from './outputBoard.ts'
 
 const SCALE = 1.5
 
@@ -103,7 +104,7 @@ const conferenceTableView: PropViewFactory = () => {
   } }
 }
 
-const wallWhiteboardView = (progress: WhiteboardProgress): PropViewFactory => () => {
+const wallWhiteboardView = (progress: WhiteboardProgress, display?: WhiteboardDisplay): PropViewFactory => () => {
   const root = new Container()
   const content = new HTMLText({ text: '', resolution: 2, style: { fontFamily: 'system-ui, sans-serif', fontSize: WHITEBOARD_PREVIEW_LAYOUT.fontSize,
     fill: 0x343b36, whiteSpace: 'normal', wordWrap: true, wordWrapWidth: WHITEBOARD_PREVIEW_LAYOUT.width,
@@ -112,13 +113,18 @@ const wallWhiteboardView = (progress: WhiteboardProgress): PropViewFactory => ()
   content.scale.set(450 / WHITEBOARD_PREVIEW_LAYOUT.width)
   // The hanging whiteboard is part of the room image, so its perspective and shadow stay aligned.
   root.addChild(content); root.hitArea = new Rectangle(54, -164, 486, 188)
+  const labels = display ? createWhiteboardLabels(display) : undefined
+  if (labels) { root.addChild(labels.root); root.hitArea = new Rectangle(-17, -164, 557, 188) }
   let previous = '', elapsed = 0, revision = -1, boardId = '', board: WhiteboardTaskBoardData | undefined
   const paint = () => {
+    labels?.update()
+    const selected = display?.read()
     const state = board ? { taskBoard: progress.project(boardId, board) } : {}
-    const key = JSON.stringify(state)
+    const output = selected?.mode === 'output'
+    const key = output ? `output:${selected.outputBoard?.overviewHtml ?? ''}` : JSON.stringify(state)
     if (key === previous) return
     previous = key
-    content.text = renderWhiteboardPreview(state)
+    content.text = output ? renderOutputPreview(selected.outputBoard) : renderWhiteboardPreview(state)
   }
   return { roots: [root], hitTarget: root, update(prop) {
     root.position.set(prop.position.x * 50, prop.position.y * 50); root.zIndex = prop.position.y * 50
@@ -135,10 +141,10 @@ const wallWhiteboardView = (progress: WhiteboardProgress): PropViewFactory => ()
   } }
 }
 
-export function createReferenceOfficePropViews(progress = new WhiteboardProgress()) {
+export function createReferenceOfficePropViews(progress = new WhiteboardProgress(), display?: WhiteboardDisplay) {
   const registry = createOfficePropViews()
   registry.register('reference-workstation', referenceWorkstationView)
-  registry.register('wall-whiteboard', wallWhiteboardView(progress))
+  registry.register('wall-whiteboard', wallWhiteboardView(progress, display))
   registry.register('conference-table', conferenceTableView)
   return registry
 }

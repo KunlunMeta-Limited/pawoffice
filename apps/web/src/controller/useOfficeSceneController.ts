@@ -8,6 +8,7 @@ import type { OfficeSimulation } from '../application/OfficeSimulation.ts'
 import type { DashboardSnapshot } from '@pawoffice/protocol/dashboard'
 import { officeActorTasks } from '../dashboard/actorTasks.ts'
 import { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
+import type { OutputBoard, WhiteboardMode } from '@pawoffice/protocol/office-ui'
 
 type AgentMenuState = {
   agent: Agent
@@ -31,6 +32,9 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
   const readyRef = useRef(false)
   const [menu, setMenu] = useState<AgentMenuState | null>(null)
   const [whiteboardId, setWhiteboardId] = useState<string | null>(null)
+  const [whiteboardMode, setWhiteboardMode] = useState<WhiteboardMode>('collaboration')
+  const boardDisplay = useRef<{ mode: WhiteboardMode; outputBoard?: OutputBoard }>({ mode: 'collaboration' })
+  useEffect(() => { boardDisplay.current = { mode: whiteboardMode, outputBoard: dashboard?.outputBoard } }, [whiteboardMode, dashboard?.outputBoard])
   const [demo, setDemo] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -43,6 +47,7 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
   useEffect(() => {
     const element = host.element
     setMenu(null); setWhiteboardId(null); setNotice(simulation?.error ?? null); setDemo(simulation?.isDemoRunning ?? false)
+    setWhiteboardMode('collaboration')
 
     const handleAgentClick = (event: OfficeAgentClick) => {
       if (selectionHandler.current?.(event.agent.id)) { setMenu(null); return }
@@ -63,6 +68,7 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
     let active = true
     const scene = new OfficeScene({ runtime, simulation, onAgentClick: handleAgentClick, onDraftChange: setNotice, onDemoChange: setDemo,
       taskForActor: id => tasksRef.current.get(id), whiteboardProgress,
+      whiteboardDisplay: { read: () => ({ ...boardDisplay.current, enabled: !runtime.isEditing }), select: setWhiteboardMode },
       onPropClick: event => {
         if (runtime.readWorld().props.some(prop => prop.id === event.propId && prop.templateId === 'office.wall-whiteboard')) setWhiteboardId(event.propId)
       },
@@ -114,7 +120,7 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
   }, [covered, whiteboardId, loaded, runtime])
 
   const whiteboard = whiteboardId ? runtime.readWorld().props.find(prop => prop.id === whiteboardId) : undefined
-  return { host, sceneRef, menu, setMenu, whiteboard, whiteboardProgress, closeWhiteboard: () => setWhiteboardId(null), demo, setDemo, canDemo: simulation?.canDemo ?? true, notice, setNotice,
+  return { host, sceneRef, menu, setMenu, whiteboard, whiteboardProgress, whiteboardMode, outputBoard: dashboard?.outputBoard, closeWhiteboard: () => setWhiteboardId(null), demo, setDemo, canDemo: simulation?.canDemo ?? true, notice, setNotice,
     loaded, progress, actions, thumbnails, previewProp, highlightProp }
 }
 export type OfficeSceneController = ReturnType<typeof useOfficeSceneController>

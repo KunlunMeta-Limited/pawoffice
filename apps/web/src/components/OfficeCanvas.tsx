@@ -17,6 +17,6 @@ export function OfficeCanvas({ controller, editing = false, catalogOpen = false,
     </div>}
       {notice && <div className="runtime-scene-notice" role="alert">{notice}<button type="button" aria-label="关闭提示" onClick={() => setNotice(null)}><X size={14} /></button></div>}
     {children}
-    {!editing && controller.whiteboard && <WhiteboardReader boardId={controller.whiteboard.id} state={controller.whiteboard.state} progress={controller.whiteboardProgress} onClose={controller.closeWhiteboard} />}
+    {!editing && controller.whiteboard && <WhiteboardReader boardId={controller.whiteboard.id} state={controller.whiteboard.state} progress={controller.whiteboardProgress} mode={controller.whiteboardMode} outputBoard={controller.outputBoard} onClose={controller.closeWhiteboard} />}
   </div>
 }

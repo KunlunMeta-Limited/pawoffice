@@ -15,6 +15,21 @@ type WhiteboardInput = z.input<typeof whiteboardTaskBoardSchema>
 export type WhiteboardTaskBoardData = WhiteboardInput & Required<Pick<WhiteboardInput, 'template' | 'title' | 'status' | 'steps'>>
 export const emptyWhiteboard = () => whiteboardTaskBoardSchema.parse({ template: 'task-board-v1', title: '', status: 'queued', tagline: '', steps: [] })
 
+// Office results are independent of the conversation's original task-board-v1.
+export const resultDocumentSchema = z.discriminatedUnion('format', [
+  z.strictObject({ format: z.literal('html'), html: z.string().min(1).max(200000) }),
+  z.strictObject({ format: z.literal('url'), url: z.url().max(2000).refine(value => {
+    try { return ['http:', 'https:'].includes(new URL(value).protocol) } catch { return false }
+  }) }),
+])
+export const outputBoardSchema = z.strictObject({
+  title: z.string().min(1).max(160),
+  overviewHtml: z.string().min(1).max(16000),
+  detail: resultDocumentSchema.optional(),
+})
+export type OutputBoard = z.infer<typeof outputBoardSchema>
+export type WhiteboardMode = 'collaboration' | 'output'
+
 export const officeUiManifest = {
   slots: [
     { id: 'whiteboard', content: 'task-board-v1', persistent: true, update: 'office.snapshot' },

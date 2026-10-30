@@ -111,7 +111,7 @@ npm run integration-example
 
 | 位置 | 必填字段 | 可选字段及默认值 |
 | --- | --- | --- |
-| 快照 | `schemaVersion`、`seq`、`workspace` | `conversations: []`、默认资源指标 |
+| 快照 | `schemaVersion`、`seq`、`workspace` | `conversations: []`、默认资源指标、`outputBoard` |
 | `workspace` | `id`、`name` | 无 |
 | 每个会话 | `id`、`title` | `employees: []`、`tasks: []`、`events: []`、默认白板对象 |
 | 每个成员 | `id`、`name` | `sceneActorId: ""`、`role: ""`、`online: false` |
@@ -130,6 +130,27 @@ npm run integration-example
 可选引用可以省略或显式使用 `""`：`sceneActorId` 表示未绑定人物，`assigneeId` 表示未分配负责人，事件中的空引用表示不关联相应对象。办公室、成员、任务和事件本身的 `id` 仍须为有效的非空字符串。
 
 任务按钮产生用户操作，由外部业务后端通过 `ui.next` 领取并处理，再提交新快照。运行 `npm run integration-ui-example` 可查看操作领取与展示结果返回的示例。
+
+## 结果白板（可选 HTML）
+
+协作白板保持原来的 `conversations[].whiteboard`、墙上固定模板和 Markdown 详情。新增结果通过快照顶层 `outputBoard` 提供，独立于会话；切换会话不会换掉办公室结果。页面初始显示协作，只能从墙上白板左侧的「协作 / 结果」标签切换，弹窗不提供第二处切换。
+
+```json
+{
+  "outputBoard": {
+    "title": "今日成果日报",
+    "overviewHtml": "<div style=\"font-size:40px;color:#203450\">今日采集 <strong style=\"font-size:100px\">1286</strong> 条</div>",
+    "detail": { "format": "html", "html": "<!doctype html><html><head><meta charset=\"utf-8\"></head><body><h1>今日成果日报</h1><p>图表和明细放在这里。</p></body></html>" }
+  }
+}
+```
+
+- `title` 为 1–160 字；`overviewHtml` 为 1–16000 字的静态 HTML 片段，推荐使用内联 CSS。沿用原场景 `HTMLText` 渲染成纹理，设计画布为 778 × 314，其中内边距上 8、右 24、下 16、左 24。它支持 HTML 排版，不执行脚本，也不是完整网页；背景默认透明，房间图片仍提供白板边框。概览只放 2–3 个指标，示例包含销量、采集量、任务完成度和一行成果摘要，指标标签 36px、核心数字 72–92px；完整图表与明细放入详情；不要把完整日报缩小后塞进墙面。实际像素会随整个场景缩放，窄屏请点击展开阅读。
+- `detail` 可省略；省略时展开显示「暂未提供结果详情」。HTML 详情使用 `{ "format": "html", "html": "..." }`，最长 200000 字，支持完整网页、CSS、脚本和图表。HTTP 请求仍受整体 64 KiB 限制，较大的报表建议托管后使用 `{ "format": "url", "url": "https://your-service.example/report" }`。地址仅支持 HTTP(S)，托管端需允许 iframe 嵌入。
+- 结果详情使用原白板弹窗外壳，内部 iframe 独立滚动，`sandbox="allow-scripts"`，不授予同源、弹窗或表单权限；报表脚本无法读写办公室页面和其存储。外部图表资源需支持跨源加载。
+- 后端维护结果文档和统计值，前端只展示。更新时随完整 `office.snapshot` 一起发送 `outputBoard` 并递增 `seq`；省略该字段即清空结果，页面显示「等待结果更新」，不会填充示例数据。
+
+参考模板：[墙面概览](../../apps/web/src/whiteboard/templates/output-overview.html)、[展开报表](../../apps/web/src/whiteboard/templates/output-detail.html)。后端可替换布局和文本，模板中的 `{{sales}}` 等是需要填充并进行 HTML 转义的文本占位符。模板示例数值只在开发地址 `/?whiteboard-demo=1` 启用。
 
 ## 源码装配接口
 

@@ -19,6 +19,7 @@ export type ExampleOfficeSeed = {
   employees?: DashboardSnapshot['employees']
   tasks?: Array<Omit<DashboardSnapshot['tasks'][number], 'updatedAt'>>
   whiteboard?: DashboardSnapshot['whiteboard']
+  outputBoard?: DashboardSnapshot['outputBoard']
   conversationTitle?: string
   conversations?: DashboardConversation[]
 }
@@ -61,6 +62,7 @@ export class ExampleOfficeDataSource implements OfficeDataSource {
       }))
     }
     this.snapshot = parseDashboardSnapshot(this.snapshot)
+    if (seed.outputBoard) this.snapshot.outputBoard = structuredClone(seed.outputBoard)
     this.snapshot.conversationId = 'main'
     this.snapshot.whiteboard = seed.whiteboard ?? dashboardWhiteboardTaskBoard(this.snapshot)
     this.conversations.set('main', this.snapshot)
@@ -94,7 +96,7 @@ export class ExampleOfficeDataSource implements OfficeDataSource {
     if ((this.snapshot.conversationId ?? '') === id) return
     let snapshot = this.conversations.get(id)
     if (!snapshot) {
-      snapshot = { schemaVersion: '1.0', workspace: { ...this.snapshot.workspace }, ...(id ? { conversationId: id } : {}), employees: [], tasks: [], events: [], whiteboard: emptyWhiteboard() }
+      snapshot = { schemaVersion: '1.0', workspace: { ...this.snapshot.workspace }, ...(id ? { conversationId: id } : {}), ...(this.snapshot.outputBoard ? { outputBoard: this.snapshot.outputBoard } : {}), employees: [], tasks: [], events: [], whiteboard: emptyWhiteboard() }
     }
     this.snapshot = snapshot
     notifySubscribers(this.listeners, 'ExampleOfficeDataSource')

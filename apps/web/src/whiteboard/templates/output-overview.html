@@ -1,0 +1,25 @@
+<section aria-label="今日成果" style="height:290px;box-sizing:border-box;color:#203450;line-height:1.2;font-family:system-ui,sans-serif">
+  <header style="display:flex;align-items:center;justify-content:space-between;height:44px;margin-bottom:16px">
+    <strong style="font-size:36px;font-weight:700">今日工作成果</strong>
+    <span style="font-size:26px;color:#8b795d">示例</span>
+  </header>
+  <div style="display:grid;grid-template-columns:1.05fr 1.2fr 1fr;gap:22px;height:144px">
+    <div>
+      <div style="font-size:36px;font-weight:600">商品销量</div>
+      <div style="margin-top:10px;white-space:nowrap"><strong style="font-size:92px;letter-spacing:-3px;line-height:1;font-weight:750">{{sales}}</strong><span style="font-size:28px;margin-left:8px">件</span></div>
+    </div>
+    <div style="padding-left:18px;border-left:2px solid #dfe4e7">
+      <div style="font-size:36px;font-weight:600">采集信息</div>
+      <div style="margin-top:20px;white-space:nowrap"><strong style="font-size:78px;letter-spacing:-2px;line-height:1;font-weight:750">{{collection}}</strong><span style="font-size:28px;margin-left:6px">条</span></div>
+    </div>
+    <div style="padding-left:18px;border-left:2px solid #dfe4e7">
+      <div style="font-size:36px;font-weight:600">任务完成</div>
+      <div style="margin-top:20px;white-space:nowrap"><strong style="font-size:72px;letter-spacing:-2px;line-height:1;font-weight:750">{{completed}}</strong><span style="font-size:34px;margin-left:5px">/{{total}}</span></div>
+      <div style="height:7px;margin-top:12px;border-radius:4px;background:#dfe6de"><div style="width:{{completionPercent}}%;height:100%;border-radius:4px;background:#70ad91"></div></div>
+    </div>
+  </div>
+  <aside style="display:flex;align-items:center;gap:18px;box-sizing:border-box;height:60px;margin-top:16px;padding:10px 16px;background:#fff0bc;border-radius:2px;color:#685b38">
+    <strong style="flex:none;font-size:28px;font-weight:650">最新成果</strong>
+    <span style="font-size:28px">{{summary}}</span>
+  </aside>
+</section>

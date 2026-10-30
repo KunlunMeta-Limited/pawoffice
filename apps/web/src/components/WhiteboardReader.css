@@ -29,6 +29,9 @@
 .whiteboard-reader-fallback .task-whiteboard li { height: auto !important; min-height: 2.65em; }
 .whiteboard-reader-content a { color: #3e6854; text-underline-offset: 3px; }
 .whiteboard-reader-content code { font-family: ui-monospace, monospace; }
+.whiteboard-reader-result { padding: 0; overflow: hidden; scrollbar-gutter: auto; }
+.whiteboard-result-document { display: block; width: 100%; height: min(680px, calc(100dvh - 160px)); border: 0; background: transparent; }
+.whiteboard-result-empty { margin: 0; padding: 32px; color: #778390; }
 .whiteboard-reader-content .task-whiteboard { font-size: 20px; }
 .whiteboard-reader-content .task-whiteboard a:focus-visible { outline: 2px solid #4c84e8; outline-offset: 4px; }
 .whiteboard-reader-content [role=progressbar] > div { transition: width .25s linear; }
