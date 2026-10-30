@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { readFile } from 'node:fs/promises'
@@ -15,7 +16,7 @@ test('farm work frames keep both feet planted instead of sliding the legs during
     for (const frame of clip.frames) {
       const record = registration.frames.find(item => item.file === frame.file)
       assert.equal(record.scale, .735); assert.deepEqual(record.foot, { x: 128, y: 344 })
-      const { data, info } = await sharp(new URL(`character/${frame.file}`, root).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+      const { data, info } = await sharp(fileURLToPath(new URL(`character/${frame.file}`, root))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
       assert.equal(info.width, 256); assert.equal(info.height, 384)
       let left = 185, right = -1, bottom = -1
       for (let y = 326; y < 350; y++) for (let x = 70; x < 185; x++) if (data[(y * info.width + x) * 4 + 3] >= 128) {

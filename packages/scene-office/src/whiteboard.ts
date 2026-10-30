@@ -6,5 +6,5 @@ export { WhiteboardProgress } from './whiteboardProgress.ts'
 
 export function whiteboardTaskBoard(state: Record<string, unknown>): WhiteboardTaskBoardData | null {
   const result = whiteboardTaskBoardSchema.safeParse(state.taskBoard)
-  return result.success && result.data.title ? result.data : null
+  return result.success ? result.data : null
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { Coffee, Grid2X2, Pause, Play, RotateCw } from 'lucide-react'
+import { Coffee, Grid2X2, Pause, Play, RotateCw, FolderOpen } from 'lucide-react'
+import { officeResultSchema } from '@pawoffice/protocol/office-ui'
+import { resultPresentation } from '../results/presentation.ts'
 import type { AgentState } from '@pawoffice/scene-office/types'
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
 import type { OfficeSceneController } from '../controller/useOfficeSceneController.ts'
@@ -28,6 +30,8 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
   teamSwitcherTarget?: HTMLElement | null
 }) {
   const { sceneRef, menu, setMenu, demo, setDemo, canDemo, setNotice, loaded, actions, thumbnails, previewProp, highlightProp } = controller
+  const resultState = controller.currentBoard
+    ? resultPresentation(controller.currentBoard, officeResultSchema.parse(controller.currentBoard.result ?? {})) : null
   const editorRuntime = runtime, editor = runtime.editorSnapshot()
   const [coffee, setCoffee] = useState(true)
   const [canCoffee, setCanCoffee] = useState(false)
@@ -96,6 +100,10 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
         <MapEditorOverlay runtime={editorRuntime} draft={editor} view={mapView} setView={setMapView} onError={setNotice} onPreview={previewProp} onHighlight={highlightProp} />
         <RoomEditor key={editor.id} runtime={editorRuntime} draft={editor} view={mapView} setView={setMapView} onError={setNotice} thumbnails={thumbnails} />
       </> : <div className="runtime-scene-toolbar">
+          {resultState && <button type="button" className="office-result-entry" aria-label={`查看当前成果：${resultState.label}`}
+            aria-haspopup="dialog" title={resultState.description} onClick={controller.openWhiteboard}>
+            <FolderOpen size={16} aria-hidden="true" /><strong>当前成果</strong><small data-status={resultState.key}>{resultState.label}</small>
+          </button>}
           <button type="button" title={preparingEdit ? '人物正在返回工位' : '编辑布局'} aria-label="编辑布局" disabled={!loaded || !actions.ready || preparingEdit} onClick={() => { void edit() }}><Grid2X2 size={17} /></button>
           {canCoffee && <button type="button" title={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-label={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-pressed={coffee} disabled={!actions.ready}
             onClick={() => { const enabled = !coffee; sceneRef.current?.setIdleCoffee(enabled); setCoffee(enabled) }}><Coffee size={17} /></button>}

@@ -52,7 +52,8 @@ export class CommerceOfficeDataSource extends ExampleOfficeDataSource {
       whiteboard: { ...commerceAssetConversation(this.commerceTeam, 'conversion-review', new Date()).whiteboard!,
         status: visible ? main.whiteboard!.status : 'queued' as const,
         description: visible ? main.whiteboard!.description : '商品获批上架后，再查看访问、订单与购买咨询。',
-        note: visible ? main.whiteboard!.note : '当前没有销售结果，不预先填写优化收益。' } }
+        note: visible ? main.whiteboard!.note : '当前没有销售结果，不预先填写优化收益。',
+        ...(main.whiteboard?.result ? { result: main.whiteboard.result } : {}) } }
     this.replaceConversations([main, review])
   }
   private recordActivities(main: DashboardConversation, previous?: DashboardConversation, stageChanged = true, at = new Date().toISOString()) {

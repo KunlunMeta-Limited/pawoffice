@@ -3,6 +3,30 @@ import type { OfficeSnapshot } from '@pawoffice/protocol/office-integration'
 import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 import { maxRelayEventBytes, maxRelayTeams } from '@pawoffice/protocol/relay'
 
+function assertResultHistory(previous: OfficeSnapshot, next: OfficeSnapshot) {
+  for (const conversation of next.conversations) {
+    const old = previous.conversations.find(item => item.id === conversation.id)
+    if (!old) continue
+    const priorDeliveries = new Map(old.whiteboard.deliveries.map(delivery => [delivery.id, delivery]))
+    for (const delivery of conversation.whiteboard.deliveries) {
+      const prior = priorDeliveries.get(delivery.id)
+      if (prior && canonical(prior) !== canonical(delivery)) {
+        throw new OfficeStateFault(409, 'RESULT_HISTORY_CONFLICT', '已交付的历史记录不能覆盖，请使用新的交付 id')
+      }
+    }
+    const artifacts = (board: typeof conversation.whiteboard) => [board.result, ...board.deliveries.flatMap(delivery => delivery.result ? [delivery.result] : [])].flatMap(result => result.artifacts)
+    const revisions = new Map(artifacts(old.whiteboard).filter(artifact => artifact.versionId).map(artifact => [JSON.stringify([artifact.id, artifact.versionId]), artifact]))
+    for (const artifact of artifacts(conversation.whiteboard)) {
+      if (!artifact.versionId) continue
+      const prior = revisions.get(JSON.stringify([artifact.id, artifact.versionId]))
+      if (prior && (prior.content !== artifact.content || prior.mimeType !== artifact.mimeType || prior.sha256 !== artifact.sha256
+        || (!artifact.sha256 && prior.url !== artifact.url))) {
+        throw new OfficeStateFault(409, 'RESULT_HISTORY_CONFLICT', '产物版本内容不可覆盖，请使用新的 versionId')
+      }
+    }
+  }
+}
+
 export class OfficeStateFault extends Error {
   constructor(readonly code: number, readonly reasonCode: string, message: string) { super(message) }
 }
@@ -26,6 +50,7 @@ export class OfficeState {
         results.push({ teamId: id, seq: previous.seq, status: 'ignored', reasonCode: snapshot.seq === previous.seq ? 'DUPLICATE_SEQ' : 'STALE_SEQ' })
         continue
       }
+      if (previous) assertResultHistory(previous, snapshot)
       next.set(id, structuredClone(snapshot)); accepted.push(snapshot); results.push({ teamId: id, seq: snapshot.seq, status: 'cached' })
     }
     if (next.size > maxRelayTeams) throw new OfficeStateFault(422, 'OFFICE_LIMIT', `最多支持 ${maxRelayTeams} 个办公室`)

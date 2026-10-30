@@ -1,4 +1,5 @@
-import { memo, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { resultDeliverySchema } from '@pawoffice/protocol/office-ui'
 import { ArrowDown, ArrowUp, LoaderCircle, MessageCircle, Plus, Square } from 'lucide-react'
 import type { ChatSession } from '../chat/ChatSession.ts'
 import type { ChatWorkspace, ChatWorkspaceSnapshot, ConversationEntry } from '../chat/ChatWorkspace.ts'
@@ -13,6 +14,7 @@ import './OfficeChat.css'
 type Props = {
   session: ChatWorkspace; expanded: boolean; onExpandedChange: (expanded: boolean) => void; hidden: boolean; leaderAppearanceId?: string; leaderName: string
   decisionSession: DecisionSession; decisionPreview?: boolean; decisionOpenToken?: number; onReplayDemo?: () => void
+  onOpenDelivery?: (conversationId: string, deliveryId: string) => boolean
 }
 export const OfficeChat = memo(function OfficeChat(props: Props) {
   const state = useSyncExternalStore(props.session.subscribe, props.session.getSnapshot)
@@ -22,10 +24,11 @@ export const OfficeChat = memo(function OfficeChat(props: Props) {
   return <ActiveConversation key={entry.id} {...props} workspace={props.session} workspaceState={state} entry={entry} session={entry.session} allDecisions={decisions} />
 })
 
-function ActiveConversation({ session, workspace, workspaceState, entry, allDecisions, expanded, onExpandedChange, hidden, leaderName, decisionSession, decisionPreview = false, decisionOpenToken = 0, onReplayDemo }: Omit<Props, 'session'> & {
+function ActiveConversation({ session, workspace, workspaceState, entry, allDecisions, expanded, onExpandedChange, hidden, leaderName, decisionSession, decisionPreview = false, decisionOpenToken = 0, onReplayDemo, onOpenDelivery }: Omit<Props, 'session'> & {
   session: ChatSession; workspace: ChatWorkspace; workspaceState: ChatWorkspaceSnapshot; entry: ConversationEntry; allDecisions: DecisionSnapshot
 }) {
   const chat = useSyncExternalStore(session.subscribe, session.getSnapshot)
+  const deliveries = useMemo(() => (entry.data?.whiteboard?.deliveries ?? []).map(item => resultDeliverySchema.parse(item)), [entry.data?.whiteboard?.deliveries])
   const decisions = { ...allDecisions, pending: allDecisions.pending.filter(item => item.conversationId === entry.id),
     submittingId: allDecisions.submittingIds?.find(id => allDecisions.pending.some(item => item.id === id && item.conversationId === entry.id)),
     error: allDecisions.pending.some(item => item.id === allDecisions.errorDecisionId && item.conversationId === entry.id) ? allDecisions.error : null,
@@ -53,9 +56,16 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     }
     resize()
     let width = element.clientWidth
-    const observer = new ResizeObserver(() => { if (element.clientWidth !== width) { width = element.clientWidth; resize() } })
+    let resizeFrame = 0
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth !== width) {
+        width = element.clientWidth
+        cancelAnimationFrame(resizeFrame)
+        resizeFrame = requestAnimationFrame(resize)
+      }
+    })
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => { observer.disconnect(); cancelAnimationFrame(resizeFrame) }
   }, [draft, hidden, expanded])
   const bottom = () => {
     setAtBottom(true); transcript.current?.toBottom()
@@ -72,6 +82,7 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
       <ConversationTabs workspace={workspace} state={workspaceState} decisions={allDecisions} menuOpen={conversationMenuOpen} onMenuOpenChange={setConversationMenuOpen} menuId={conversationMenuId} onCollapse={collapse} panelId={panelId} />
       <div className="office-chat-body">
       <ChatTranscript ref={transcript} session={session} chat={chat} expanded={expanded} leaderName={leaderName} storageError={workspaceState.storageError} onAtBottomChange={setAtBottom}
+        deliveries={deliveries} onOpenDelivery={onOpenDelivery ? id => onOpenDelivery(entry.id, id) : undefined}
         onEdit={() => { setDraft(chat.messages.findLast(message => message.role === 'user')?.content ?? ''); textarea.current?.focus() }} />
       </div>
       {!atBottom && <button type="button" className="office-chat-latest" title="回到最新消息" aria-label="回到最新消息" onClick={bottom}><ArrowDown size={17} /></button>}

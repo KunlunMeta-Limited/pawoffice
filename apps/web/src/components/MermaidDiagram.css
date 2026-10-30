@@ -1,0 +1,81 @@
+/* Pele theming: colours are CSS variables inside the SVG, so theme changes never re-render. */
+.mermaid-diagram {
+  --pele-bg: transparent;
+  --pele-fg: #26332b;
+  --pele-fg-on-light: #26332b;
+  --pele-fg-on-dark: #ffffff;
+  --pele-muted: #7f8b82;
+  --pele-line: #aebbab;
+  --pele-surface: #f2f6f0;
+  --pele-surface-alt: #e7efe4;
+  --pele-border: #cfdacd;
+  --pele-accent: #3f6b53;
+  --pele-critical: #b45c4b;
+  --pele-error: #b45c4b;
+  --pele-radius: 6px;
+  --pele-font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  --pele-font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --pele-series-1: #4c78a8;
+  --pele-series-2: #d98a3d;
+  --pele-series-3: #54a24b;
+  --pele-series-4: #c25e52;
+  --pele-series-5: #6fa8a3;
+  --pele-series-6: #c9a33f;
+  --pele-series-7: #9d7ba5;
+  --pele-series-8: #8f7a63;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  margin: 10px 0;
+}
+
+.result-blocks .mermaid-diagram,
+.office-chat-markdown .mermaid-diagram { margin: 6px 0; }
+
+.mermaid-diagram-svg {
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+.mermaid-diagram-svg svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+.mermaid-placeholder {
+  margin: 0;
+  padding: 11px 13px;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px dashed #dbe4d9;
+  border-radius: 10px;
+  background: #fbfcfa;
+  color: #6f7b72;
+  font: 11px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mermaid-placeholder.is-error {
+  border-color: #ecd4cc;
+  background: #fdf8f6;
+  color: #a25948;
+}
+
+.mermaid-diagram-caption,
+.mermaid-diagram-note {
+  margin: 0;
+  color: #7f8b82;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.mermaid-diagram-note { color: #a25948; }
+
+/* Keep Pele's SVG text readable inside the reader's small type scale. */
+.mermaid-diagram .pele { font-family: var(--pele-font); }

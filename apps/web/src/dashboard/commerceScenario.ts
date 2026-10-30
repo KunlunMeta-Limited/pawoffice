@@ -1,4 +1,6 @@
 import type { DashboardConversation, DashboardTask } from '@pawoffice/protocol/dashboard'
+import { officeResultSchema } from '@pawoffice/protocol/office-ui'
+import type { OfficeResult, OfficeResultInput } from '@pawoffice/protocol/office-ui'
 import { OFFICE_ROSTER } from '@pawoffice/scene-office/core/roster'
 
 export type CommerceStage = 'ready' | 'dispatching' | 'preparing' | 'approval' | 'observing' | 'decision' | 'optimizing' | 'reviewing' | 'updated' | 'completed' | 'paused' | 'rejected' | 'expired' | 'stopped'
@@ -25,6 +27,95 @@ export function commerceMetricTable(strategy?: Exclude<CommerceStrategy, 'pause'
     row('成交额', value => `${value.price * value.orders} 元`)].join('\n') + (strategy
     ? '\n\n以上均为本地模拟数据，两个观察窗口不是随机对照实验，不能据此证明优化效果。'
     : '\n\n以上均为本地模拟数据，仅描述首轮样本，尚未验证优化效果。')
+}
+
+function percentChange(current: number, previous: number) {
+  const value = (current - previous) / previous * 100
+  return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`
+}
+
+export function commerceResult(team: CommerceTeam, strategy: Exclude<CommerceStrategy, 'pause'>, now: Date): OfficeResult {
+  const first = commerceMetrics.first, current = commerceMetrics[strategy]
+  const teamDefinition = commerceTeams[team]
+  const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const conversion = (value: typeof first) => value.orders / value.visits * 100
+  const revenue = (value: typeof first) => value.orders * value.price
+  const coupon = strategy === 'coupon'
+  const comparison = {
+    id: 'comparison', kind: 'data' as const, title: '两轮经营对比', description: '同一口径的两个模拟 24 小时观察窗口。', url: '',
+    content: `| 指标 | 首轮 | 更新后 | 变化 |\n| --- | ---: | ---: | ---: |\n| 曝光 | 10,000 | 10,000 | 0.0% |\n| 商品访问 | ${first.visits} | ${current.visits} | ${percentChange(current.visits, first.visits)} |\n| 订单 | ${first.orders} | ${current.orders} | +${current.orders - first.orders} 单 |\n| 访问成交率 | ${conversion(first).toFixed(1)}% | ${conversion(current).toFixed(1)}% | +${(conversion(current) - conversion(first)).toFixed(1)}pp |\n| 成交额 | ${revenue(first)} 元 | ${revenue(current).toLocaleString('en-US')} 元 | ${percentChange(revenue(current), revenue(first))} |\n\n两个观察窗口不是随机对照实验，不能据此证明优化效果。`,
+  }
+  const artifacts: Record<CommerceTeam, NonNullable<OfficeResultInput['artifacts']>> = {
+    operations: [comparison,
+      { id: 'page-changes', kind: 'document', title: '商品页改动清单', description: '标题、主图、尺寸说明与详情顺序的改动记录。', url: '',
+        content: '## 已完成\n\n- 标题补充“六档调节・便携收纳”。\n- 首图展示完整商品，去掉遮挡装饰。\n- 新增 13–16 英寸适用范围说明。\n- 详情顺序调整：尺寸信息移到材质说明之前。\n\n## 待完成\n\n- 补拍折叠前后尺寸测量图。\n- 复核售后与退换说明。' },
+      { id: 'review-report', kind: 'document', title: '经营复盘报告', description: '问题、假设、动作与下一轮观察计划。', url: '',
+        content: `## 复盘摘要\n\n首轮 10 条购买咨询中有 6 条涉及适用尺寸，因此先补充尺寸说明，售价保持 79 元。\n\n## 结果\n\n- 订单 ${first.orders} → ${current.orders} 单，成交率 ${conversion(first).toFixed(1)}% → ${conversion(current).toFixed(1)}%。\n- 访问 ${first.visits} → ${current.visits} 次，曝光没有变化。\n\n## 尚不能得出的结论\n\n样本窗口短、没有对照组，需要延长观察并核对退款与售后数据。` }],
+    visual: [comparison,
+      { id: 'size-guide', kind: 'image', title: '尺寸图与主图说明', description: '适用尺寸、折叠尺寸与主图裁切说明。', url: '',
+        content: '## 尺寸图交付说明\n\n- 展开尺寸与折叠尺寸使用同一组测量数据。\n- 明确适用 13–16 英寸笔记本，不承诺 17 英寸机型。\n- 主图不通过视觉比例暗示未经核验的适用范围。\n- 移动端首图裁切后仍保留完整商品。' },
+      { id: 'mobile-check', kind: 'document', title: '移动端阅读检查', description: '首图裁切、详情字号与参数可读性检查结果。', url: '',
+        content: '## 检查结果\n\n- [x] 首图在 375px 宽度下完整展示商品。\n- [x] 尺寸参数在详情页无需横向滚动即可阅读。\n- [x] 图片与文案使用同一组参数。\n- [ ] 补拍折叠前后尺寸照片。' }],
+    analysis: [comparison,
+      { id: 'observation-standard', kind: 'document', title: '观察口径说明', description: '曝光、访问、订单与成交率的统计口径。', url: '',
+        content: `## 观察口径\n\n- 曝光：商品在搜索结果与推荐位出现的次数。\n- 商品访问：进入商品详情页的去重访问。\n- 订单：模拟支付成功的订单数。\n- 成交率：订单 ÷ 商品访问。\n\n两轮窗口均为模拟 24 小时，统计起止时间保持一致。` },
+      { id: 'funnel-review', kind: 'data', title: '转化漏斗复盘', description: '曝光 → 访问 → 订单的分层数据。', url: '',
+        content: `| 层级 | 首轮 | 更新后 |\n| --- | ---: | ---: |\n| 曝光 | 10,000 | 10,000 |\n| 访问 | ${first.visits} | ${current.visits} |\n| 订单 | ${first.orders} | ${current.orders} |\n\n访问量没有同步增长，订单增长不能简单归因于流量扩大。` }],
+  }
+  const checks: Record<CommerceTeam, NonNullable<OfficeResultInput['checks']>> = {
+    operations: [
+      { id: 'copy', label: '标题、主图、详情与价格完成复核', status: 'passed' },
+      { id: 'size', label: '13–16 英寸适用范围已补齐', status: 'passed' },
+      { id: 'window', label: '两轮观察窗口口径一致', status: 'passed' },
+      { id: 'refund', label: '退款与售后数据接入', status: 'pending' },
+      { id: 'extend', label: '延长观察窗口后再决定是否扩大推广', status: 'pending' },
+    ],
+    visual: [
+      { id: 'consistency', label: '图片与文字使用同一组参数', status: 'passed' },
+      { id: 'mobile', label: '移动端首图与详情阅读检查通过', status: 'passed' },
+      { id: 'size', label: '尺寸图适用与不适用范围完整', status: 'passed' },
+      { id: 'photo', label: '折叠前后尺寸照片补拍', status: 'pending' },
+    ],
+    analysis: [
+      { id: 'standard', label: '观察口径与统计起止时间记录', status: 'passed' },
+      { id: 'verify', label: '两轮指标交叉核验', status: 'passed' },
+      { id: 'refund', label: '退款与售后数据接入', status: 'pending' },
+      { id: 'extend', label: '延长观察窗口后重新评估', status: 'pending' },
+    ],
+  }
+  const next: Record<CommerceTeam, string[]> = {
+    operations: ['延长第二个观察窗口至 72 小时，核对退款与售后数据。', '补拍折叠前后尺寸照片，替换详情页中的临时示意图。', '下周复盘后，再决定是否扩大投放或调整价格。'],
+    visual: ['补拍折叠前后尺寸照片并更新详情页。', '与运营确认主图与尺寸图的最终版本。', '观察窗口结束后，复核图片与文案是否需要调整。'],
+    analysis: ['延长观察窗口，补充退款与售后数据。', '保持统计口径不变，避免跨窗口比较失真。', '把本轮假设和验证结果整理进复盘记录。'],
+  }
+  const summary = coupon
+    ? `5 元优惠后订单 ${first.orders} → ${current.orders} 单，成交价 ${first.price} → ${current.price} 元。`
+    : `尺寸说明补齐后，订单 ${first.orders} → ${current.orders} 单，成交率 ${conversion(first).toFixed(1)}% → ${conversion(current).toFixed(1)}%。`
+  return officeResultSchema.parse({
+    template: 'result-v1',
+    title: team === 'operations' ? '电脑支架经营复盘' : team === 'visual' ? '商品视觉交付复盘' : '经营观察复盘',
+    status: 'verified',
+    summary,
+    verdict: '标题、主图、详情与价格已复核；两轮为同口径模拟窗口，尚不能证明因果关系。',
+    owner: `王明 · ${teamDefinition.roles[0]}`,
+    producedAt: stamp,
+    metrics: [
+      { id: 'impressions', label: '曝光', value: current.impressions.toLocaleString('en-US'), unit: '次', previous: `${first.impressions.toLocaleString('en-US')} 次`, change: '0.0%', trend: 'flat', tone: 'neutral' },
+      { id: 'visits', label: '商品访问', value: String(current.visits), unit: '次', previous: `${first.visits} 次`, change: percentChange(current.visits, first.visits), trend: current.visits >= first.visits ? 'up' : 'down', tone: 'neutral' },
+      { id: 'orders', label: '订单', value: String(current.orders), unit: '单', previous: `${first.orders} 单`, change: `+${current.orders - first.orders} 单`, trend: 'up', tone: 'positive' },
+      { id: 'conversion', label: '访问成交率', value: conversion(current).toFixed(1), unit: '%', previous: `${conversion(first).toFixed(1)}%`, change: `+${(conversion(current) - conversion(first)).toFixed(1)}pp`, trend: 'up', tone: 'positive' },
+      { id: 'revenue', label: '成交额', value: revenue(current).toLocaleString('en-US'), unit: '元', previous: `${revenue(first)} 元`, change: percentChange(revenue(current), revenue(first)), trend: 'up', tone: 'positive' },
+      { id: 'price', label: '成交单价', value: String(current.price), unit: '元', previous: `${first.price} 元`, change: coupon ? `-${first.price - current.price} 元` : '保持不变', trend: coupon ? 'down' : 'flat', tone: 'neutral' },
+    ],
+    artifacts: artifacts[team],
+    checks: checks[team],
+    decisions: [
+      { id: 'listing', question: '是否按 79 元上架电脑支架？', choice: '确认上架', at: stamp },
+      { id: 'strategy', question: '电脑支架下一步怎么优化？', choice: coupon ? '试用 5 元优惠' : '补充尺寸说明，保持 79 元', at: stamp },
+    ],
+    next: next[team],
+    note: '以上为本地模拟数据，不连接真实店铺，不产生费用。两个观察窗口不是随机对照实验，不能据此证明优化效果。',
+  })
 }
 
 export const commerceTeams = {
@@ -119,7 +210,8 @@ export function commerceConversation(team: CommerceTeam, stage: CommerceStage, n
     whiteboard: { template: 'task-board-v1', title: copy.title, status: halted || ['approval', 'decision'].includes(stage) ? 'blocked' : stage === 'completed' ? 'completed' : stage === 'ready' ? 'queued' : 'running',
       tagline: '电商运营 · 模拟数据', description: copy.description, note: copy.note,
       steps: [{ id: 'listing', title: '商品与上架', progress: firstDone ? 100 : beforeListing ? 0 : 95 }, { id: 'observation', title: '销量与反馈', progress: secondDone ? 100 : stage === 'observing' ? 20 : 0 },
-        { id: 'improvement', title: '优化与复盘', progress: stage === 'completed' ? 100 : stage === 'updated' ? 75 : stage === 'reviewing' ? 55 : stage === 'optimizing' ? 35 : 0 }] } }
+        { id: 'improvement', title: '优化与复盘', progress: stage === 'completed' ? 100 : stage === 'updated' ? 75 : stage === 'reviewing' ? 55 : stage === 'optimizing' ? 35 : 0 }],
+      ...(stage === 'completed' ? { result: commerceResult(team, strategy === 'coupon' ? 'coupon' : 'information', now) } : {}) } }
 }
 
 export function commerceInitialHistory(teamId: string, conversationId: string) {

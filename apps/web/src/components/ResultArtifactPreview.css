@@ -1,0 +1,31 @@
+.result-version-dialog { box-sizing: border-box; width: min(1100px, calc(100vw - 48px)); height: min(860px, calc(100dvh - 48px)); max-height: calc(100dvh - 48px); margin: auto; padding: 0; overflow: hidden; border: 1px solid #dce3dd; border-radius: 16px; background: #fff; color: #334638; box-shadow: 0 20px 80px #14251d30; font: 13px/1.7 system-ui, sans-serif; }
+.result-version-dialog[open] { display: flex; flex-direction: column; }
+.result-version-dialog::backdrop { background: #16241d70; backdrop-filter: blur(3px); }
+.result-version-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; border-bottom: 1px solid #e9eee8; }
+.result-version-head > div { min-width: 0; }
+.result-version-head h2 { margin: 0; font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.result-version-head p { margin: 4px 0 0; color: #869087; font-size: 11px; }
+.result-version-head > button { flex: none; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #7d887f; cursor: pointer; }
+.result-version-toolbar { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 24px; background: #fafbf9; }
+.result-version-toolbar label { display: flex; align-items: center; gap: 6px; margin-right: auto; color: #849086; font-size: 11px; }
+.result-version-toolbar select { max-width: 260px; min-width: 100px; padding: 5px 8px; border: 1px solid #dfe6df; border-radius: 6px; background: #fff; color: #4a6050; font: inherit; }
+.result-version-toolbar button, .result-version-toolbar a { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid #dfe6df; border-radius: 6px; background: #fff; color: #5c7061; text-decoration: none; font: inherit; font-size: 11px; cursor: pointer; }
+.result-version-toolbar button[aria-pressed=true] { background: #eaf3ec; color: #315f40; }
+.result-version-toolbar button:disabled { opacity: .45; cursor: default; }
+.result-version-notice { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; padding: 9px 24px; background: #fff8e9; color: #8a7345; font-size: 11px; }
+.result-version-notice button { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; background: transparent; color: #4d7056; font: inherit; text-decoration: underline; cursor: pointer; }
+.result-version-body { flex: 1; min-height: 0; padding: 24px 32px; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.result-version-body > :first-child { margin-top: 0; }
+.result-version-body :is(h1,h2,h3,h4) { color: #253e2c; line-height: 1.5; }
+.result-version-body h1 { font-size: 23px; }
+.result-version-body h2 { margin-top: 28px; font-size: 18px; }
+.result-version-body h3 { font-size: 15px; }
+.result-version-body a { color: #427454; }
+.result-version-body img { max-width: 100%; }
+.result-version-image { display: block; max-height: 100%; margin: auto; object-fit: contain; }
+.result-version-code { padding: 16px; overflow: auto; border-radius: 8px; background: #f6f8f5; font: 12px/1.8 ui-monospace, Consolas, monospace; white-space: pre; }
+.result-version-error { color: #a35142; }
+.result-version-compare-label, .result-version-unsupported { color: #7d897e; font-size: 12px; }
+.result-version-footer { flex: none; padding: 9px 24px; border-top: 1px solid #e8ede7; color: #939c94; font-size: 10px; overflow-wrap: anywhere; }
+.result-version-dialog :is(button,select):focus-visible { outline: 2px solid #718575; outline-offset: 2px; }
+@media (max-width: 620px) { .result-version-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; } .result-version-head { padding: 14px 16px; } .result-version-head h2 { font-size: 16px; } .result-version-toolbar { padding: 9px 16px; } .result-version-toolbar label { flex-basis: 100%; } .result-version-body { padding: 18px 16px; } .result-version-notice, .result-version-footer { padding-left: 16px; padding-right: 16px; } }

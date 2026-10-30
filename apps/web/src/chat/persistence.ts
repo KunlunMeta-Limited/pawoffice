@@ -7,6 +7,7 @@ export const chatArchiveSchema = z.strictObject({
   activeTurnId: z.string().max(100).default(''),
   messages: z.array(z.strictObject({
     id: z.string().min(1), role: z.enum(['user', 'assistant']), content: z.string().max(50000),
+    turnId: z.string().min(1).max(100).optional(),
     state: z.enum(['complete', 'pending', 'stopped', 'error']),
   })),
 })

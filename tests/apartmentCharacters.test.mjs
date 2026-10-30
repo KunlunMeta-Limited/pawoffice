@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createTestServer } from './helpers/vite.mjs'
@@ -128,7 +129,7 @@ test('the seated atlas trims six distinct poses in reading order', async t => {
 test('OfficeLead keeps the same head width through seated, leaning, rising and standing poses', async () => {
   const widths = []
   for (const name of ['idle/back', 'sit/back', 'pose/lean', 'pose/rise', 'talk/seated-right']) {
-    const { data, info } = await sharp(new URL(`../art/characters/packs/office-lead/${name}/001.png`, import.meta.url).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const { data, info } = await sharp(fileURLToPath(new URL(`../art/characters/packs/office-lead/${name}/001.png`, import.meta.url))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     const bounds = alphaBounds(data, info.width, info.height)
     let left = info.width, right = -1
     // These authored OfficeLead poses keep the widest part of the hair in the upper 45%.

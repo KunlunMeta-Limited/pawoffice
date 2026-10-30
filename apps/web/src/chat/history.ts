@@ -5,8 +5,8 @@ export const messageId = (turnId: string, role: 'user' | 'assistant') => `${turn
 
 export function mergeHistory(messages: ChatMessage[], turns: ChatHistoryTurn[], older = false) {
   const incoming: ChatMessage[] = turns.flatMap(turn => [
-    { id: messageId(turn.id, 'user'), role: 'user', content: turn.user, state: 'complete' },
-    { id: messageId(turn.id, 'assistant'), role: 'assistant', content: turn.assistant, state: turn.state },
+    { id: messageId(turn.id, 'user'), turnId: turn.id, role: 'user', content: turn.user, state: 'complete' },
+    { id: messageId(turn.id, 'assistant'), turnId: turn.id, role: 'assistant', content: turn.assistant, state: turn.state },
   ])
   const updates = new Map(incoming.map(message => [message.id, message]))
   const existing = new Set(messages.map(message => message.id))
