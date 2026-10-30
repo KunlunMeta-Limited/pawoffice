@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { before, after, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
@@ -23,8 +24,8 @@ for (const [id, registrations] of Object.entries({ 'office-lead': mouthRegistrat
 test(`${id}: mouthless bodies preserve the original pose, canvas, alpha and every pixel outside the mouth`, async () => {
   const root = new URL(`../art/characters/packs/${id}/`, import.meta.url)
   for (const { file, patch: [x, y, width, height] } of registrations) {
-    const original = await sharp(new URL(file, root).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    const body = await sharp(new URL(`body/${file}`, root).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const original = await sharp(fileURLToPath(new URL(file, root))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const body = await sharp(fileURLToPath(new URL(`body/${file}`, root))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     assert.deepEqual(body.info, original.info)
     let changes = 0
     for (let row = 0; row < body.info.height; row++) for (let col = 0; col < body.info.width; col++) {
@@ -167,8 +168,8 @@ test('scene stride phase is independent of frame rate', async t => {
 test('unchanged lateral fourth walking frames preserve their second-frame pose, not the idle pose', async () => {
   for (const id of Object.keys(officeMouthRegistrations)) for (const view of ['right']) {
     const root = new URL(`../art/characters/packs/${id}/`, import.meta.url)
-    const second = await sharp(new URL(`walk/${view}/002.png`, root).pathname).raw().toBuffer()
-    const fourth = await sharp(new URL(`walk/${view}/004.png`, root).pathname).raw().toBuffer()
+    const second = await sharp(fileURLToPath(new URL(`walk/${view}/002.png`, root))).raw().toBuffer()
+    const fourth = await sharp(fileURLToPath(new URL(`walk/${view}/004.png`, root))).raw().toBuffer()
     assert(second.equals(fourth), `${id}/${view}`)
     const source = JSON.parse(await readFile(new URL('character.json', root), 'utf8'))
     assert.equal(source.clips[`walk.${view}`].frames[1].file, `body/walk/${view}/002.png`)
