@@ -8,7 +8,7 @@ import type {
   ResultBlock, ResultBlockKind, ResultSectionLayout, ResultTableColumn,
 } from '@pawoffice/protocol/office-ui'
 import { MermaidDiagram } from './MermaidDiagram.tsx'
-import { mermaidPre } from './mermaidMarkdown.tsx'
+import { resultCodePre } from './resultMarkdownCode.tsx'
 import './ResultBlocks.css'
 
 /** One member of the block discriminator union; renderers stay narrow instead of re-parsing. */
@@ -45,7 +45,7 @@ const markdownComponents: Components = {
   img: ({ src, alt, title }) => typeof src === 'string' && src
     ? <img src={src} alt={alt ?? ''} title={title} loading="lazy" />
     : <span>{alt}</span>,
-  pre: mermaidPre,
+  pre: resultCodePre,
 }
 
 function shorten(text: string, max: number): string {

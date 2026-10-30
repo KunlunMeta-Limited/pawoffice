@@ -135,7 +135,7 @@ custom blocks 保持为内容扩展能力。是否显示首屏摘要、风险提
 | `WhiteboardReader` | 模态生命周期、完整白板 JSON 下载、焦点恢复 |
 | `OfficeSceneControls` | 两种正式布局的公共入口及简短状态 |
 | `useOfficeSceneController` | 获取当前会话数据，协调白板与工具栏入口 |
-| `ResultPreview` | 开发数据切换，复用正式阅读组件 |
+| 电商工作流 mock | 通过正式办公室联调，支持全景与逐轮模式 |
 
 `resultHasContent` 覆盖 sections / tasks / versions / risks / next / note，避免新结构成果被误判为空；墙上白板的成果提示同步补齐。
 

@@ -172,7 +172,7 @@ $demoBoard.result.artifacts = $(if ($Round -eq 3) { $demoHistory.result.artifact
 $demoBoard.result.producedAt = $demoSelected.createdAt
 if ($Round -ge 2) {
     $demoBoard.result.sections[1].items = @($demoBoard.result.artifacts | ForEach-Object {
-        @{ id = "$($_.id)-meta"; title = $_.title; version = $_.version; at = ([DateTimeOffset]$_.producedAt).ToString('yyyy-MM-dd HH:mm:ss'); status = 'done' }
+        @{ id = "$($_.id)-meta"; artifactId = $_.id; versionId = $_.versionId; title = $_.title; version = $_.version; at = ([DateTimeOffset]$_.producedAt).ToString('yyyy-MM-dd HH:mm:ss'); status = 'done' }
     })
 }
 $demoBoard.result.versions = @($demoBoard.deliveries | Where-Object { $_.sequence -ge 2 } | ForEach-Object {
@@ -244,5 +244,5 @@ $demoResponse = Send-PawOfficeMessage $demoMessage
 Write-Host "已提交成果联调数据：seq=$demoSeq，成果状态=$($demoBoard.result.status)。" -ForegroundColor Green
 if ($demoResponse.code -eq 202) { Write-Host '服务端已缓存；请打开或刷新正式办公室页面，等待连接后查看。' -ForegroundColor Yellow }
 Write-Host "当前已模拟到第 $Round 轮；可用 -Round 1、-Round 2、-Round 3 逐轮发送。"
-Write-Host '在连接了该后端的正式前端页面，选择“成果联调办公室” → “登录模块交付演示” → “当前成果”，通过交付轮次选择查看历史。'
+Write-Host '在连接了该后端的正式前端页面，选择“成果联调办公室” → “登录模块交付演示” → “当前成果”，通过文件预览中的版本菜单回看已提供版本。'
 Write-Host '页面地址请使用 npm run dev 启动日志中的 Vite 地址，并打开 /office/；保持现有两个服务运行即可。'

@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { after, before, test } from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
-let server, schema, resultSchema, ResultWorkspace, ResultReader, format, preview, cases, createResultDemoBoard
+let server, schema, resultSchema, ResultWorkspace, ResultReader, format, createResultDemoBoard
 
 before(async () => {
   server = await createTestServer()
@@ -14,8 +13,6 @@ before(async () => {
   ;({ ResultReader } = await server.ssrLoadModule('/apps/web/src/components/ResultReader.tsx'))
   ;({ createResultDemoBoard } = await server.ssrLoadModule('/apps/web/src/dashboard/resultDemo.ts'))
   format = await server.ssrLoadModule('/apps/web/src/results/format.ts')
-  preview = await server.ssrLoadModule('/apps/web/src/dev/resultPreviewData.ts')
-  cases = preview.parseResultPreviewPayload(JSON.parse(await readFile(new URL('../apps/web/src/dev/mock/result-preview.json', import.meta.url), 'utf8')))
 })
 after(() => server?.close())
 
@@ -224,28 +221,12 @@ test('legacy results keep the compact reader and never grow workspace-only secti
   assert.equal(format.resultHasWorkspace(demo), false)
 })
 
-test('the login mock case drives the workspace end to end', () => {
-  const login = cases.find(item => item.id === 'login-module')
-  assert(login, 'login-module mock case exists')
-  assert.equal(login.board.title, '登录模块开发')
-  assert.equal(login.board.status, 'running')
-  assert.equal(login.result.team, '前端组')
-  assert.equal(login.result.teamSize, 3)
-  assert.deepEqual(login.result.sections.map(section => section.kind), ['changes', 'gallery', 'documents', 'tests', 'api', 'environments', 'files'])
-  assert.equal(login.result.tasks.length >= 6, true)
-  assert.equal(login.result.versions.length, 3)
-  assert.equal(login.result.risks.length, 3)
-  const html = renderWorkspace(login.result)
-  for (const text of ['登录模块开发', '执行中', '王明', '前端组（3人）', '页面原型 / 页面预览', '接口交付', '部署与发布', '文件与附件']) {
-    assert(html.includes(text), text)
-  }
-  assert.equal(format.resultHasWorkspace(login.result), true)
-})
+
 
 test('the workspace report exports sections, tasks, versions and risks as Markdown', () => {
   const result = workspaceResult()
   const report = format.resultReport(result)
-  assert(report.includes('## 交付成果'))
+  assert(report.includes('## 补充内容'))
   assert(report.includes('### 页面原型 / 页面预览'))
   assert(report.includes('### 接口交付'))
   assert(report.includes('| /login | POST | 已完成 | 06-18 10:20 |'))
@@ -384,32 +365,3 @@ test('custom sections and layout tokens validate strictly', () => {
   ]
   for (const value of invalid) assert.equal(resultSchema.safeParse(value).success, false, JSON.stringify(value).slice(0, 90))
 })
-
-test('the security-audit mock case demonstrates composed primitives end to end', () => {
-  const audit = cases.find(item => item.id === 'security-audit')
-  assert(audit, 'security-audit mock case exists')
-  assert.equal(audit.result.sections.length, 7)
-  assert.deepEqual(audit.result.sections.map(section => section.kind), ['custom', 'custom', 'changes', 'custom', 'custom', 'documents', 'tests'])
-  const blockTypes = new Set(audit.result.sections.filter(section => section.kind === 'custom').flatMap(section => section.blocks.map(block => block.type)))
-  for (const type of ['text', 'stats', 'callout', 'keyValue', 'table', 'progress', 'list', 'chart', 'image', 'diagram', 'divider']) assert(blockTypes.has(type), type)
-  const html = renderWorkspace(audit.result)
-  for (const text of ['审查概览', '认证链路', '文件变更', '问题清单', '风险分布', '审查文档', '回归验证', '验证码可重放', '发布前必须关闭', '修复进度']) {
-    assert(html.includes(text), text)
-  }
-  assert(html.includes('已编辑 8 个文件'))
-  assert(html.includes('+762'))
-  assert(html.includes('-181'))
-  assert(html.includes('WhiteboardDetail.css'))
-  assert(html.includes('mermaid-placeholder'))
-  assert(html.includes('flowchart LR'))
-  assert.equal(format.resultHasWorkspace(audit.result), true)
-  const report = format.resultReport(audit.result)
-  assert(report.includes('### 审查概览'))
-  assert(report.includes('### 文件变更'))
-  assert(report.includes('| 新增 | apps/web/src/components/WhiteboardDetail.css | +49 | -0 |'))
-  assert(report.includes('| 验证码可重放 |'))
-  assert(report.includes('- 修复进度：66%'))
-  assert(report.includes('问题按链路分布'))
-  assert(report.includes('```mermaid'))
-})
-

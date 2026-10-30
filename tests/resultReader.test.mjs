@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { after, before, test } from 'node:test'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
 let server, schema, resultSchema, emptyResult, ResultReader, WhiteboardReader, WhiteboardProgress
-let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard, WhiteboardBoardView, preview, previewCases
+let createResultDemo, createResultDemoBoard, CommerceOfficeDataSource, format, renderBoard, WhiteboardBoardView
 
 before(async () => {
   server = await createTestServer()
@@ -18,8 +17,6 @@ before(async () => {
   ;({ createResultDemo, createResultDemoBoard } = await server.ssrLoadModule('/apps/web/src/dashboard/resultDemo.ts'))
   ;({ CommerceOfficeDataSource } = await server.ssrLoadModule('/apps/web/src/dashboard/CommerceOfficeDataSource.ts'))
   ;({ renderWhiteboardContent: renderBoard } = await server.ssrLoadModule('/packages/scene-office/src/taskBoard.ts'))
-  preview = await server.ssrLoadModule('/apps/web/src/dev/resultPreviewData.ts')
-  previewCases = preview.parseResultPreviewPayload(JSON.parse(await readFile(new URL('../apps/web/src/dev/mock/result-preview.json', import.meta.url), 'utf8')))
   format = await server.ssrLoadModule('/apps/web/src/results/format.ts')
 })
 after(() => server?.close())
@@ -112,39 +109,14 @@ test('the metric layout and heading follow the number and structure of metrics',
   assert(noMetrics.includes('交付物'))
 })
 
-test('the preview demo is driven by structured mock task datasets', () => {
-  assert(previewCases.length >= 4)
-  assert.equal(new Set(previewCases.map(item => item.id)).size, previewCases.length)
-  for (const item of previewCases) {
-    assert(resultSchema.safeParse(item.result).success, item.id)
-    assert(schema.safeParse(item.board).success, item.id)
-    assert(item.result.title.length > 0)
-  }
-  const content = previewCases.find(item => item.id === 'content')
-  assert.equal(content.result.metrics.length, 0, 'content task has no metrics')
-  assert(content.result.artifacts.length > 0)
-  const audit = previewCases.find(item => item.id === 'audit')
-  assert(audit.result.metrics.some(metric => metric.kind === 'status'))
-  assert(audit.result.metrics.some(metric => metric.kind === 'target'))
-  const research = previewCases.find(item => item.id === 'research')
-  assert(research.result.metrics.some(metric => metric.kind === 'text'))
-  assert.equal(research.result.status, 'draft')
-})
 
-test('the mock parser rejects broken payloads instead of rendering half a page', () => {
-  const valid = { cases: [{ id: 'one', label: '任务', description: '说明', whiteboard: { template: 'task-board-v1', title: '任务', status: 'completed', steps: [] } }] }
-  assert.equal(preview.parseResultPreviewPayload(valid)[0].id, 'one')
-  assert.throws(() => preview.parseResultPreviewPayload(null), /cases/)
-  assert.throws(() => preview.parseResultPreviewPayload({ cases: [] }), /至少需要/)
-  assert.throws(() => preview.parseResultPreviewPayload({ cases: [{ ...valid.cases[0], id: '' }] }), /id/)
-  assert.throws(() => preview.parseResultPreviewPayload({ cases: [valid.cases[0], valid.cases[0]] }), /重复/)
-  assert.throws(() => preview.parseResultPreviewPayload({ cases: [{ ...valid.cases[0], whiteboard: { template: 'task-board-v1', title: '任务', status: 'completed', steps: [{ id: 'bad', title: 'x', progress: 200 }] } }] }), /whiteboard/)
-})
+
+
 
 test('the result page leads with the conclusion and renders metrics, artifacts, acceptance and next steps', () => {
   const html = resultReader(createResultDemo('verified'))
-  for (const text of ['已验证', '尺寸说明补齐后', '10,000', '首轮 9 单', '订单', '+5 单', '商品页改动清单', '交付物',
-    '验收清单', '3/5 通过', '过程决策', '补充尺寸说明，保持 79 元', '下一步', '本地模拟数据', '验收通过']) {
+  for (const text of ['验证待核对', '尺寸说明补齐后', '10,000', '首轮 9 单', '订单', '+5 单', '商品页改动清单', '交付物',
+    '验收清单', '3/5 通过', '过程决策', '补充尺寸说明，保持 79 元', '下一步', '本地模拟数据']) {
     assert(html.includes(text), text)
   }
   assert(html.includes('result-conclusion'))
@@ -162,7 +134,7 @@ test('a completed goal opens the shared overview and preserves result and board 
   assert(html.includes('result-workspace-conclusion'))
   assert(html.includes('电脑支架首轮经营复盘'))
   assert(!html.includes('whiteboard-reader-fallback'))
-  const boardTab = html.indexOf('任务白板')
+  const boardTab = html.indexOf('任务详情与协作')
   assert(boardTab > 0)
   assert(html.includes('aria-selected="true"'))
 })
@@ -175,7 +147,9 @@ test('unfinished goals keep stable navigation and distinguish draft from no resu
   assert(html.includes('role="tablist"'))
   const legacy = reader({ template: 'task-board-v1', title: '旧白板', status: 'running', description: '原有说明', steps: [] })
   assert(legacy.includes('原有说明'))
-  assert(legacy.includes('whiteboard-reader-fallback'))
+  assert(!legacy.includes('whiteboard-reader-fallback'))
+  assert(!legacy.includes('>任务白板</summary>'))
+  assert(!legacy.includes('class="task-whiteboard"'))
   assert.equal((legacy.match(/role="tablist"/g) ?? []).length, 1)
   assert(legacy.includes('成果 · 正在产出'))
   assert(html.includes('成果 · 草稿'))
@@ -223,7 +197,7 @@ test('the authored structured detail is what the board tab shows, while the resu
   assert(boardHtml.includes('验收要求'))
   assert(!boardHtml.includes('compact fallback'))
   const fallback = renderToStaticMarkup(createElement(WhiteboardBoardView, { sections: [], html: '<p>compact fallback</p>' }))
-  assert(fallback.includes('compact fallback'))
+  assert.equal(fallback, '')
 })
 
 test('a completed result board points the wall link at 成果 while unfinished boards keep the task breakdown', () => {

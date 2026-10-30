@@ -34,8 +34,8 @@ test('legacy payloads remain valid while history binds each artifact to a specif
   assert.equal(board.result.artifacts[0].versionId, 'prd-v2')
   assert.equal(board.result.artifacts.find(a => a.id === 'api').versionId, 'api-v1')
   const html = renderToStaticMarkup(createElement(Workspace, { board, result: board.result }))
-  assert(html.includes('交付轮次'))
-  assert(html.includes('当前成果 · 最新产物汇总'))
+  assert(!html.includes('交付轮次'))
+  assert(!html.includes('历史交付 ·'))
 })
 
 test('history validates uniqueness, bounds, exact snapshots and version identifiers', () => {
@@ -75,6 +75,32 @@ test('receiver freezes delivered records while allowing unrelated conversation d
   assert.throws(() => state.apply([snapshot(changed, 2)]), error => error.reasonCode === 'RESULT_HISTORY_CONFLICT')
   state.apply([snapshot(changed, 2, 'different-conversation')])
   assert.equal(state.get('history-demo').seq, 2)
+})
+
+test('delivered task state, details and record identity cannot be rewritten', () => {
+  const original = structuredClone(fixture)
+  original.deliveries[1].board = { title: '历史任务', status: 'blocked', summary: '等待授权', steps: [{ id: 'approval', title: '审批', progress: 0 }] }
+  const mutations = [
+    delivery => { delivery.board.status = 'completed' },
+    delivery => { delivery.board.summary = '已经授权' },
+    delivery => { delivery.board.steps[0].progress = 100 },
+    delivery => { delivery.board.detailSections = [{ id: 'changed', title: '改写详情', blocks: [{ type: 'text', text: '已完成' }] }] },
+    delivery => { delete delivery.board },
+    delivery => { delivery.title = '改写交付标题' },
+    delivery => { delete delivery.result; delivery.snapshotUrl = 'https://example.com/replacement' },
+  ]
+  for (const mutate of mutations) {
+    const state = new OfficeState()
+    state.apply([snapshot(original)])
+    const changed = structuredClone(original)
+    mutate(changed.deliveries[1])
+    assert.throws(() => state.apply([snapshot(changed, 2)]), error => error.reasonCode === 'RESULT_HISTORY_CONFLICT')
+    assert.deepEqual(state.get('history-demo'), snapshot(original), 'rejected update leaves history intact')
+    const currentOnly = structuredClone(original)
+    currentOnly.status = 'completed'
+    state.apply([snapshot(currentOnly, 2)])
+    assert.equal(state.get('history-demo').conversations[0].whiteboard.status, 'completed')
+  }
 })
 
 test('checks for an old artifact version are displayed as pending without changing backend data', () => {

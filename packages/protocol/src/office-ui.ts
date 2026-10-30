@@ -30,6 +30,7 @@ export const resultArtifactSchema = z.strictObject({
   kind: z.enum(['document', 'image', 'link', 'data']).default('document'),
   title: z.string().trim().min(1).max(80),
   description: z.string().trim().max(200).default(''),
+  change: z.enum(['', 'added', 'updated', 'removed', 'unchanged']).default(''),
   content: z.string().max(8000).default(''),
   url: resultUrl,
   /** Stable artifact id + immutable version id identify the content, independently of a working path. */
@@ -71,6 +72,14 @@ export const resultSectionSpans = ['half', 'full'] as const
 export const resultSectionColumns = ['auto', 'main', 'aside'] as const
 export const resultSectionEmphases = ['normal', 'primary'] as const
 
+/** Purpose controls destination, never CSS or business-specific templates. Empty = legacy. */
+export const resultSectionPurposes = ['analysis', 'evidence', 'artifact-preview'] as const
+const resultSectionRoutingFields = {
+  purpose: z.union([z.literal(''), z.enum(resultSectionPurposes)]).default(''),
+  artifactId: resultOptionalId,
+  versionId: resultOptionalId,
+}
+
 export const resultGalleryItemSchema = z.strictObject({
   id: idSchema,
   title: z.string().trim().min(1).max(40),
@@ -83,6 +92,8 @@ export const resultGalleryItemSchema = z.strictObject({
 
 export const resultDocumentItemSchema = z.strictObject({
   id: idSchema,
+  artifactId: resultOptionalId,
+  versionId: resultOptionalId,
   title: z.string().trim().min(1).max(80),
   version: z.string().trim().max(24).default(''),
   at: z.string().trim().max(24).default(''),
@@ -115,6 +126,8 @@ export const resultEnvironmentItemSchema = z.strictObject({
 
 export const resultFileItemSchema = z.strictObject({
   id: idSchema,
+  artifactId: resultOptionalId,
+  versionId: resultOptionalId,
   name: z.string().trim().min(1).max(80),
   kind: z.enum(['image', 'document', 'report', 'archive', 'other']).default('document'),
   size: z.string().trim().max(16).default(''),
@@ -123,6 +136,7 @@ export const resultFileItemSchema = z.strictObject({
 
 export const resultGallerySectionSchema = z.strictObject({
   kind: z.literal('gallery'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -134,6 +148,7 @@ export const resultGallerySectionSchema = z.strictObject({
 
 export const resultDocumentsSectionSchema = z.strictObject({
   kind: z.literal('documents'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -145,6 +160,7 @@ export const resultDocumentsSectionSchema = z.strictObject({
 
 export const resultTestsSectionSchema = z.strictObject({
   kind: z.literal('tests'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -160,6 +176,7 @@ export const resultTestsSectionSchema = z.strictObject({
 
 export const resultApiSectionSchema = z.strictObject({
   kind: z.literal('api'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -171,6 +188,7 @@ export const resultApiSectionSchema = z.strictObject({
 
 export const resultEnvironmentsSectionSchema = z.strictObject({
   kind: z.literal('environments'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -182,6 +200,7 @@ export const resultEnvironmentsSectionSchema = z.strictObject({
 
 export const resultFilesSectionSchema = z.strictObject({
   kind: z.literal('files'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -193,6 +212,7 @@ export const resultFilesSectionSchema = z.strictObject({
 
 export const resultChangesSectionSchema = z.strictObject({
   kind: z.literal('changes'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -346,6 +366,7 @@ export const resultLayouts = ['stack', 'columns', 'grid', 'cards'] as const
  */
 export const resultCustomSectionSchema = z.strictObject({
   kind: z.literal('custom'),
+  ...resultSectionRoutingFields,
   id: idSchema,
   title: z.string().trim().min(1).max(40),
   caption: z.string().trim().max(60).default(''),
@@ -366,7 +387,12 @@ export const resultSectionSchema = z.discriminatedUnion('kind', [
   resultApiSectionSchema, resultEnvironmentsSectionSchema, resultFilesSectionSchema,
   resultChangesSectionSchema,
   resultCustomSectionSchema,
-])
+]).superRefine((section, context) => {
+  if (section.purpose === 'artifact-preview' && (!section.artifactId || !section.versionId)) context.addIssue({ code: 'custom', message: '文件预览须提供 artifactId 与 versionId', path: ['artifactId'] })
+  if (Boolean(section.artifactId) !== Boolean(section.versionId)) context.addIssue({ code: 'custom', message: '区块来源须同时提供 artifactId 与 versionId', path: ['versionId'] })
+  if (section.kind === 'changes' && section.purpose) context.addIssue({ code: 'custom', message: '文件变更固定归属交付物，不填写 purpose', path: ['purpose'] })
+  if (section.kind === 'tests' && section.purpose && section.purpose !== 'evidence') context.addIssue({ code: 'custom', message: '检查区块只能归属验证依据', path: ['purpose'] })
+})
 export const resultSectionKinds = [
   'gallery', 'documents', 'tests', 'api', 'environments', 'files', 'changes', 'custom',
 ] as const
@@ -418,7 +444,7 @@ export const officeResultSchema = z.strictObject({
   /** Optional caption for the metric group, e.g. the observation window. */
   metricsCaption: z.string().max(60).default(''),
   artifacts: z.array(resultArtifactSchema).max(8).default([]),
-  /** Semantic blocks for the 交付成果 tab. Order controls column order within each column. */
+  /** Content sections routed by purpose; legacy sections remain readable as supplementary content. */
   sections: z.array(resultSectionSchema).max(8).default([]),
   checks: z.array(resultCheckSchema).max(12).default([]),
   decisions: z.array(resultDecisionSchema).max(8).default([]),
@@ -430,6 +456,12 @@ export const officeResultSchema = z.strictObject({
   risks: z.array(resultRiskSchema).max(8).default([]),
   next: z.array(z.string().trim().min(1).max(160)).max(8).default([]),
   note: z.string().max(300).default(''),
+}).superRefine((result, context) => {
+  result.sections.forEach((section, index) => {
+    if (!section.artifactId) return
+    const matches = result.artifacts.filter(artifact => artifact.id === section.artifactId && artifact.versionId === section.versionId)
+    if (matches.length !== 1) context.addIssue({ code: 'custom', message: '区块必须关联本结果中唯一且版本一致的产物', path: ['sections', index, 'artifactId'] })
+  })
 })
 export const emptyResult = () => officeResultSchema.parse({})
 export type OfficeResult = z.infer<typeof officeResultSchema>

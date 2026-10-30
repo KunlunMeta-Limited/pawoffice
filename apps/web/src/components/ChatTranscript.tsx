@@ -33,6 +33,8 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
     estimateSize: () => 140, overscan: 6, anchorTo: 'end', followOnAppend: true, scrollEndThreshold: 64,
     // The collapsed panel retains its layout. Disabling clears its rows, but direct DOM updates can skip rendering the same range on reopen.
     directDomUpdates: true, paddingStart: 22, paddingEnd: 18,
+    // Delivery cards resize after live snapshots; measure them outside the observer's current layout cycle.
+    useAnimationFrameWithResizeObserver: true,
     onChange: instance => { onAtBottomChange(instance.isAtEnd()); setAtStart((instance.scrollOffset ?? 0) < 200) },
   })
   useImperativeHandle(ref, () => ({ toBottom: () => virtualizer.scrollToEnd() }), [virtualizer])

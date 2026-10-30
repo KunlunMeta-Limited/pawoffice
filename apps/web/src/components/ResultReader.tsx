@@ -5,10 +5,11 @@ import {
   PackageCheck, PencilLine, Table2, Target, UserRound,
 } from 'lucide-react'
 import type { OfficeResult, ResultArtifact, ResultCheck, ResultMetric } from '@pawoffice/protocol/office-ui'
-import { formatResultTimestamp, resultFileBase, resultHasContent, resultReport, resultStatusLabels, resultSummaryText } from '../results/format.ts'
+import { formatResultTimestamp, resultFileBase, resultHasContent, resultReport, resultStatusText, resultSummaryText } from '../results/format.ts'
 import { ResultMarkdown } from './ResultMarkdown.tsx'
 import type { ResultDocumentMetadata } from '../results/presentation.ts'
-import { resultChecks } from '../results/presentation.ts'
+import { resultChecks, resultVerificationConflict } from '../results/checks.ts'
+import { downloadArtifact } from '../results/download.ts'
 import { ArtifactPreviewContext } from '../results/artifactContext.ts'
 import './ResultReader.css'
 
@@ -120,6 +121,7 @@ function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload
       <div className="result-artifact-copy">
         <h4>{artifact.title}</h4>
         {artifact.description && <p>{artifact.description}</p>}
+        {artifact.change && <p className="result-artifact-change" data-change={artifact.change}>{({ added: '本次新增', updated: '本次更新', removed: '本次移除（保留历史版本）', unchanged: '沿用已有版本' })[artifact.change]}</p>}
         {(metadata || artifact.versionId) && <p className="result-artifact-document-meta">{[
           artifact.version || metadata?.version || artifact.versionId,
           artifact.producedAt ? formatResultTimestamp(artifact.producedAt) : metadata?.at,
@@ -134,7 +136,7 @@ function ArtifactCard({ artifact, expanded, copied, onToggle, onCopy, onDownload
       {versioned ? <button type="button" aria-haspopup="dialog" onClick={event => preview!.open(artifact, event.currentTarget)}><FileText size={13} />查看</button>
         : artifact.content && <button type="button" aria-expanded={expanded} onClick={onToggle}>{expanded ? <Minus size={13} /> : <FileText size={13} />}{expanded ? '收起' : '查看'}</button>}
       {artifact.content && <button type="button" onClick={onCopy}>{isCopied ? <Check size={13} /> : <Copy size={13} />}{isCopied ? '已复制' : '复制'}</button>}
-      {artifact.content && <button type="button" onClick={onDownload}><Download size={13} />下载</button>}
+      {(artifact.content || artifact.url) && <button type="button" onClick={onDownload}><Download size={13} />下载</button>}
       {artifact.url && !versioned && <a href={artifact.url} target="_blank" rel="noopener noreferrer"><ExternalLink size={13} />打开</a>}
     </div>}
   </article>
@@ -153,11 +155,12 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
   const baseId = useId()
   const [copied, setCopied] = useState('')
   const [expanded, setExpanded] = useState('')
+  const [downloadError, setDownloadError] = useState('')
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
   if (!resultHasContent(result)) return <p className="result-empty">本轮还没有可展示的成果。</p>
 
-  const status = { label: resultStatusLabels[result.status], Icon: statusIcons[result.status] }
+  const status = { label: resultStatusText(result), Icon: statusIcons[result.status] }
   const StatusIcon = status.Icon
   const checks = resultChecks(result)
   const passed = checks.filter(check => check.status === 'passed').length
@@ -178,9 +181,11 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
   const overview = view === 'full' || view === 'overview'
   const deliverables = view === 'full' || view === 'deliverables' || view === 'featured'
   const process = view === 'full' || view === 'process'
-  const artifacts = view === 'featured' ? result.artifacts.slice(0, 3) : result.artifacts
+  const changePriority = { added: 0, updated: 1, removed: 2, unchanged: 3, '': 4 }
+  const artifacts = view === 'featured' ? [...result.artifacts].sort((a, b) => changePriority[a.change] - changePriority[b.change]).slice(0, 3) : result.artifacts
 
   return <div className="result-reader" data-status={result.status} data-view={view}>
+    <span role="alert">{downloadError}</span>
     <span className="result-sr-only" role="status">{copied ? '已复制到剪贴板' : ''}</span>
     {(overview || view === 'actions') && <section className="result-hero" aria-label="成果摘要操作">
       {view === 'full' && <div className="result-hero-meta">
@@ -198,7 +203,7 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
         </button>
         <button type="button" className="result-action" onClick={() => downloadText(`${fileBase}.md`, resultReport(result))}><Download size={15} />下载报告</button>
       </div>
-      {view === 'full' && result.status === 'verified' && <span className="result-seal" aria-hidden="true">验收通过</span>}
+      {view === 'full' && result.status === 'verified' && !resultVerificationConflict(result) && <span className="result-seal" aria-hidden="true">验收通过</span>}
     </section>}
 
     {(overview || view === 'metrics') && !!metricCount && <section className="result-section" aria-labelledby={`${baseId}-metrics`}>
@@ -212,18 +217,22 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
     </section>}
 
     {deliverables && !!result.artifacts.length && <section className="result-section" aria-labelledby={`${baseId}-artifacts`}>
+      {result.artifacts.some(item => item.change) && <p aria-label="交付变化摘要">{(['added', 'updated', 'removed', 'unchanged'] as const).map(change => {
+        const count = result.artifacts.filter(item => item.change === change).length
+        return count ? `${({ added: '新增', updated: '更新', removed: '移除', unchanged: '沿用' })[change]} ${count}` : ''
+      }).filter(Boolean).join(' · ')}</p>}
       {view !== 'featured' && <header className="result-section-head"><h3 id={`${baseId}-artifacts`}>交付物</h3><small>{result.artifacts.length} 项</small></header>}
       <div className="result-artifacts">{artifacts.map(artifact => <ArtifactCard key={artifact.id} artifact={artifact} metadata={documentMeta?.get(artifact.id)}
         expanded={expanded === artifact.id} copied={copied}
         onToggle={() => setExpanded(current => current === artifact.id ? '' : artifact.id)}
         onCopy={() => { void copy(artifact.id, artifact.content) }}
-        onDownload={() => downloadText(`${fileBase}-${artifact.id}.md`, `# ${artifact.title}\n\n${artifact.content || artifact.description}`)} />)}</div>
+        onDownload={() => { setDownloadError(''); void downloadArtifact(artifact).catch(error => setDownloadError(error instanceof Error ? error.message : '下载失败')) }} />)}</div>
     </section>}
 
     {process && (!!result.checks.length || !!result.decisions.length) && <div className={`result-columns${result.checks.length && result.decisions.length ? '' : ' is-single'}`}>
       {!!result.checks.length && <section className="result-card" aria-labelledby={`${baseId}-checks`}>
         <header className="result-card-head"><h3 id={`${baseId}-checks`}>验收清单</h3><span>{passed}/{result.checks.length} 通过</span></header>
-        <ul className="result-check-list">{checks.map(check => <CheckRow key={check.id} check={check} />)}</ul>
+        <ul className="result-check-list">{checks.map(check => <CheckRow key={JSON.stringify([check.id, check.artifactId, check.versionId])} check={check} />)}</ul>
       </section>}
       {!!result.decisions.length && <section className="result-card" aria-labelledby={`${baseId}-decisions`}>
         <header className="result-card-head"><h3 id={`${baseId}-decisions`}>过程决策</h3><span>{result.decisions.length} 项</span></header>

@@ -1,5 +1,7 @@
 # PawOffice 侧接入面调研：Pele（Mermaid → SVG）能落在哪里
 
+> 历史调研说明：2026-10-30 已删除早期独立成果测试页及其专用数据。本文涉及该页面的路径和行号仅代表调研时的代码状态；当前联调使用正式办公室中的电商工作流 mock。
+
 > 调研人：integration-scout ｜ 调研日期：2026-10-27 ｜ 范围：**仅 PawOffice 仓库（`D:\kunlunmeta\ai-office-react`）**，不评估 Pele 本身（由另一位 teammate 负责）
 > 只读调研：未修改任何源码；仅新建本文件。所有结论以仓库内 `file:line` 为证；凡属推断均标 `[推断]`。
 > 关键结论均已用命令复核：`npm run licenses:check` → `Third-party notices verified: 199 production packages`（当前仓库许可清单是干净的，可作为基线）。

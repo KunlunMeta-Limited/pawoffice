@@ -1,6 +1,6 @@
-import type { OfficeResult, ResultDocumentsSection, ResultSection, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
+import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
 import { resultHasContent, resultStatusLabels } from './format.ts'
-import { resultChecks } from './checks.ts'
+import { resultEvidenceChecks, resultVerificationConflict } from './checks.ts'
 export { resultChecks } from './checks.ts'
 
 export const boardStatusLabels = {
@@ -8,6 +8,7 @@ export const boardStatusLabels = {
 } as const
 
 export function resultPresentation(board: WhiteboardTaskBoardData, result: OfficeResult) {
+  if (resultVerificationConflict(result)) return { key: 'conflict', label: '验证待核对', description: '后端标记已验证，但当前检查存在失效、待补充或未通过项，请核对当前版本的验证依据。' }
   // An explicit delivery/verification state remains meaningful even before its content arrives.
   if (resultHasContent(result) || result.status !== 'draft') {
     const descriptions = {
@@ -26,12 +27,8 @@ export function resultPresentation(board: WhiteboardTaskBoardData, result: Offic
 }
 
 export function resultAttention(result: OfficeResult) {
-  const checks = [
-    ...resultChecks(result).map(check => ({ ...check, key: `check-${check.id}` })),
-    ...result.sections.flatMap(section => section.kind === 'tests'
-      ? resultChecks({ ...result, checks: section.checks }).map(check => ({ ...check, key: `${section.id}-${check.id}` })) : []),
-  ].filter(check => check.status !== 'passed').map(check => ({
-    id: check.key, title: check.label, label: check.status === 'failed' ? '未通过' : '待补充',
+  const checks = resultEvidenceChecks(result).filter(check => check.status !== 'passed').map(check => ({
+    id: JSON.stringify(['check', check.id, check.artifactId, check.versionId]), title: check.label, label: check.status === 'failed' ? '未通过' : '待补充',
     danger: check.status === 'failed',
   }))
   const risks = result.risks.filter(risk => risk.status !== 'closed').map(risk => ({
@@ -43,26 +40,5 @@ export function resultAttention(result: OfficeResult) {
   return [...checks, ...risks, ...tasks].sort((a, b) => Number(b.danger) - Number(a.danger))
 }
 
-export type ResultDocumentMetadata = ResultDocumentsSection['items'][number]
-
-/** Merge only unambiguous document titles; preserve metadata and the original export payload. */
-export function resultDeliveryLayout(result: OfficeResult) {
-  const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toLowerCase()
-  const documents = result.sections.flatMap(section => section.kind === 'documents' ? section.items : [])
-  const documentMeta = new Map<string, ResultDocumentMetadata>()
-  const merged = new Set<ResultDocumentMetadata>()
-  for (const artifact of result.artifacts) {
-    const title = normalize(artifact.title)
-    const matches = documents.filter(item => normalize(item.title) === title)
-    if (matches.length !== 1 || result.artifacts.filter(item => normalize(item.title) === title).length !== 1) continue
-    if (artifact.kind === 'image') continue
-    documentMeta.set(artifact.id, matches[0])
-    merged.add(matches[0])
-  }
-  const sections = result.sections.flatMap<ResultSection>(section => {
-    if (section.kind !== 'documents') return [section]
-    const items = section.items.filter(item => !merged.has(item))
-    return items.length ? [{ ...section, items }] : []
-  })
-  return { sections, documentMeta }
-}
+export { resultDeliveryLayout, resultContentLayout } from './sections.ts'
+export type { ResultDocumentMetadata } from './sections.ts'

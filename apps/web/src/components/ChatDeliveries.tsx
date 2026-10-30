@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { ArrowUpRight, Files } from 'lucide-react'
 import type { ResultDelivery } from '@pawoffice/protocol/office-ui'
-import { formatResultTimestamp, resultStatusLabels } from '../results/format.ts'
+import { formatResultTimestamp, resultStatusText } from '../results/format.ts'
 import './ChatDeliveries.css'
 
 export function ChatDeliveries({ deliveries, onOpen }: {
   deliveries: readonly ResultDelivery[]; onOpen?: (deliveryId: string) => boolean
 }) {
   const [error, setError] = useState('')
-  if (!deliveries.length) return null
+  const visible = deliveries.filter(delivery => !delivery.result || delivery.result.artifacts.length > 0 || delivery.result.sections.length > 0)
+  if (!visible.length) return null
   return <div className="chat-deliveries">
     <ul aria-label="本轮交付">
-      {deliveries.map(delivery => {
+      {visible.map(delivery => {
         const title = delivery.title || `第 ${delivery.sequence} 次交付`
         return <li key={delivery.id}>
           <button type="button" className="chat-delivery-entry" aria-label={`查看交付：${title}`} aria-haspopup="dialog" disabled={!onOpen}
@@ -20,7 +21,7 @@ export function ChatDeliveries({ deliveries, onOpen }: {
             <span className="chat-delivery-copy"><strong>{title}</strong>
               {delivery.result?.summary && <span className="chat-delivery-summary">{delivery.result.summary}</span>}
               <span className="chat-delivery-meta">
-                <span data-status={delivery.result?.status}>{delivery.result ? resultStatusLabels[delivery.result.status] : '历史交付'}</span>
+                <span data-status={delivery.result?.status}>{delivery.result ? resultStatusText(delivery.result) : '历史交付'}</span>
                 <span>{delivery.result ? `${delivery.result.artifacts.length} 项产物` : '产物详情待查看'}</span>
                 <time dateTime={delivery.createdAt} title="交付时间（本地时区）">{formatResultTimestamp(delivery.createdAt)}</time>
               </span>

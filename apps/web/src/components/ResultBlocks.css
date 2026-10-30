@@ -461,6 +461,7 @@
 }
 
 .result-block-chart-svg.is-donut { flex: none; width: 132px; max-width: 44%; }
+.result-block-chart-svg:not(.is-donut) { max-height: 260px; }
 
 .result-block-chart-axis { stroke: #e6ece5; stroke-width: 1; }
 .result-block-chart-tick { fill: #8d998f; font-size: 8.5px; }

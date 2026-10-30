@@ -75,6 +75,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@types/node": "^24.12.4",
+    "@types/papaparse": "^5.5.2",
     "@types/pathfinding": "^0.1.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

@@ -1,5 +1,6 @@
 import type { OfficeResult, ResultBlock, ResultSection } from '@pawoffice/protocol/office-ui'
-import { resultChecks } from './checks.ts'
+import { resultEvidenceChecks, resultVerificationConflict } from './checks.ts'
+import { resultContentLayout } from './sections.ts'
 
 type ResultMetric = OfficeResult['metrics'][number]
 type ResolvedKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
@@ -7,6 +8,8 @@ type ResolvedKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
 export const resultStatusLabels: Record<OfficeResult['status'], string> = {
   verified: '已验证', ready: '已交付', draft: '草稿', rejected: '未通过',
 }
+
+export const resultStatusText = (result: OfficeResult) => resultVerificationConflict(result) ? '验证待核对' : resultStatusLabels[result.status]
 
 /** Backend event time, displayed to seconds in the viewer's timezone. Never substitutes the current time. */
 export function formatResultTimestamp(value: string, timeZone?: string) {
@@ -159,6 +162,7 @@ function sectionLines(section: ResultSection): string[] {
 /** A compact read-aloud summary for the copy button. */
 export function resultSummaryText(result: OfficeResult) {
   const lines = [result.title, result.summary, result.verdict].filter(Boolean)
+  if (resultVerificationConflict(result)) lines.push('验证待核对：后端标记已验证，但当前检查存在失效、待补充或未通过项。')
   const meta = [result.owner && `负责人：${result.owner}`, resultTeamLabel(result) && `团队：${resultTeamLabel(result)}`, result.updatedAt && `更新时间：${result.updatedAt}`].filter(Boolean)
   if (meta.length) lines.push('', meta.join(' · '))
   if (result.metrics.length) lines.push('', ...result.metrics.map(metricLine))
@@ -168,11 +172,10 @@ export function resultSummaryText(result: OfficeResult) {
 
 /** A portable Markdown report for download. */
 export function resultReport(source: OfficeResult) {
-  const result: OfficeResult = { ...source, checks: resultChecks(source), sections: source.sections.map(section =>
-    section.kind === 'tests' ? { ...section, checks: resultChecks({ ...source, checks: section.checks }) } : section) }
+  const result: OfficeResult = { ...source, checks: resultEvidenceChecks(source) }
   const lines: string[] = [`# ${result.title || '成果'}`, '']
   if (result.status) {
-    const meta = [resultStatusLabels[result.status], result.owner, resultTeamLabel(result) && `团队：${resultTeamLabel(result)}`, result.updatedAt].filter(Boolean)
+    const meta = [resultStatusText(result), result.owner, resultTeamLabel(result) && `团队：${resultTeamLabel(result)}`, result.updatedAt].filter(Boolean)
     lines.push(`> ${meta.join(' · ')}${result.producedAt && result.producedAt !== result.updatedAt ? ` · 产出 ${result.producedAt}` : ''}`, '')
   }
   if (result.summary) lines.push(result.summary, '')
@@ -197,9 +200,17 @@ export function resultReport(source: OfficeResult) {
     }
     lines.push('')
   }
-  if (result.sections.length) {
-    lines.push('## 交付成果', '')
-    for (const section of result.sections) lines.push(...sectionLines(section))
+  const layout = resultContentLayout(result)
+  for (const [title, sections] of [['分析与结论', layout.analysis], ['补充内容', layout.supplementary], ['文件变更', layout.changes], ['验证依据', layout.evidence], ['文件内容预览', layout.previews]] as const) {
+    if (!sections.length) continue
+    lines.push(`## ${title}`, '')
+    for (const section of sections) {
+      if (section.artifactId) {
+        const artifact = result.artifacts.find(item => item.id === section.artifactId && item.versionId === section.versionId)
+        lines.push(`关联产物：${artifact?.title || section.artifactId} · ${artifact?.version || section.versionId}`, '')
+      }
+      lines.push(...sectionLines(section))
+    }
   }
   if (result.checks.length) {
     lines.push('## 验收', '')

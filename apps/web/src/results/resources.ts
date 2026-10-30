@@ -1,5 +1,6 @@
 import type { ResultArtifact, ResultDelivery } from '@pawoffice/protocol/office-ui'
 import { resultDeliverySchema } from '@pawoffice/protocol/office-ui'
+import { filePreviewKind } from './filePreview.ts'
 
 const maxResourceBytes = 8 * 1024 * 1024
 
@@ -51,6 +52,5 @@ export async function readDeliverySnapshot(delivery: ResultDelivery, signal: Abo
 }
 
 export function artifactIsText(artifact: ResultArtifact) {
-  const mime = artifact.mimeType.toLowerCase().split(';')[0]
-  return mime.startsWith('text/') || ['application/json', 'application/javascript', 'application/xml'].includes(mime)
+  return filePreviewKind(artifact.mimeType, artifact.title) !== 'unsupported'
 }

@@ -56,9 +56,16 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     }
     resize()
     let width = element.clientWidth
-    const observer = new ResizeObserver(() => { if (element.clientWidth !== width) { width = element.clientWidth; resize() } })
+    let resizeFrame = 0
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth !== width) {
+        width = element.clientWidth
+        cancelAnimationFrame(resizeFrame)
+        resizeFrame = requestAnimationFrame(resize)
+      }
+    })
     observer.observe(element)
-    return () => observer.disconnect()
+    return () => { observer.disconnect(); cancelAnimationFrame(resizeFrame) }
   }, [draft, hidden, expanded])
   const bottom = () => {
     setAtBottom(true); transcript.current?.toBottom()

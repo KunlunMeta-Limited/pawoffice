@@ -103,7 +103,7 @@
 
 ### 2.2 视觉样例（同一份 SVG，仅换 CSS 变量）
 
-![Pele 渲染样例](../../pele-demo.png)
+![Pele 渲染样例](./pele-demo.png)
 
 五种图（流程图 / 甘特 / 状态机 / 时序 / ER）都用 PawOffice 的暖色令牌（`#fffcf0` / `#100f0f` / `#205ea6`）渲染，中文标签正常折行。这说明「视觉不一致」不是硬伤——Pele 的观感是干净扁平的，和当前成果页风格兼容；真正不一致的只有**布局算法与 Mermaid 不同**（节点位置会变），不是配色。
 
@@ -250,4 +250,4 @@ MIT 是**最宽松**的一类：可以商用、可以闭源、可以修改、可
 | --- | --- |
 | [pele-technical-profile.md](./pele-technical-profile.md) | Pele 本体：33 种图逐项体积、API 签名、兼容边界、安全测试、CJK、许可逐条证据、未验证项 |
 | [pawoffice-integration-surface.md](./pawoffice-integration-surface.md) | 本仓库接入面：4 个 `react-markdown` 出口、`ResultBlocks` 注册表、协议/架构测试约束、声明脚本行为逐行核对 |
-| `../../pele-demo.png` | 五种图用 PawOffice 配色的实际渲染（本报告 §2.2） |
+| `./pele-demo.png` | 五种图用 PawOffice 配色的实际渲染（本报告 §2.2） |

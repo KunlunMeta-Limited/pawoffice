@@ -11,6 +11,11 @@
 | `tests/browser/resultWorkspace.mjs` | 成果阅读器的本地浏览器回归，自动启动 Vite；支持 `--channel=msedge` |
 | `tests/browser/resultChanges.mjs` | PowerShell → HTTP → 正式办公室的文件清单、悬停差异、焦点和手机验证 |
 | `tests/browser/resultHistory.mjs` | 外部历史快照与文档版本、实时更新、下载、比较、错误恢复和手机验证 |
+| `tests/browser/workflow.mjs` | 同一手动 mock 后端，从空聊天逐轮发送六次请求，验证交付、更新、回滚、移除与验收 |
+| `tests/browser/ecommerceWorkflow.mjs` | 五轮电商场景、当前集合、聊天历史入口、原件下载、文件版本比较及复核 |
+| `tests/browser/ecommerceShowcase.mjs` | 完整页面评审：任务目标、6位办公室成员、8项任务、协作图、预算/趋势图、逐日明细、图片、历史任务状态与移动端 |
+| `tests/browser/resultFilePreview.mjs` | 真实版本正文的代码高亮/复制/折叠，CSV分页搜索/原件，JSON树/源文/比较，错误输入及手机布局 |
+| `tests/resultSectionRouting.test.mjs` | 内容用途路由、旧数据兼容、检查去重、精确文件版本关联，以及真实接口拒绝无效预览 |
 | `tests/fixtures/` | 测试页面、包消费者和固定输入 |
 | `tests/integration-e2e/` | 外部 HTTP 客户端、真实浏览器及 Docker 端到端验收 |
 | `scripts/check-relay-service.mjs` | 已启动服务的页面、鉴权和 SSE 检查 |
@@ -37,6 +42,11 @@ node --test tests/integrationDirectory.test.mjs tests/protocolNullAudit.test.mjs
 node tests/browser/resultWorkspace.mjs --channel=msedge
 node tests/browser/resultChanges.mjs --channel=msedge
 node tests/browser/resultHistory.mjs --channel=msedge
+node tests/browser/chatDeliveries.mjs --channel=msedge
+node tests/browser/workflow.mjs
+node tests/browser/ecommerceWorkflow.mjs
+node tests/browser/ecommerceShowcase.mjs
+node tests/browser/resultFilePreview.mjs
 ```
 
 截图写入已忽略的 `test-results/result-workspace/`。运行前先构建公共包及服务端。

@@ -123,7 +123,7 @@ test('duplicate document listings merge without losing metadata or changing expo
   const result = resultSchema.parse({
     artifacts: [{ id: 'prd', title: '登录模块 PRD', content: '正文' }],
     sections: [{ kind: 'documents', id: 'docs', title: '产品文档', items: [
-      { id: 'prd-doc', title: '登录模块 PRD', version: 'v1.2', at: '2026-10-28', status: 'active' },
+      { id: 'prd-doc', artifactId: 'prd', title: '登录模块 PRD', version: 'v1.2', at: '2026-10-28', status: 'active' },
       { id: 'acceptance', title: '验收标准', version: 'v1.0' },
     ] }],
   })
@@ -141,8 +141,21 @@ test('duplicate document listings merge without losing metadata or changing expo
 
 test('ambiguous document titles remain separate and empty duplicate groups are removed', () => {
   const source = { artifacts: [{ id: 'a', title: '文档' }], sections: [{ kind: 'documents', id: 'docs', title: '文档清单', items: [{ id: 'd', title: '文档' }] }] }
+  assert.equal(presentation.resultDeliveryLayout(resultSchema.parse(source)).sections.length, 1)
+  source.sections[0].items[0].artifactId = 'a'
   assert.equal(presentation.resultDeliveryLayout(resultSchema.parse(source)).sections.length, 0)
   const duplicate = resultSchema.parse({ ...source, artifacts: [{ id: 'a', title: '文档' }, { id: 'b', title: '文档' }] })
-  assert.equal(presentation.resultDeliveryLayout(duplicate).documentMeta.size, 0)
-  assert.equal(presentation.resultDeliveryLayout(duplicate).sections[0].items.length, 1)
+  assert.equal(presentation.resultDeliveryLayout(duplicate).documentMeta.size, 1)
+  assert.equal(presentation.resultDeliveryLayout(duplicate).sections.length, 0)
+})
+
+test('verified result with outdated evidence reports a conflict in the header and report', () => {
+  const result = resultSchema.parse({ status: 'verified', artifacts: [{ id: 'doc', title: '新版', versionId: 'v2' }],
+    checks: [{ id: 'check', label: '范围检查', status: 'passed', artifactId: 'doc', versionId: 'v1' }] })
+  const board = boardSchema.parse({ result })
+  assert.equal(presentation.resultPresentation(board, result).key, 'conflict')
+  assert(format.resultReport(result).includes('验证待核对'))
+  assert(format.resultSummaryText(result).includes('验证待核对'))
+  assert.equal(result.status, 'verified')
+  assert.equal(presentation.resultPresentation(board, { ...result, checks: [{ ...result.checks[0], versionId: 'v2' }] }).key, 'verified')
 })

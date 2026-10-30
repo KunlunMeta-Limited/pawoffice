@@ -1,42 +1,23 @@
 import { useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import {
-  Check, CheckCircle2, CircleDashed, CircleX, ClipboardCheck, Clock3, File, FileArchive, FileBarChart,
-  FileDiff, FileText, FolderOpen, Gauge, GitBranch, Images, Image as ImageIcon, Info, LayoutGrid, ListChecks, Server,
-  ShieldAlert, UserRound, Users, Webhook, ArrowRight,
-} from 'lucide-react'
-import type {
-  OfficeResult, ResultApiSection, ResultDocumentsSection, ResultEnvironmentsSection,
-  ResultFilesSection, ResultGallerySection, ResultRisk, ResultSection, ResultTask, ResultTestsSection, ResultVersion,
-  WhiteboardTaskBoardData,
-} from '@pawoffice/protocol/office-ui'
-import { CustomSectionBody } from './ResultBlocks.tsx'
+import { Check, Clock3, FileText, FolderOpen, GitBranch, Info, LayoutGrid, ListChecks, ShieldAlert, UserRound, Users, ArrowRight } from 'lucide-react'
+import type { OfficeResult, ResultRisk, ResultTask, ResultVersion, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
+import { ResultSectionCard } from './ResultSectionCard.tsx'
+import { Chip, Track } from './ResultPrimitives.tsx'
 import { ResultReader } from './ResultReader.tsx'
 import { ResultDeliveryShell } from './ResultDeliveryShell.tsx'
 import { ResultChanges } from './ResultChanges.tsx'
 import { WhiteboardBoardView } from './WhiteboardBoardView.tsx'
-import { renderWhiteboardContent } from '@pawoffice/scene-office/task-board'
 import { formatResultTimestamp, resultHasContent } from '../results/format.ts'
-import { boardStatusLabels, resultAttention, resultChecks, resultDeliveryLayout, resultPresentation } from '../results/presentation.ts'
+import { boardStatusLabels, resultAttention, resultContentLayout, resultPresentation } from '../results/presentation.ts'
+import { resultEvidenceCheckInputs, resultEvidenceChecks } from '../results/checks.ts'
 import './ResultWorkspace.css'
 
 export type WorkspaceTab = 'overview' | 'deliverables' | 'process'
-type StageState = 'done' | 'active' | 'pending'
 type ChipTone = 'done' | 'active' | 'progress' | 'pending' | 'danger'
+type StageState = 'done' | 'active' | 'pending'
 type BoardStatus = NonNullable<WhiteboardTaskBoardData['status']>
 
-const galleryStatusLabels: Record<ResultGallerySection['items'][number]['status'], string> = {
-  done: '已完成', active: '开发中', pending: '待开始',
-}
-const documentStatusLabels: Record<ResultDocumentsSection['items'][number]['status'], string> = {
-  done: '已完成', active: '进行中', pending: '待开始',
-}
-const apiStatusLabels: Record<ResultApiSection['rows'][number]['status'], string> = {
-  done: '已完成', active: '开发中', pending: '待发布',
-}
-const environmentStatusLabels: Record<ResultEnvironmentsSection['items'][number]['status'], string> = {
-  running: '运行中', pending: '待发布', stopped: '已停止', failed: '需关注',
-}
 const taskStatusLabels: Record<ResultTask['status'], string> = {
   todo: '待开始', doing: '进行中', blocked: '受阻', done: '已完成',
 }
@@ -45,22 +26,6 @@ const versionStatusLabels: Record<ResultVersion['status'], string> = {
 }
 const riskLevelLabels: Record<ResultRisk['level'], string> = { high: '高', medium: '中', low: '低' }
 const riskStatusLabels: Record<ResultRisk['status'], string> = { open: '待处理', mitigating: '处理中', closed: '已关闭' }
-const checkStatusLabels: Record<ResultTestsSection['checks'][number]['status'], string> = {
-  passed: '已通过', pending: '待补充', failed: '未通过',
-}
-const fileKindLabels: Record<ResultFilesSection['items'][number]['kind'], string> = {
-  image: '图片', document: '文档', report: '报告', archive: '压缩包', other: '文件',
-}
-
-const galleryStatusTones: Record<ResultGallerySection['items'][number]['status'], ChipTone> = {
-  done: 'done', active: 'active', pending: 'pending',
-}
-const documentStatusTones: Record<ResultDocumentsSection['items'][number]['status'], ChipTone> = {
-  done: 'done', active: 'progress', pending: 'pending',
-}
-const apiStatusTones: Record<ResultApiSection['rows'][number]['status'], ChipTone> = {
-  done: 'done', active: 'active', pending: 'pending',
-}
 const taskStatusTones: Record<ResultTask['status'], ChipTone> = {
   todo: 'pending', doing: 'active', blocked: 'danger', done: 'done',
 }
@@ -71,169 +36,7 @@ const riskStatusTones: Record<ResultRisk['status'], ChipTone> = {
   open: 'progress', mitigating: 'active', closed: 'done',
 }
 
-const sectionIcons = {
-  gallery: Images, documents: FileText, tests: ClipboardCheck, api: Webhook, environments: Server, files: FolderOpen,
-  changes: FileDiff, custom: LayoutGrid,
-} as const
 const tabIcons = { overview: LayoutGrid, deliverables: FolderOpen, process: ListChecks } as const
-const metricToneIcons = { positive: CheckCircle2, negative: CircleX, neutral: Gauge } as const
-const checkIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
-const fileKindIcons = { image: ImageIcon, document: FileText, report: FileBarChart, archive: FileArchive, other: File } as const
-
-function Chip({ tone, children }: { tone: ChipTone; children: string }) {
-  return <span className="result-workspace-chip" data-tone={tone}>{children}</span>
-}
-
-/** Compact progress track shared by the stage stepper, tests and tasks. */
-function Track({ value, label, tone = 'done', unknown = false }: {
-  value: number; label: string; tone?: StageState | 'danger'; unknown?: boolean
-}) {
-  const percent = Math.max(0, Math.min(100, Math.round(value)))
-  return <div className="result-workspace-track" data-tone={tone} data-unknown={unknown ? true : undefined}
-    role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100}
-    aria-valuenow={unknown ? undefined : percent} aria-valuetext={unknown ? '暂无进度' : `${percent}%`}>
-    <i style={{ width: unknown ? '0%' : `${percent}%` }} />
-  </div>
-}
-
-function GalleryBody({ section }: { section: ResultGallerySection }) {
-  return <ul className="result-workspace-gallery">
-    {section.items.map(item => <li key={item.id} className="result-workspace-gallery-item" data-preview={Boolean(item.image)} title={item.title}>
-      <div className="result-workspace-thumb">
-        {item.image
-          ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`查看${item.title}原图（新窗口）`}><img src={item.image} alt={item.title} loading="lazy" /></a>
-          : <ImageIcon size={22} aria-hidden="true" />}
-      </div>
-      <div className="result-workspace-gallery-meta">
-        <span className="result-workspace-gallery-label">{item.meta || item.title}</span>
-        {!item.image && <small>暂无预览</small>}
-        <Chip tone={galleryStatusTones[item.status]}>{galleryStatusLabels[item.status]}</Chip>
-      </div>
-    </li>)}
-  </ul>
-}
-
-function DocumentsBody({ section }: { section: ResultDocumentsSection }) {
-  return <ul className="result-workspace-docs">
-    {section.items.map(item => <li key={item.id} className="result-workspace-doc">
-      <span className="result-workspace-doc-icon" aria-hidden="true"><FileText size={15} strokeWidth={1.9} /></span>
-      <span className="result-workspace-doc-main">
-        <span className="result-workspace-doc-title" title={item.title}>{item.title}</span>
-        {(item.version || item.at) && <span className="result-workspace-doc-meta">{[item.version, item.at].filter(Boolean).join(' · ')}</span>}
-      </span>
-      <Chip tone={documentStatusTones[item.status]}>{documentStatusLabels[item.status]}</Chip>
-    </li>)}
-  </ul>
-}
-
-function TestsBody({ section }: { section: ResultTestsSection }) {
-  return <div className="result-workspace-tests">
-    {section.metrics.length > 0 && <div className="result-workspace-stats">
-      {section.metrics.map(metric => {
-        const Icon = metricToneIcons[metric.tone]
-        return <div key={metric.id} className="result-workspace-stat" data-tone={metric.tone}>
-          <span className="result-workspace-stat-label"><Icon size={12} strokeWidth={2} aria-hidden="true" />{metric.label}</span>
-          <span className="result-workspace-stat-value">{metric.value}{metric.unit && <em>{metric.unit}</em>}</span>
-        </div>
-      })}
-    </div>}
-    {section.progress !== undefined && <div className="result-workspace-tests-progress">
-      <div className="result-workspace-progress-head">
-        <span>{section.progressLabel || '测试进度'}</span>
-        <strong>{Math.round(section.progress)}%</strong>
-      </div>
-      <Track value={section.progress} label={section.progressLabel || '测试进度'} />
-    </div>}
-    {section.checks.length > 0 && <ul className="result-workspace-checks">
-      {section.checks.map(check => {
-        const Icon = checkIcons[check.status]
-        return <li key={check.id} data-status={check.status}>
-          <Icon size={14} strokeWidth={2} aria-hidden="true" />
-          <span>{check.label}</span>
-          <em>{checkStatusLabels[check.status]}</em>
-        </li>
-      })}
-    </ul>}
-  </div>
-}
-
-function ApiBody({ section }: { section: ResultApiSection }) {
-  return <div className="result-workspace-table-wrap">
-    <table className="result-workspace-table">
-      <caption className="result-workspace-sr-only">{section.title}接口列表</caption>
-      <thead>
-        <tr><th scope="col">接口地址</th><th scope="col">方法</th><th scope="col">状态</th><th scope="col">更新时间</th></tr>
-      </thead>
-      <tbody>
-        {section.rows.map(row => <tr key={row.id}>
-          <td><code className="result-workspace-endpoint">{row.endpoint}</code></td>
-          <td><span className="result-workspace-method" data-method={row.method}>{row.method}</span></td>
-          <td><Chip tone={apiStatusTones[row.status]}>{apiStatusLabels[row.status]}</Chip></td>
-          <td className="result-workspace-time">{row.at || '—'}</td>
-        </tr>)}
-      </tbody>
-    </table>
-  </div>
-}
-
-function EnvironmentsBody({ section }: { section: ResultEnvironmentsSection }) {
-  return <ul className="result-workspace-envs">
-    {section.items.map(item => <li key={item.id} className="result-workspace-env" data-status={item.status}>
-      <span className="result-workspace-dot" aria-hidden="true" />
-      <span className="result-workspace-env-name" title={item.name}>{item.name}</span>
-      {item.version && <span className="result-workspace-version-chip">{item.version}</span>}
-      <span className="result-workspace-env-time">{item.at || '—'}</span>
-      <span className="result-workspace-env-state">{environmentStatusLabels[item.status]}</span>
-    </li>)}
-  </ul>
-}
-
-function FilesBody({ section }: { section: ResultFilesSection }) {
-  return <ul className="result-workspace-files">
-    {section.items.map(item => {
-      const Icon = fileKindIcons[item.kind]
-      const body = <>
-        <span className="result-workspace-file-icon" data-kind={item.kind} aria-hidden="true"><Icon size={16} strokeWidth={1.9} /></span>
-        <span className="result-workspace-file-name" title={item.name}>{item.name}</span>
-        {item.size && <span className="result-workspace-file-size">{item.size}</span>}
-      </>
-      return <li key={item.id} className="result-workspace-file">
-        {item.url
-          ? <a className="result-workspace-file-card" href={item.url} target="_blank" rel="noopener noreferrer"
-            aria-label={`${item.name}（${fileKindLabels[item.kind]}），在新窗口打开`}>{body}</a>
-          : <div className="result-workspace-file-card" title={item.name}>{body}</div>}
-      </li>
-    })}
-  </ul>
-}
-
-function SectionBody({ section }: { section: ResultSection }) {
-  switch (section.kind) {
-    case 'gallery': return <GalleryBody section={section} />
-    case 'documents': return <DocumentsBody section={section} />
-    case 'tests': return <TestsBody section={section} />
-    case 'api': return <ApiBody section={section} />
-    case 'environments': return <EnvironmentsBody section={section} />
-    case 'files': return <FilesBody section={section} />
-    case 'changes': return <ResultChanges section={section} />
-    case 'custom': return <CustomSectionBody section={section} />
-  }
-}
-
-function SectionCard({ section }: { section: ResultSection }) {
-  const headingId = useId()
-  const Icon = sectionIcons[section.kind]
-  return <section className="result-workspace-card" data-kind={section.kind} data-column={section.column}
-    data-span={section.span} data-emphasis={section.emphasis} aria-labelledby={headingId}>
-    <header className="result-workspace-card-head">
-      <span className="result-workspace-card-icon" aria-hidden="true"><Icon size={14} strokeWidth={2} /></span>
-      <h3 id={headingId}>{section.title}</h3>
-      {section.caption && !/^(查看全部|查看详情|上传文件)\s*[→↗]?$/.test(section.caption.trim()) && <small>{section.caption}</small>}
-    </header>
-    <SectionBody section={section} />
-  </section>
-}
-
 /** The 3-step stage stepper on top of the 交付成果 tab. */
 function StageSteps({ steps, status }: { steps: WhiteboardTaskBoardData['steps']; status?: BoardStatus }) {
   if (!steps.length) return null
@@ -302,15 +105,28 @@ function RiskRow({ risk }: { risk: ResultRisk }) {
 }
 
 function DeliverablesPane({ result, active }: { result: OfficeResult; active: boolean }) {
-  const { sections, documentMeta } = resultDeliveryLayout(result)
+  const { changes, documentMeta } = resultContentLayout(result)
+  const sections = changes
+  const targets = useRef(new Map<string, HTMLDivElement>())
+  const contents = [...(result.artifacts.length ? [{ id: '@files', title: `文件 · ${result.artifacts.length}` }] : []), ...sections.map(section => ({ id: section.id, title: section.title }))]
+  const locate = (id: string) => {
+    const element = targets.current.get(id)
+    element?.scrollIntoView({ block: 'start' })
+    element?.focus({ preventScroll: true })
+  }
   return <div className="result-workspace-deliverables">
-    {result.artifacts.length > 0 && <ResultReader result={result} view="deliverables" documentMeta={documentMeta} />}
+    {contents.length > 1 && <nav className="result-workspace-contents" aria-label="交付物内容导航"><span>本页内容</span>
+      <div>{contents.map(item => <button type="button" key={item.id} title={item.title} onClick={() => locate(item.id)}>{item.title}</button>)}</div>
+    </nav>}
+    {result.artifacts.length > 0 && <div ref={element => { if (element) targets.current.set('@files', element); else targets.current.delete('@files') }} tabIndex={-1} className="result-workspace-anchor">
+      <ResultReader result={result} view="deliverables" documentMeta={documentMeta} /></div>}
     {sections.length > 0 && <div className="result-workspace-sections">
-        {sections.map(section => section.kind === 'changes'
-          ? <ResultChanges key={section.id} section={section} active={active} />
-          : <SectionCard key={section.id} section={section.kind === 'tests' ? { ...section, checks: resultChecks({ ...result, checks: section.checks }) } : section} />)}
+        {sections.map(section => <div key={section.id} className="result-workspace-anchor" tabIndex={-1}
+          ref={element => { if (element) targets.current.set(section.id, element); else targets.current.delete(section.id) }}>
+          <ResultChanges section={section} active={active} />
+        </div>)}
       </div>}
-    {!result.sections.length && !result.artifacts.length && <p className="result-workspace-empty">当前没有可查看的交付物。产出后将显示在这里。</p>}
+    {!sections.length && !result.artifacts.length && <p className="result-workspace-empty">当前没有可查看的交付物。产出后将显示在这里。</p>}
   </div>
 }
 
@@ -361,7 +177,7 @@ export function ResultWorkspace(props: WorkspaceProps) {
   }</ResultDeliveryShell>
 }
 
-function ResultWorkspaceBody({ board, result, boardHtml, initialTab = 'overview', onTabChange, historical, executionKnown }: WorkspaceProps & { historical: boolean; executionKnown: boolean }) {
+function ResultWorkspaceBody({ board, result, initialTab = 'overview', onTabChange, historical, executionKnown }: WorkspaceProps & { historical: boolean; executionKnown: boolean }) {
   const baseId = useId()
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab)
   const tabRefs = useRef<Partial<Record<WorkspaceTab, HTMLButtonElement | null>>>({})
@@ -370,19 +186,45 @@ function ResultWorkspaceBody({ board, result, boardHtml, initialTab = 'overview'
   const boardStatus: BoardStatus = board.status ?? 'queued'
   const presentation = resultPresentation(board, result)
   const hasResult = resultHasContent(result)
-  const hasDeliverables = result.artifacts.length > 0 || result.sections.length > 0
+  const delivery = resultContentLayout(result)
+  const hasDeliverables = result.artifacts.length > 0 || delivery.changes.length > 0
   const attention = resultAttention(result)
   const teamLabel = result.team ? (result.teamSize === undefined ? result.team : result.team + '（' + result.teamSize + '人）') : ''
   const updatedAt = result.updatedAt || result.producedAt
-  const delivery = resultDeliveryLayout(result)
-  const changes = delivery.sections.filter(section => section.kind === 'changes')
+  const changes = delivery.changes
+  const evidenceChecks = resultEvidenceChecks(result)
+  const processResult = { ...result, checks: resultEvidenceCheckInputs(result) }
+
   const hasAside = result.metrics.length > 0 || board.steps.length > 0
+  const hasTaskDetails = Boolean(board.detailSections?.length || board.detail?.trim())
+  const taskDetails = useRef<HTMLDetailsElement>(null)
+  const taskList = useRef<HTMLDetailsElement>(null)
+  const processTargets = useRef(new Map<string, HTMLElement>())
+  const processItems = [
+    ...(attention.length ? [{ id: 'attention', title: `待处理 · ${attention.length}` }] : []),
+    ...(evidenceChecks.length || result.decisions.length || result.note || delivery.evidence.length ? [{ id: 'evidence', title: '验证与决策' }] : []),
+    ...(result.tasks.length ? [{ id: 'tasks', title: `任务 · ${result.tasks.length}` }] : []),
+    ...(result.risks.length ? [{ id: 'risks', title: `风险 · ${result.risks.length}` }] : []),
+    ...(result.versions.length ? [{ id: 'versions', title: '版本记录' }] : []),
+    ...(hasTaskDetails ? [{ id: 'details', title: '任务详情与协作' }] : []),
+  ]
   const tabId = (key: WorkspaceTab) => baseId + '-tab-' + key
   const panelId = (key: WorkspaceTab) => baseId + '-panel-' + key
   const switchTab = (key: WorkspaceTab, focus = false) => {
     setActiveTab(key)
     onTabChange?.(key)
     if (focus) requestAnimationFrame(() => tabRefs.current[key]?.focus())
+  }
+  const openProcessSection = (target: string) => {
+    switchTab('process')
+    requestAnimationFrame(() => {
+      const element = target === 'details' ? taskDetails.current : target === 'tasks' ? taskList.current : processTargets.current.get(target)
+      if (!element) return
+      if (element instanceof HTMLDetailsElement) element.open = true
+      element.scrollIntoView({ block: 'start' })
+      const focus = element.querySelector('summary') ?? element
+      focus.focus({ preventScroll: true })
+    })
   }
   const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
@@ -424,41 +266,60 @@ function ResultWorkspaceBody({ board, result, boardHtml, initialTab = 'overview'
     <section className="result-workspace-panel" id={panelId('overview')} role="tabpanel" aria-labelledby={tabId('overview')}
       hidden={activeTab !== 'overview'} tabIndex={0}>
       <div className="result-workspace-overview" data-aside={hasAside}>
-        <div className="result-workspace-overview-main">
+        <div className="result-workspace-overview-lead">
           <section className="result-workspace-summary" aria-label={summaryLabel}>
             <p className="result-workspace-eyebrow">{hasResult ? summaryLabel : '当前目标'}</p>
             {(result.summary || board.summary || board.description) && <p className="result-workspace-conclusion">{result.summary || board.summary || board.description}</p>}
             {result.title && result.title !== title && <p className="result-workspace-result-title">{result.title}</p>}
             {result.verdict && <p className="result-workspace-verdict">{result.verdict}</p>}
-            <p className="result-workspace-state-description" data-state={presentation.key}>{presentation.description}</p>
+            {(!result.verdict || presentation.key === 'conflict') && <p className="result-workspace-state-description" data-state={presentation.key}>{presentation.description}</p>}
             <div className="result-workspace-summary-actions">
-              {!hasDeliverables && <button type="button" className="result-workspace-primary" onClick={() => switchTab('process', true)}>查看执行记录<ArrowRight size={14} aria-hidden="true" /></button>}
+              {!hasDeliverables && processItems.length > 0 && <button type="button" className="result-workspace-primary" onClick={() => switchTab('process', true)}>查看执行记录<ArrowRight size={14} aria-hidden="true" /></button>}
               {hasResult && <ResultReader result={result} view="actions" />}
             </div>
           </section>
-          {attention.length > 0 && <section className="result-workspace-attention-preview" aria-label="待处理事项">
-            <ShieldAlert size={17} strokeWidth={1.7} aria-hidden="true" />
-            <div><h3>需要关注 <span>{attention.length} 项</span></h3><p title={attention[0].title}>{attention[0].title}</p></div>
-            <button type="button" onClick={() => switchTab('process', true)} aria-label="查看全部待处理事项">查看<ArrowRight size={13} aria-hidden="true" /></button>
-          </section>}
-          {changes.map(section => <ResultChanges key={section.id} section={section} active={activeTab === 'overview'} />)}
-          {hasDeliverables && <section className="result-workspace-featured" aria-label="主要交付物">
-            <header><h3>交付内容</h3><button type="button" onClick={() => switchTab('deliverables', true)}>查看全部<ArrowRight size={13} aria-hidden="true" /></button></header>
-            {result.artifacts.length > 0
-              ? <ResultReader result={result} view="featured" documentMeta={delivery.documentMeta} />
-              : <ul className="result-workspace-section-index">{delivery.sections.slice(0, 4).map(section => {
-                const Icon = sectionIcons[section.kind]
-                return <li key={section.id}><Icon size={17} strokeWidth={1.6} aria-hidden="true" /><span>{section.title}</span></li>
-              })}</ul>}
-          </section>}
-          {result.next.length > 0 && <ResultReader result={result} view="next" />}
         </div>
         {hasAside && <aside className="result-workspace-overview-aside" aria-label="成果指标与进度">
           {result.metrics.length > 0 && <ResultReader result={result} view="metrics" />}
           {board.steps.length > 0 && <section aria-label="执行进度" className="result-workspace-progress-section">
-            <h3>执行进度</h3><StageSteps steps={board.steps} status={boardStatus} />
+            <h3>阶段进度</h3><StageSteps steps={board.steps} status={boardStatus} />
           </section>}
         </aside>}
+        <div className="result-workspace-overview-main">
+          {board.description && board.description !== (result.summary || board.summary) && <section className="result-workspace-goal" aria-label="任务目标">
+            <p className="result-workspace-eyebrow">任务目标</p><p>{board.description}</p>
+            {hasTaskDetails && <button type="button" onClick={() => openProcessSection('details')}>查看任务详情与分工<ArrowRight size={13} aria-hidden="true" /></button>}
+          </section>}
+          {attention.length > 0 && <section className="result-workspace-attention-preview" aria-label="待处理事项">
+            <ShieldAlert size={17} strokeWidth={1.7} aria-hidden="true" />
+            <div><h3>需要关注 <span>{attention.length} 项</span></h3><p title={attention[0].title}>{attention[0].title}</p></div>
+            <button type="button" onClick={() => openProcessSection('attention')} aria-label="查看全部待处理事项">查看<ArrowRight size={13} aria-hidden="true" /></button>
+          </section>}
+          {result.tasks.length > 0 && <section className="result-workspace-task-glance" aria-label="任务推进概况">
+            <header><div><h3>任务推进</h3><span>{result.tasks.filter(task => task.status === 'done').length}/{result.tasks.length} 已完成</span></div>
+              <button type="button" onClick={() => openProcessSection('tasks')}>全部任务<ArrowRight size={13} aria-hidden="true" /></button></header>
+            <ul>{[...result.tasks].sort((a, b) => ({ blocked: 0, doing: 1, todo: 2, done: 3 })[a.status] - ({ blocked: 0, doing: 1, todo: 2, done: 3 })[b.status]).slice(0, 3).map(task => <li key={task.id}>
+              <span>{task.title}<small>{task.owner}</small></span><Chip tone={taskStatusTones[task.status]}>{taskStatusLabels[task.status]}</Chip>
+            </li>)}</ul>
+          </section>}
+          {changes.length > 0 && <section className="result-workspace-change-summary" aria-label="文件变化摘要">
+            <div><FileText size={16} aria-hidden="true" /><span>本轮文件变更</span><strong>{changes.reduce((count, section) => count + section.files.length, 0)} 个文件</strong></div>
+            <button type="button" onClick={() => switchTab('deliverables', true)}>查看变更<ArrowRight size={13} aria-hidden="true" /></button>
+          </section>}
+          {delivery.analysis.length > 0 && <section className="result-workspace-content-group" aria-label="分析与结论"><h3>分析与结论</h3>
+            {delivery.analysis.map(section => <ResultSectionCard key={section.id} section={section} sourceArtifact={result.artifacts.find(artifact => artifact.id === section.artifactId && artifact.versionId === section.versionId)} />)}
+          </section>}
+          {delivery.supplementary.length > 0 && <section className="result-workspace-content-group" aria-label="补充内容"><h3>补充内容</h3>
+            {delivery.supplementary.map(section => <ResultSectionCard key={section.id} section={section} sourceArtifact={result.artifacts.find(artifact => artifact.id === section.artifactId && artifact.versionId === section.versionId)} />)}
+          </section>}
+          {hasDeliverables && <section className="result-workspace-featured" aria-label="主要交付物">
+            <header><h3>交付内容</h3><button type="button" onClick={() => switchTab('deliverables', true)}>查看全部<ArrowRight size={13} aria-hidden="true" /></button></header>
+            {result.artifacts.length > 0
+              ? <ResultReader result={result} view="featured" documentMeta={delivery.documentMeta} />
+              : <p className="result-file-caption">本轮提供文件变更记录，可在交付物中查看。</p>}
+          </section>}
+          {result.next.length > 0 && <ResultReader result={result} view="next" />}
+        </div>
       </div>
     </section>
 
@@ -468,24 +329,31 @@ function ResultWorkspaceBody({ board, result, boardHtml, initialTab = 'overview'
     <section className="result-workspace-panel" id={panelId('process')} role="tabpanel" aria-labelledby={tabId('process')}
       hidden={activeTab !== 'process'} tabIndex={0}>
       <div className="result-workspace-process">
-        {attention.length > 0 && <section className="result-workspace-attention" aria-label="全部待处理事项">
+        {processItems.length > 1 && <nav className="result-workspace-contents" aria-label="过程记录内容导航"><span>本页内容</span>
+          <div>{processItems.map(item => <button type="button" key={item.id} onClick={() => openProcessSection(item.id)}>{item.title}</button>)}</div>
+        </nav>}
+        {!processItems.length && <p className="result-workspace-empty">当前暂无过程记录。</p>}
+        {attention.length > 0 && <section tabIndex={-1} ref={element => { if (element) processTargets.current.set('attention', element) }} className="result-workspace-attention result-workspace-anchor" aria-label="全部待处理事项">
           <header><ShieldAlert size={16} aria-hidden="true" /><h3>待处理事项</h3><span>{attention.length} 项</span></header>
           <ul>{attention.map(item => <li key={item.id}><span data-danger={item.danger}>{item.label}</span><p>{item.title}</p></li>)}</ul>
         </section>}
-        {hasResult && <ResultReader result={result} view="process" />}
-        {(result.risks.length > 0) && <details className="result-workspace-disclosure" open>
+        {(evidenceChecks.length > 0 || result.decisions.length > 0 || result.note || delivery.evidence.length > 0) && <div tabIndex={-1} className="result-workspace-anchor" ref={element => { if (element) processTargets.current.set('evidence', element) }}>
+          <ResultReader result={processResult} view="process" />
+          {delivery.evidence.map(section => <ResultSectionCard key={section.id} section={section} sourceArtifact={result.artifacts.find(artifact => artifact.id === section.artifactId && artifact.versionId === section.versionId)} />)}
+        </div>}
+        {(result.risks.length > 0) && <details ref={element => { if (element) processTargets.current.set('risks', element) }} className="result-workspace-disclosure result-workspace-anchor" open>
           <summary><ShieldAlert size={15} aria-hidden="true" />风险与备注<span>{result.risks.length}</span></summary><RisksPane result={{ ...result, note: '' }} />
         </details>}
-        {result.tasks.length > 0 && <details className="result-workspace-disclosure" open>
+        {result.tasks.length > 0 && <details ref={taskList} className="result-workspace-disclosure result-workspace-anchor" open>
           <summary><ListChecks size={15} aria-hidden="true" />任务明细<span>{result.tasks.length}</span></summary><TasksPane board={board} result={{ ...result, next: [] }} />
         </details>}
-        {result.versions.length > 0 && <details className="result-workspace-disclosure">
+        {result.versions.length > 0 && <details ref={element => { if (element) processTargets.current.set('versions', element) }} className="result-workspace-disclosure result-workspace-anchor">
           <summary><GitBranch size={15} aria-hidden="true" />版本记录<span>{result.versions.length}</span></summary><VersionsPane result={result} />
         </details>}
-        <details className="result-workspace-disclosure" open>
-          <summary><FileText size={15} aria-hidden="true" />任务白板</summary>
-          <WhiteboardBoardView sections={board.detailSections ?? []} detail={board.detail} html={boardHtml ?? renderWhiteboardContent({ taskBoard: board })} />
-        </details>
+        {hasTaskDetails && <details ref={taskDetails} className="result-workspace-disclosure result-workspace-anchor" open>
+          <summary><FileText size={15} aria-hidden="true" />任务详情与协作</summary>
+          <WhiteboardBoardView sections={board.detailSections ?? []} detail={board.detail} />
+        </details>}
       </div>
     </section>
   </div>

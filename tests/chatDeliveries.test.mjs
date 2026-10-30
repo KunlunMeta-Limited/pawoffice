@@ -75,7 +75,7 @@ test('delivery entries display actual metadata and keep remote unknowns explicit
   assert(!html.includes('0 项产物'))
   assert(!html.includes('<script>'))
   assert(html.includes('&lt;script&gt;'))
-  const empty = renderToStaticMarkup(createElement(Entries, { deliveries: [] }))
+  const empty = renderToStaticMarkup(createElement(Entries, { deliveries: [ui.resultDeliverySchema.parse(fixture.deliveries[0])] }))
   assert.equal(empty, '')
 })
 

@@ -10,8 +10,7 @@ function assertResultHistory(previous: OfficeSnapshot, next: OfficeSnapshot) {
     const priorDeliveries = new Map(old.whiteboard.deliveries.map(delivery => [delivery.id, delivery]))
     for (const delivery of conversation.whiteboard.deliveries) {
       const prior = priorDeliveries.get(delivery.id)
-      if (prior && (prior.sequence !== delivery.sequence || prior.createdAt !== delivery.createdAt || prior.turnId !== delivery.turnId
-        || (prior.result && delivery.result && canonical(prior.result) !== canonical(delivery.result)))) {
+      if (prior && canonical(prior) !== canonical(delivery)) {
         throw new OfficeStateFault(409, 'RESULT_HISTORY_CONFLICT', '已交付的历史记录不能覆盖，请使用新的交付 id')
       }
     }

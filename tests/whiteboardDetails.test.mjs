@@ -65,7 +65,8 @@ test('legacy Markdown remains readable when no structured detail is available', 
   const legacy = schema.parse({ title: '旧白板', description: '原说明', steps: [] })
   assert.deepEqual(legacy.detailSections, [])
   for (const board of [legacy, { ...legacy, detail: '\n  ' }]) {
-    assert(read(board).includes('whiteboard-reader-fallback'))
+    assert(!read(board).includes('whiteboard-reader-fallback'))
+    assert(!read(board).includes('>任务白板</summary>'))
     assert(read(board).includes('原说明'))
   }
   const withMarkdown = schema.parse({ ...legacy, detail: '# 旧版详情\n\n**完整内容**\n\n<script>alert(1)</script>\n\n[危险](javascript:alert%281%29)' })
