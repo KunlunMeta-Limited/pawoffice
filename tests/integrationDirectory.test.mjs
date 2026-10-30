@@ -22,7 +22,9 @@ test('integration guides keep valid local links after consolidation', async () =
   for (const file of await readdir(new URL('docs/', integration))) {
     if (file.endsWith('.md')) files.push(new URL(`docs/${file}`, integration))
   }
-  assert.equal(files.length, 5)
+  for (const name of ['office-integration', 'dashboard-integration', 'chat-integration', 'message-relay']) {
+    assert(files.some(file => file.pathname.endsWith(`/docs/${name}.md`)), `missing core guide: ${name}`)
+  }
   let links = 0
   for (const file of files) {
     const text = await readFile(file, 'utf8')

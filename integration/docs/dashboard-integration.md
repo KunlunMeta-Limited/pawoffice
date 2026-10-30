@@ -106,7 +106,7 @@ npm run integration-example
 - `system` 可选，格式为 `{ "cpuPercent": 39, "memoryPercent": 65, "networkKbps": 15 }`。不提供时页面显示“未提供”，不生成假监控值。
 - 会话 ID 在办公室内唯一；员工、任务、事件 ID 分别在所属会话内唯一。非空 `assigneeId` 必须引用同一会话中的员工；空串表示未分配。不同会话可以复用任务或员工 ID，不共享状态。PawOffice 校验完整快照，字段或引用无效时返回错误。
 
-`seq` 是每个办公室独立递增的完整快照版本，必须提供正整数；外部业务后端重启后应继续使用递增版本。较小版本被忽略，同版本不同内容返回 `409 SEQ_CONFLICT`。`whiteboard` 为固定模板数据对象，空标题表示空白板，省略时补齐默认结构。具体内容字段见[办公室 HTTP 接入协议](./office-integration.md)。
+`seq` 是每个办公室独立递增的完整快照版本，必须提供正整数；外部业务后端重启后应继续使用递增版本。较小版本被忽略，同版本不同内容返回 `409 SEQ_CONFLICT`。`whiteboard` 为固定模板数据对象，空标题表示空白板，省略时补齐默认结构。白板可选 `result` 承载本轮成果，结构与展示规则见[办公室 HTTP 接入协议](./office-integration.md#成果阅读页)；具体内容字段见[办公室 HTTP 接入协议](./office-integration.md)。
 
 ## 必填字段与默认值
 

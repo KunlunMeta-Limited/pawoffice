@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { before, after, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
@@ -18,9 +19,9 @@ test('speech frames preserve every pixel outside their authored mouth patch', as
   for (const [id, poses] of Object.entries(placements)) for (const [pose, [x, y, width, height]] of Object.entries(poses)) {
     const root = new URL('../art/characters/packs/' + id + '/', import.meta.url)
     const file = pose === 'seated-right' ? 'talk/seated-right/001.png' : 'idle/' + pose + '/001.png'
-    const original = await sharp(new URL(file, root).pathname).ensureAlpha().raw().toBuffer()
+    const original = await sharp(fileURLToPath(new URL(file, root))).ensureAlpha().raw().toBuffer()
     for (const stage of ['001', '002', '003']) {
-      const image = await sharp(new URL('speak/' + pose + '/' + stage + '.png', root).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+      const image = await sharp(fileURLToPath(new URL('speak/' + pose + '/' + stage + '.png', root))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
       let changed = 0
       for (let row = 0; row < image.info.height; row++) for (let col = 0; col < image.info.width; col++) {
         const offset = (row * image.info.width + col) * 4

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { OfficeScene, type OfficeAgentClick, type SceneLoadProgress, type SceneActionProgress } from '../application/OfficeScene.ts'
 import type { Agent } from '@pawoffice/scene-office/types'
 import type { SceneRuntime } from '@pawoffice/runtime/SceneRuntime'
@@ -7,7 +7,7 @@ import { SceneHost } from '../../../shared/scene/SceneHost.ts'
 import type { OfficeSimulation } from '../application/OfficeSimulation.ts'
 import type { DashboardSnapshot } from '@pawoffice/protocol/dashboard'
 import { officeActorTasks } from '../dashboard/actorTasks.ts'
-import { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
+import { WhiteboardProgress, whiteboardTaskBoard } from '@pawoffice/scene-office/whiteboard'
 
 type AgentMenuState = {
   agent: Agent
@@ -30,7 +30,11 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
   useEffect(() => { tasksRef.current = tasks }, [tasks])
   const readyRef = useRef(false)
   const [menu, setMenu] = useState<AgentMenuState | null>(null)
-  const [whiteboardId, setWhiteboardId] = useState<string | null>(null)
+  const readerScope = JSON.stringify([runtime.sceneId, dashboard?.conversationId ?? ''])
+  const readerScopeRef = useRef(readerScope)
+  useLayoutEffect(() => { readerScopeRef.current = readerScope }, [readerScope])
+  const [reader, setReader] = useState<{ scope: string; boardId: string; deliveryId?: string } | null>(null)
+  const whiteboardId = reader?.scope === readerScope ? reader.boardId : null
   const [demo, setDemo] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -42,7 +46,7 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
 
   useEffect(() => {
     const element = host.element
-    setMenu(null); setWhiteboardId(null); setNotice(simulation?.error ?? null); setDemo(simulation?.isDemoRunning ?? false)
+    setMenu(null); setReader(null); setNotice(simulation?.error ?? null); setDemo(simulation?.isDemoRunning ?? false)
 
     const handleAgentClick = (event: OfficeAgentClick) => {
       if (selectionHandler.current?.(event.agent.id)) { setMenu(null); return }
@@ -64,7 +68,10 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
     const scene = new OfficeScene({ runtime, simulation, onAgentClick: handleAgentClick, onDraftChange: setNotice, onDemoChange: setDemo,
       taskForActor: id => tasksRef.current.get(id), whiteboardProgress,
       onPropClick: event => {
-        if (runtime.readWorld().props.some(prop => prop.id === event.propId && prop.templateId === 'office.wall-whiteboard')) setWhiteboardId(event.propId)
+        if (runtime.readWorld().props.some(prop => prop.id === event.propId && prop.templateId === 'office.wall-whiteboard')) {
+          // The scope is read at click time so switching conversations does not leave a stale handler.
+          setReader({ scope: readerScopeRef.current, boardId: event.propId })
+        }
       },
       onLoadProgress: value => { if (active) setProgress(value) },
       onActionProgress: value => { if (active) setActions(value) } })
@@ -113,8 +120,20 @@ export function useOfficeSceneController(runtime: SceneRuntime, covered = false,
     sceneRef.current?.setRenderingSuspended(covered || whiteboardId !== null)
   }, [covered, whiteboardId, loaded, runtime])
 
-  const whiteboard = whiteboardId ? runtime.readWorld().props.find(prop => prop.id === whiteboardId) : undefined
-  return { host, sceneRef, menu, setMenu, whiteboard, whiteboardProgress, closeWhiteboard: () => setWhiteboardId(null), demo, setDemo, canDemo: simulation?.canDemo ?? true, notice, setNotice,
+  const wallBoard = runtime.readWorld().props.find(prop => prop.templateId === 'office.wall-whiteboard')
+  const dashboardBoard = dashboard?.whiteboard
+    ? { id: wallBoard?.id ?? 'conversation-whiteboard', state: { taskBoard: dashboard.whiteboard } } : undefined
+  const resultBoard = dashboardBoard ?? wallBoard
+  const currentBoard = resultBoard ? whiteboardTaskBoard(resultBoard.state) : null
+  const whiteboard = whiteboardId ? (dashboardBoard?.id === whiteboardId ? dashboardBoard : runtime.readWorld().props.find(prop => prop.id === whiteboardId)) : undefined
+  return { host, sceneRef, menu, setMenu, whiteboard, currentBoard, readerScope, whiteboardProgress, initialDeliveryId: reader?.scope === readerScope ? reader.deliveryId : undefined,
+    openWhiteboard: () => { if (resultBoard && currentBoard) setReader({ scope: readerScope, boardId: resultBoard.id }) },
+    openDelivery: (conversationId: string, deliveryId: string) => {
+      if (conversationId !== dashboard?.conversationId || !resultBoard || !currentBoard?.deliveries?.some(delivery => delivery.id === deliveryId)) return false
+      setReader({ scope: readerScope, boardId: resultBoard.id, deliveryId })
+      return true
+    },
+    closeWhiteboard: () => setReader(null), demo, setDemo, canDemo: simulation?.canDemo ?? true, notice, setNotice,
     loaded, progress, actions, thumbnails, previewProp, highlightProp }
 }
 export type OfficeSceneController = ReturnType<typeof useOfficeSceneController>

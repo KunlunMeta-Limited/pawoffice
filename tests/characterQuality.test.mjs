@@ -139,9 +139,16 @@ test('review records cannot pass with unchecked steps, stale evidence or escapin
   await assert.rejects(validateVisualReview(root, review.digest))
   review.checks.motion = true; review.evidence[0].sha256 = '0'.repeat(64); await writeJson(path.join(root, 'review.json'), review)
   await assert.rejects(validateVisualReview(root, review.digest), /evidence changed/)
-  await symlink(path.join(root, 'idle/front.png'), path.join(root, 'evidence.png'))
-  review.evidence[0].file = '../evidence.png'; await writeJson(path.join(root, 'review.json'), review)
+  await t.test('rejects escaping symbolic links when supported', async t => {
+    try { await symlink(path.join(root, 'idle/front.png'), path.join(root, 'evidence.png')) }
+    catch (error) {
+      if (process.platform === 'win32' && error.code === 'EPERM') { t.skip('Windows requires permission to create file symbolic links'); return }
+      throw error
+    }
+    review.evidence[0].file = '../evidence.png'; await writeJson(path.join(root, 'review.json'), review)
   await assert.rejects(validateVisualReview(root, review.digest))
+
+  })
 })
 
 test('the normal builder enforces admission and leaves the old registry untouched on rejection', async t => {

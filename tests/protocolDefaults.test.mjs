@@ -82,6 +82,8 @@ test('actual success and validation responses are object-only and null-free, inc
 
 test('an empty user-operation wait returns a fixed empty actions array', async t => {
   const app = await createPawOfficeServer(); t.after(() => app.close())
+  // A real listener keeps the event loop alive while the server's unref'ed long-poll timer waits.
+  await app.listen({ host: '127.0.0.1', port: 0 })
   const response = await post(app, { type: 'ui.next', timeoutMs: 1000 })
   assert.equal(response.statusCode, 200); assert.deepEqual(response.json().data, { actions: [] }); assertNoNull(response.json())
 })

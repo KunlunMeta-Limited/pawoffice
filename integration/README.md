@@ -2,6 +2,10 @@
 
 本目录集中存放外部业务后端接入 PawOffice 所需的协议说明和可运行客户端。正式前端应用位于 `apps/web/`，独立示例位于 `examples/`，服务端实现位于 `server/`，公共 Schema 位于 `packages/protocol/`。
 
+后端组织成果数据时，请按[成果内容用途与归属](./docs/result-section-routing.md)区分分析、验证依据与文件预览；旧数据继续兼容。
+
+想评审正式成果页面，先看[电商完整页面评审](./docs/ecommerce-visual-review.md)：支持一键载入完整状态，以及从空聊天逐轮推进；包括任务目标、分工、图表、素材、风险和文件版本。
+
 ## 目录
 
 ```text
@@ -10,6 +14,9 @@ integration/
   clients/
     client.mjs                 初始化、任务更新和用户确认示例
     ui-client.mjs              领取用户操作并返回展示结果
+    send-result-demo.ps1       PowerShell 7 三轮交付与固定版本演示
+  fixtures/
+    result-deliveries.json     当前成果、历史交付及文档版本数据
   docs/
     office-integration.md      HTTP 接入协议与完整流程图
     dashboard-integration.md   业务快照和白板字段
@@ -25,6 +32,10 @@ integration/
 4. [聊天流式接口](./docs/chat-integration.md)：需要接入聊天生成服务时阅读。
 
 ## 运行示例
+
+默认电商案例的完整 prompt、助手回复、Markdown/CSV 产物及操作步骤见[电商全流程演示](./docs/ecommerce-workflow.md)。启动 `pwsh -NoProfile -File .\integration\clients\start-workflow-mock.ps1 -Scenario ecommerce` 后，从新办公室的空聊天逐轮发送五个已准备好的 prompt。
+
+从空聊天开始的完整成果工作流（确认目标、首次交付、更新、回滚、移除和重新验收）：保持下面两个服务运行，另执行 `pwsh -NoProfile -File .\integration\clients\start-workflow-mock.ps1`。操作步骤及聊天地址注册范围见[全流程联调](../docs/architecture/workflow-mock.md)。
 
 在项目根目录安装依赖并启动服务器模式：
 
@@ -58,6 +69,8 @@ PAWOFFICE_URL=http://127.0.0.1:3000 PAWOFFICE_API_KEY=your-private-key npm run i
 纯静态演示 `npm run dev:vite` 不接收外部业务请求。公网部署应配置私有密钥及页面访问控制。
 
 ## 实现与验收
+
+多轮成果联调沿用上述两个服务，另运行 `pwsh -NoProfile -File .\integration\clients\send-result-demo.ps1 -Round 3`，选择“成果联调办公室”→“登录模块交付演示”→“当前成果”。可依次发送 `-Round 1`、`2`、`3` 查看积累和更新；协议升级后需按原命令重启开发服务。数据职责、外部版本 URL 与字段说明见[交付与版本预览](../docs/architecture/result-deliveries.md)。
 
 - [公共协议 Schema](../packages/protocol/src/office-integration.ts)
 - [PawOffice 服务端实现](../server/src/)

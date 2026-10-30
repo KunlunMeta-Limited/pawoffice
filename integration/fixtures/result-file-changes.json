@@ -1,0 +1,50 @@
+{
+  "kind": "changes",
+  "id": "code-changes",
+  "title": "文件变更",
+  "files": [
+    {
+      "path": "src/features/auth/LoginForm.tsx",
+      "status": "modified",
+      "added": 6,
+      "deleted": 2,
+      "diff": "diff --git a/src/features/auth/LoginForm.tsx b/src/features/auth/LoginForm.tsx\n--- a/src/features/auth/LoginForm.tsx\n+++ b/src/features/auth/LoginForm.tsx\n@@ -12,6 +12,10 @@\n export function LoginForm() {\n   const [error, setError] = useState('')\n-  const submit = () => login()\n+  const [submitting, setSubmitting] = useState(false)\n+  const submit = async () => {\n+    setSubmitting(true)\n+    try { await login() } finally { setSubmitting(false) }\n+  }\n   return (\n-    <button onClick={submit}>登录</button>\n+    <button disabled={submitting} onClick={submit}>登录</button>\n   )\n"
+    },
+    {
+      "path": "src/features/auth/useLogin.ts",
+      "status": "added",
+      "added": 7,
+      "deleted": 0,
+      "diff": "--- /dev/null\n+++ b/src/features/auth/useLogin.ts\n@@ -0,0 +1,7 @@\n+import { api } from '../../api'\n+\n+export async function login() {\n+  const response = await api.post('/auth/login')\n+  if (!response.ok) throw new Error('登录失败')\n+  return response.json()\n+}\n"
+    },
+    {
+      "path": "tests/auth/login.test.ts",
+      "status": "added",
+      "added": 5,
+      "deleted": 0,
+      "diff": "--- /dev/null\n+++ b/tests/auth/login.test.ts\n@@ -0,0 +1,5 @@\n+test('提交过程中禁用登录按钮', async () => {\n+  render(<LoginForm />)\n+  await user.click(screen.getByRole('button', { name: '登录' }))\n+  expect(screen.getByRole('button')).toBeDisabled()\n+})\n"
+    },
+    {
+      "path": "src/features/auth/legacyLogin.ts",
+      "status": "deleted",
+      "added": 0,
+      "deleted": 3,
+      "diff": "--- a/src/features/auth/legacyLogin.ts\n+++ /dev/null\n@@ -1,3 +0,0 @@\n-export function legacyLogin() {\n-  return window.localStorage.getItem('legacy-token')\n-}\n"
+    },
+    {
+      "path": "src/features/auth/session.ts",
+      "previousPath": "src/features/auth/storage.ts",
+      "status": "renamed",
+      "added": 1,
+      "deleted": 1,
+      "diff": "rename from src/features/auth/storage.ts\nrename to src/features/auth/session.ts\n--- a/src/features/auth/storage.ts\n+++ b/src/features/auth/session.ts\n@@ -1,3 +1,3 @@\n-export const sessionKey = 'legacy-token'\n+export const sessionKey = 'access-token'\n export const readSession = () => localStorage.getItem(sessionKey)\n export const clearSession = () => localStorage.removeItem(sessionKey)\n"
+    },
+    {
+      "path": "docs/login-flow.png",
+      "status": "added",
+      "added": 0,
+      "deleted": 0,
+      "binary": true
+    }
+  ]
+}

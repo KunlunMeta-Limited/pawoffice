@@ -1,0 +1,49 @@
+/* Structured whiteboard detail: a document of sections composed from primitives (no Markdown page). */
+.whiteboard-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding-bottom: 8px;
+}
+
+.whiteboard-detail-section { min-width: 0; }
+
+.whiteboard-detail-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e7ebe4;
+}
+
+.whiteboard-detail-section-head h2 {
+  margin: 0;
+  color: #2f3a33;
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.5;
+  letter-spacing: -.01em;
+}
+
+.whiteboard-detail-section-head small {
+  flex: none;
+  color: #8a948c;
+  font-size: 12px;
+}
+
+.whiteboard-detail .result-blocks { gap: 14px; }
+
+/* The primitives were designed for the denser result panel; give long-form detail more air. */
+.whiteboard-detail .result-block-text { font-size: 14.5px; line-height: 1.8; }
+.whiteboard-detail .result-block-md-table { margin: 2px 0; }
+
+@media (max-width: 620px) {
+  .whiteboard-detail { gap: 24px; }
+  .whiteboard-detail-section-head { flex-wrap: wrap; row-gap: 4px; }
+  .whiteboard-detail-section-head h2 { font-size: 17px; }
+  .whiteboard-detail-section-head small { width: 100%; }
+}

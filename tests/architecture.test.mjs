@@ -38,7 +38,7 @@ async function dependencies(entry) {
     }
   }
   await visit(path.join(root, entry))
-  return { files: [...visited].map(file => path.relative(root, file)), imports: [...imports] }
+  return { files: [...visited].map(file => path.relative(root, file).split(path.sep).join('/')), imports: [...imports] }
 }
 
 test('headless core cannot import office definitions, Pixi, React, application or texture code', async () => {

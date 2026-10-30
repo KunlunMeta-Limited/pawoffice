@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { after, before, test } from 'node:test'
 import sharp from 'sharp'
@@ -62,7 +63,7 @@ test('preview report distinguishes demo data and tracks actual local task state'
 
 test('preview artwork preserves transparent frames and stable sheet geometry', async () => {
   for (const [name, width, height, alpha] of [['room', 1536, 1024, false], ['stations', 1536, 1024, true], ['board-v2', 1448, 1086, true], ['robot', 1254, 1254, true], ['portraits', 1536, 1024, true]]) {
-    const metadata = await sharp(new URL(`../examples/dimetric/art/studio-v1/${name}.png`, import.meta.url).pathname).metadata()
+    const metadata = await sharp(fileURLToPath(new URL(`../examples/dimetric/art/studio-v1/${name}.png`, import.meta.url))).metadata()
     assert.equal(metadata.width, width); assert.equal(metadata.height, height); assert.equal(metadata.hasAlpha, alpha)
   }
 })

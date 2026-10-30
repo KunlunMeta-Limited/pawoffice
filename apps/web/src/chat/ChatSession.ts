@@ -5,7 +5,7 @@ import { chatArchiveSchema } from './persistence.ts'
 import type { ChatArchive, ChatPersistence } from './persistence.ts'
 import { mergeHistory, messageId } from './history.ts'
 
-export type ChatMessage = ChatTurn & { id: string; state: 'complete' | 'pending' | 'stopped' | 'error' }
+export type ChatMessage = ChatTurn & { id: string; turnId?: string; state: 'complete' | 'pending' | 'stopped' | 'error' }
 export type ChatSnapshot = { messages: ChatMessage[]; draft: string; ready: boolean; phase: 'idle' | 'thinking' | 'streaming'; error: string | null; storageError: string | null;
   syncing: boolean; historyError: string | null; hasMoreHistory: boolean; loadingOlder: boolean; olderError: string | null; canceling: boolean }
 
@@ -102,8 +102,8 @@ export class ChatSession {
     const prefix = `commerce-demo:${id}`
     const messages = this.snapshot.messages.filter(message => !message.id.startsWith(`${prefix}:`))
     const index = messages.findIndex(message => message.state === 'pending')
-    const pair: ChatMessage[] = [{ id: `${prefix}:user`, role: 'user', content: question, state: 'complete' },
-      { id: `${prefix}:assistant`, role: 'assistant', content: answer, state: 'complete' }]
+    const pair: ChatMessage[] = [{ id: `${prefix}:user`, turnId: prefix, role: 'user', content: question, state: 'complete' },
+      { id: `${prefix}:assistant`, turnId: prefix, role: 'assistant', content: answer, state: 'complete' }]
     messages.splice(index >= 0 ? index - 1 : messages.length, 0, ...pair)
     this.update({ ...this.snapshot, messages })
     return Promise.resolve()
@@ -198,8 +198,8 @@ export class ChatSession {
     const turnId = crypto.randomUUID()
     this.activeTurnId = turnId
     this.update({ ...this.snapshot, draft: '', phase: 'thinking', error: null, messages: [...this.snapshot.messages,
-      { id: messageId(turnId, 'user'), role: 'user', content: text, state: 'complete' },
-      { id: messageId(turnId, 'assistant'), role: 'assistant', content: '', state: 'pending' },
+      { id: messageId(turnId, 'user'), turnId, role: 'user', content: text, state: 'complete' },
+      { id: messageId(turnId, 'assistant'), turnId, role: 'assistant', content: '', state: 'pending' },
     ] })
     await this.receive(turnId, (controller) => this.source.stream({ version: '1.0', type: 'send', turnId, teamId: this.teamId, conversationId: this.conversationId, messages: history }, controller.signal))
   }

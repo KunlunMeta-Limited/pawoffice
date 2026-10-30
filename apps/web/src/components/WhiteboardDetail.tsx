@@ -1,12 +1,24 @@
-import Markdown, { type Components } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { whiteboardDetailSectionSchema } from '@pawoffice/protocol/office-ui'
+import type { WhiteboardDetailSectionInput } from '@pawoffice/protocol/office-ui'
+import { CustomSectionBody } from './ResultBlocks.tsx'
+import './WhiteboardDetail.css'
 
-const plugins = [remarkGfm]
-const components: Components = {
-  a: ({ children, href, title }) => <a href={href} title={title} target="_blank" rel="noopener noreferrer">{children}</a>,
-  table: ({ children }) => <div className="whiteboard-detail-table" role="region" aria-label="详情表格" tabIndex={0}><table>{children}</table></div>,
-}
-
-export function WhiteboardDetail({ content }: { content: string }) {
-  return <div className="whiteboard-detail"><Markdown remarkPlugins={plugins} components={components} skipHtml>{content}</Markdown></div>
+/**
+ * Expanded whiteboard detail: structured sections rendered from protocol data.
+ * The reader owns typography/layout; the backend only composes primitive blocks.
+ */
+export function WhiteboardDetail({ sections }: { sections: WhiteboardDetailSectionInput[] }) {
+  return <div className="whiteboard-detail">
+    {sections.map((section, index) => {
+      const normalized = whiteboardDetailSectionSchema.parse(section)
+      const headingId = `whiteboard-detail-${index}`
+      return <section className="whiteboard-detail-section" key={`${index}-${normalized.id}`} aria-labelledby={headingId}>
+        <header className="whiteboard-detail-section-head">
+          <h2 id={headingId}>{normalized.title}</h2>
+          {normalized.caption && <small>{normalized.caption}</small>}
+        </header>
+        <CustomSectionBody section={normalized} />
+      </section>
+    })}
+  </div>
 }

@@ -61,3 +61,18 @@ test('streaming parses incomplete Markdown safely and removes its caret on compl
   assert.match(complete, /<strong>Done<\/strong>/)
   assert.doesNotMatch(complete, /office-chat-caret/)
 })
+
+test('mermaid fences become a diagram placeholder server-side instead of raw code', () => {
+  const html = render('```mermaid\nflowchart LR\n  A[登录] --> B[发布]\n```')
+  assert(html.includes('mermaid-placeholder'))
+  assert(html.includes('flowchart LR'))
+  assert(!html.includes('language-mermaid'))
+  assert(!html.includes('<svg'))
+})
+
+test('mermaid source cannot inject HTML into the diagram placeholder', () => {
+  const html = render('```mermaid\nflowchart LR\n  A[<script>alert(1)</script>] --> B\n```')
+  assert(!html.includes('<script'))
+  assert(html.includes('&lt;script&gt;'))
+  assert(html.includes('mermaid-placeholder'))
+})

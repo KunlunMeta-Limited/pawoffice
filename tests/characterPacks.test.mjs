@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { mkdtemp, mkdir, readFile, writeFile, rm, symlink } from 'node:fs/promises'
@@ -84,7 +85,7 @@ test('adding a source directory registers a new character without editing render
 })
 
 test('office packs put only seated/work dependencies in startup atlases and publish small stable portraits', async () => {
-  const built = await buildCharacter(new URL('../art/characters/packs/office-lead/', import.meta.url).pathname)
+  const built = await buildCharacter(fileURLToPath(new URL('../art/characters/packs/office-lead/', import.meta.url)))
   const expected = new Set(characterFrameDependencies(built.manifest, ['sit.back', 'work.quiet-back']))
   const startup = Object.entries(built.manifest.frames).filter(([, frame]) => built.manifest.pages[frame.page].group === 'startup').map(([key]) => key)
   assert.deepEqual(new Set(startup), expected)
@@ -125,9 +126,15 @@ test('bad source sizes, empty frames, missing files, escaping symlinks and stale
   await rm(path.join(directory, 'walk/001.png'))
   await assert.rejects(buildCharacter(directory), /ENOENT/)
   await writeFile(path.join(root, 'outside.png'), original)
-  await symlink(path.join(root, 'outside.png'), path.join(directory, 'walk/001.png'))
-  await assert.rejects(buildCharacter(directory), /escapes character directory/)
-  await rm(path.join(directory, 'walk/001.png'))
+  await t.test('rejects escaping symbolic links when supported', async t => {
+    try { await symlink(path.join(root, 'outside.png'), path.join(directory, 'walk/001.png')) }
+    catch (error) {
+      if (process.platform === 'win32' && error.code === 'EPERM') { t.skip('Windows requires permission to create file symbolic links'); return }
+      throw error
+    }
+    await assert.rejects(buildCharacter(directory), /escapes character directory/)
+    await rm(path.join(directory, 'walk/001.png'))
+  })
   await writeFile(path.join(directory, 'walk/001.png'), original)
   await assert.rejects(buildCharacters({ sourceRoot: root, outputRoot, check: true, requireAdmission: false }), /stale generated resource/)
 })

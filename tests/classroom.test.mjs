@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSceneRuntime } from '@pawoffice/runtime'
@@ -294,9 +295,9 @@ test('each standing point has clearance from both the desk and the chair', t => 
 
 test('furniture source dimensions and published aspect ratios match their contact calibration', async () => {
   for (const art of Object.values(CLASSROOM_ARTWORK)) {
-    const source = await sharp(new URL(`../art/classroom/${art.file.replace('.webp', '.png')}`, import.meta.url).pathname).metadata()
+    const source = await sharp(fileURLToPath(new URL(`../art/classroom/${art.file.replace('.webp', '.png')}`, import.meta.url))).metadata()
     assert.equal(source.width, art.width); assert.equal(source.height, art.height)
-    const published = await sharp(new URL(`../public/classroom-assets/${art.file}`, import.meta.url).pathname).metadata()
+    const published = await sharp(fileURLToPath(new URL(`../public/classroom-assets/${art.file}`, import.meta.url))).metadata()
     assert(Math.abs(published.width / published.height - art.width / art.height) < .005, 'asset build must preserve the furniture aspect ratio')
   }
 })
@@ -316,7 +317,7 @@ test('the solid chair is a single foreground sprite without openwork masks or du
 })
 
 test('chair shell is opaque continuously from the backrest into the seat', async () => {
-  const { data, info } = await sharp(new URL(`../art/classroom/${CLASSROOM_ARTWORK.chair.file.replace('.webp', '.png')}`, import.meta.url).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const { data, info } = await sharp(fileURLToPath(new URL(`../art/classroom/${CLASSROOM_ARTWORK.chair.file.replace('.webp', '.png')}`, import.meta.url))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   for (let y = 150; y <= 600; y += 10) for (let x = 450; x <= 800; x += 10) {
     assert(data[(y * info.width + x) * info.channels + 3] >= 250, 'solid chair must not have a transparent lumbar opening')
   }
@@ -324,13 +325,13 @@ test('chair shell is opaque continuously from the backrest into the seat', async
 
 test('the solid chair covers the actual seated hip pixels of all five students', async t => {
   const runtime = runtimeFor(t)
-  const chair = await sharp(new URL(`../art/classroom/${CLASSROOM_ARTWORK.chair.file.replace('.webp', '.png')}`, import.meta.url).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const chair = await sharp(fileURLToPath(new URL(`../art/classroom/${CLASSROOM_ARTWORK.chair.file.replace('.webp', '.png')}`, import.meta.url))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   for (const actor of runtime.readActors().filter(a => a.homeId)) {
     const root = new URL(`../public/classroom-assets/${actor.templateId}/`, import.meta.url)
     const visual = JSON.parse(await readFile(new URL('visual.json', root), 'utf8'))
     const manifest = JSON.parse(await readFile(new URL(visual.source.uri, root), 'utf8'))
     const frame = manifest.frames[manifest.clips['sit.back'].frames[0].frame]
-    const pixels = await sharp(new URL(manifest.pages[frame.page].image, root).pathname).extract({ left: frame.rect.x, top: frame.rect.y, width: frame.rect.width, height: frame.rect.height }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const pixels = await sharp(fileURLToPath(new URL(manifest.pages[frame.page].image, root))).extract({ left: frame.rect.x, top: frame.rect.y, width: frame.rect.width, height: frame.rect.height }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     const layout = classroomFurnitureLayout(classroomCellCenter(actor.position)), geometry = classroomActorGeometry(actor)
     const scale = CLASSROOM_CHARACTER.height / manifest.referenceHeight
     let checked = 0
@@ -350,7 +351,7 @@ test('the solid chair covers the actual seated hip pixels of all five students',
 
 test('the current solid chair matches its accepted shell, foot and seat landmarks', async () => {
   const measure = async file => {
-    const { data, info } = await sharp(new URL(`../art/classroom/${file}`, import.meta.url).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const { data, info } = await sharp(fileURLToPath(new URL(`../art/classroom/${file}`, import.meta.url))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     let top = info.height, bottom = 0, left = info.width, right = 0, foot = 0
     for (let y = 0; y < info.height; y++) for (let x = 0; x < info.width; x++) {
       const p = (y * info.width + x) * info.channels

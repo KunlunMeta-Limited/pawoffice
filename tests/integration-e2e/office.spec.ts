@@ -11,8 +11,10 @@ async function showBoard(page: Page) {
   expect(bounds).not.toBeNull()
   const scale = Math.min(bounds!.width / 1100, bounds!.height / 850)
   await canvas.click({ position: { x: bounds!.width / 2, y: (bounds!.height - 850 * scale) / 2 + 125 * scale } })
-  await expect(page.getByRole('dialog', { name: '协作白板' })).toBeVisible()
-  return page.getByRole('dialog', { name: '协作白板' })
+  const reader = page.getByRole('dialog', { name: '当前成果' })
+  await expect(reader).toBeVisible()
+  await reader.getByRole('tab', { name: '过程记录', exact: true }).click()
+  return reader
 }
 
 async function canvasDensity(page: Page) {
@@ -78,7 +80,7 @@ test('conversation tabs isolate pushed tasks, wall boards and drafts, including 
   await expect(page.locator('.runtime-task-list')).not.toContainText('登录已完成')
   await page.getByRole('button', { name: '收起聊天', exact: true }).click()
   await expect(await showBoard(page)).toContainText('需求评审目标')
-  await page.getByRole('button', { name: '关闭白板', exact: true }).click()
+  await page.getByRole('button', { name: '关闭当前成果', exact: true }).click()
   await page.getByRole('button', { name: '展开对话', exact: true }).click()
   await page.getByRole('tab', { name: '登录开发', exact: true }).click()
   await page.getByRole('button', { name: /^任务中心/ }).click()
@@ -103,7 +105,7 @@ test('initializes two offices and keeps task and whiteboard data separate', asyn
   await expect(page.locator('.runtime-task-list')).toContainText(a.conversations[0].tasks[0].title)
   const board = await showBoard(page)
   await expect(board).toContainText(a.conversations[0].whiteboard.title)
-  await page.getByRole('button', { name: '关闭白板', exact: true }).click()
+  await page.getByRole('button', { name: '关闭当前成果', exact: true }).click()
   await selectOffice(page, b.workspace.name)
   await expect(page.locator('.runtime-task-list')).toContainText(b.conversations[0].tasks[0].title)
   await expect(page.locator('.runtime-task-list')).not.toContainText(a.conversations[0].tasks[0].title)
@@ -152,7 +154,7 @@ test('whiteboard progress advances below 100 until the backend sends completed s
   await expect(bar).toHaveAttribute('aria-valuenow', '100')
   await expect(reader).toContainText('已完成')
   expect((await backend.read('team-a')).data.snapshot.conversations[0].whiteboard.steps[0].progress).toBe(25)
-  await page.getByRole('button', { name: '关闭白板', exact: true }).click()
+  await page.getByRole('button', { name: '关闭当前成果', exact: true }).click()
   await expect((await showBoard(page)).getByRole('progressbar', { name: state.conversations[0].whiteboard.steps[0].title, exact: true })).toHaveAttribute('aria-valuenow', '100')
   state.seq = 4; state.conversations[0].whiteboard.title = '下一个开发任务'; state.conversations[0].whiteboard.status = 'running'; state.conversations[0].whiteboard.steps[0].progress = 0
   await backend.post({ type: 'office.snapshot', teamId: 'team-a', snapshot: state })

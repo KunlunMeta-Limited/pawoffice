@@ -123,5 +123,11 @@
 .runtime-scene-toolbar button:hover { background: #eef1ee; }
 .runtime-scene-toolbar button[aria-pressed=true] { background: #eaf0ec; color: #39543f; }
 .runtime-scene-toolbar span { padding: 0 5px; font-size: 11px; color: #728078; }
+.runtime-scene-toolbar .office-result-entry { display: flex; width: auto; gap: 7px; padding: 0 10px; margin-right: 3px; border-right: 1px solid #e2e6e2; color: #3f6b53; cursor: pointer; }
+.office-result-entry strong { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.office-result-entry small { color: #68756c; font-size: 11px; white-space: nowrap; }
+.office-result-entry small[data-status=rejected], .office-result-entry small[data-status=failed] { color: #a25948; }
+.office-result-entry small[data-status=verified] { color: #2f6a49; }
+@media (max-width: 620px) { .office-result-entry small { display: none; } .runtime-scene-toolbar .office-result-entry { padding: 0 6px; } }
 .runtime-scene-notice { position: absolute; z-index: 8; top: 62px; left: 12px; right: 12px; display: flex; justify-content: space-between; gap: 6px; padding: 8px 10px; background: #fff; border: 1px solid #e8d6d2; color: #a45a52; border-radius: 6px; font-size: 12px; }
 .runtime-scene-notice button { background: transparent; border: 0; }

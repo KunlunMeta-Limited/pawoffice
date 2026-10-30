@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { Application, Assets, Texture, TextureSource } from 'pixi.js'
@@ -103,7 +104,7 @@ test('office WebP generation is lossless, deterministic and leaves PNG sources u
   for (const [index, name] of OFFICE_IMAGES.entries()) {
     assert((await readFile(new URL(`../public/assets/office/${name}.png`, import.meta.url))).equals(originals[index]))
     const before = await sharp(originals[index]).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
-    const after = await sharp(new URL(`../public/assets/office/${name}.webp`, import.meta.url).pathname).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const after = await sharp(fileURLToPath(new URL(`../public/assets/office/${name}.webp`, import.meta.url))).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     assert.deepEqual(after.info, before.info)
     for (let offset = 0; offset < before.data.length; offset += 4) {
       if (after.data[offset + 3] !== before.data[offset + 3] || before.data[offset + 3] &&
