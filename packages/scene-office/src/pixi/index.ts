@@ -11,6 +11,7 @@ import { loadReferenceOfficeBackground, loadReferenceOfficeObjects } from './ass
 import { createReferenceOfficePropViews, referenceMonitorAnchor } from './views/referenceOffice.ts'
 import type { WhiteboardProgress } from '../whiteboard.ts'
 import { createOfficeWorkEffects } from './effects/OfficeWorkEffect.ts'
+import { createOfficeCat } from './effects/OfficeCat.ts'
 import { projectCoffeeActors } from './coffeePresentation.ts'
 import { loadOfficeTexture } from './assets/loadOfficeTexture.ts'
 import type { Texture } from 'pixi.js'
@@ -54,17 +55,19 @@ export function createOfficePresentation(trialEnabled: () => boolean = () => tru
   return pack
 }
 
-export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean } = {}): ScenePresentationPack {
+export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean; catEnabled?: () => boolean } = {}): ScenePresentationPack {
   const base = createOfficePresentation(undefined, options.coffeeEffects, options.supportsCoffee)
   const workEffects = options.workEffects ?? false
   let workEffectTexture: Texture | undefined
-  const pack: ScenePresentationPack = { ...base, id: 'pawoffice.office.reference', resourceCount: workEffects ? 9 : 8,
+  let catTexture: Texture | undefined
+  const pack: ScenePresentationPack = { ...base, id: 'pawoffice.office.reference', resourceCount: workEffects ? 10 : 9,
     // Preserve native pixel density without a multisampled full-screen buffer.
     rendering: { antialias: false, idleFPS: 20, motionFPS: 60 },
     contentBounds: () => ({ left: 0, top: 0, right: 1100, bottom: 850 }),
     loadBackground: loadReferenceOfficeBackground,
     async loadObjects(report) {
       await Promise.all([base.loadObjects(report), loadReferenceOfficeObjects(part => report(`reference:${part}`)),
+        loadOfficeTexture('office-cat-motion-v2', 'ambient/cat-motion-v2').then(texture => { catTexture = texture; report('office-cat-motion-v2') }),
         workEffects ? loadOfficeTexture('office-work-crafting-lite-v1', 'effects/work-crafting-lite-v1').then(texture => { workEffectTexture = texture; report('office-work-crafting-lite-v1') }) : undefined])
     },
     createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress),
@@ -83,9 +86,11 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
       })
     },
   }
-  if (workEffects) pack.createAmbientViews = runtime => {
+  pack.createAmbientViews = runtime => {
     if (workEffects && !workEffectTexture) throw new Error('Load the office crafting atlas before mounting the work effect')
-    return [createOfficeWorkEffects(workEffectTexture!, runtime, runtime.readActors().map(actor => actor.id), world => pack.projectActors(runtime, world))]
+    if (!catTexture) throw new Error('Load the office cat atlas before mounting the cat')
+    return [createOfficeCat(catTexture, options.catEnabled), ...(workEffects
+      ? [createOfficeWorkEffects(workEffectTexture!, runtime, runtime.readActors().map(actor => actor.id), world => pack.projectActors(runtime, world))] : [])]
   }
   return pack
 }
