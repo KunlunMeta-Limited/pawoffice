@@ -8,6 +8,8 @@ import type { SceneProjection, SceneRenderProfile, ScreenBounds } from '@pawoffi
 /** Scene-local decoration, outside actor commands and resource reservations. */
 export interface SceneAmbientView {
   readonly roots: Container[]
+  /** Request motion FPS while a scene-local animation is visible. */
+  readonly activeMotion?: boolean
   update(elapsedSeconds: number, world: World, actors?: PresentedActor[]): void
   dispose?(): void
 }

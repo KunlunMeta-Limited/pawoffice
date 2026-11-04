@@ -33,6 +33,8 @@ dist/
 /public/assets/office/effects/work-crafting-lite-v1.png
 /public/assets/office/effects/work-crafting-lite-v1.webp
 /public/assets/office/effects/*.tmp-*
+/public/assets/office/ambient/cat-motion-v2.webp
+/public/assets/office/ambient/*.tmp-*
 
 # Local character authoring and publication workspaces
 /.character-staging/

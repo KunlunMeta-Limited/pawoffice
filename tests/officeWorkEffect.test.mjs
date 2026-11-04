@@ -39,7 +39,7 @@ test('the renderer can supply current actor projections without a second effect 
 
 test('work clouds are opt-in and require a running task at the actor own workstation', () => {
   const { world, actor } = fixture()
-  assert.equal(createReferenceOfficePresentation().createAmbientViews, undefined)
+  assert.equal(typeof createReferenceOfficePresentation().createAmbientViews, 'function', 'the decorative cat is independent of work clouds')
   assert.equal(typeof createReferenceOfficePresentation({ workEffects: true }).createAmbientViews, 'function')
   assert.equal(effect.officeWorkEffectActive(actor, world), true)
   assert.deepEqual(effect.officeWorkEffectSeat(actor, world), { x: 700, y: 365 })
@@ -337,7 +337,7 @@ test('connected offices enable all workstation effects without requiring the loc
   t.after(() => { scene.destroy(); runtime.dispose() })
   assert.equal(simulation.canDemo, false)
   assert.equal(typeof scene.pack.createAmbientViews, 'function')
-  assert.equal(scene.pack.resourceCount, 9, 'all workers add only one shared image resource')
+  assert.equal(scene.pack.resourceCount, 10, 'all workers share one atlas, and the cat uses one additional atlas')
   for (const actor of runtime.readActors()) {
     const manifest = await scene.options.resolveAppearance(actor.templateId)
     assert.equal(manifest.source.bindings['office.type.seated.back'].clip, 'work.typing-back')

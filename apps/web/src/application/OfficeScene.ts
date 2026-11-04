@@ -37,6 +37,7 @@ export class OfficeScene extends SceneView {
   declare readonly runtime: SceneRuntime
   private ownsRuntime: boolean
   private artwork: { enabled: boolean }
+  private cat: { available: boolean; enabled: boolean }
   private simulation: OfficeSimulation
   private ownsSimulation: boolean
   private unsubscribeSimulation: () => void
@@ -50,6 +51,7 @@ export class OfficeScene extends SceneView {
     } })
     const simulation = options.simulation ?? new OfficeSimulation(runtime, new OfficeDemoSource(runtime), options.idleCoffee ? { idleCoffee: {} } : {})
     const referenceOffice = runtime.readWorld().props.some(prop => prop.templateId === 'office.wall-whiteboard')
+    const cat = { available: referenceOffice, enabled: false }
     const coffeeFrames = Boolean(options.idleCoffee || simulation.idleCoffee)
     const supportsCoffee = (id: string) => ['office.coffee.hold', 'office.coffee.sip'].every(actionId =>
       ['left', 'right'].every(view => manifests.get(id)?.capabilities.variants.some(variant => variant.actionId === actionId && variant.view === view && variant.poseId === 'standing')))
@@ -57,7 +59,7 @@ export class OfficeScene extends SceneView {
       ...options, runtime,
       onStep: options.simulation ? undefined : elapsedMs => { simulation.tick(elapsedMs); simulation.demoSource?.tick(elapsedMs) },
       dispatchCommand: command => runtime.submit(command),
-      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, workEffects: true, coffeeEffects: coffeeFrames, supportsCoffee }) : createOfficePresentation(() => artwork.enabled, coffeeFrames, supportsCoffee),
+      pack: referenceOffice ? createReferenceOfficePresentation({ taskForActor: options.taskForActor, whiteboardProgress: options.whiteboardProgress, workEffects: true, coffeeEffects: coffeeFrames, supportsCoffee, catEnabled: () => cat.enabled }) : createOfficePresentation(() => artwork.enabled, coffeeFrames, supportsCoffee),
       animations: options.animations ?? new AnimationRegistry<Container>().register(new FrameAdapter(manifest => characterAssets.acquire(manifest.asset.id, manifest.source.uri))),
       resolveAppearance: async id => {
         const manifest = await (options.resolveAppearance ? options.resolveAppearance(id) : resolveOfficeAppearance(id, { energeticWork: referenceOffice, coffeeFrames }))
@@ -70,6 +72,7 @@ export class OfficeScene extends SceneView {
       },
     })
     this.artwork = artwork; this.ownsRuntime = !options.runtime && !options.simulation
+    this.cat = cat
     this.simulation = simulation
     this.ownsSimulation = !options.simulation
     this.unsubscribeSimulation = simulation.subscribe(() => {
@@ -94,6 +97,12 @@ export class OfficeScene extends SceneView {
   get canIdleCoffee() { return Boolean(this.simulation.idleCoffee) }
   get idleCoffeeEnabled() { return this.simulation.idleCoffee?.isEnabled ?? false }
   setIdleCoffee(enabled: boolean) { this.simulation.idleCoffee?.setEnabled(enabled) }
+  get canOfficeCat() { return this.cat.available }
+  get officeCatEnabled() { return this.cat.enabled }
+  setOfficeCat(enabled: boolean) {
+    this.cat.enabled = this.cat.available && enabled
+    this.refresh()
+  }
   getAgents() { return projectAgents(this.runtime) }
   requestDeskVisit(visitor: number, host: number, message: string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, [host], () => message)) }
   requestDeskVisitTour(visitor: number, hosts: number[], message?: (no: number, name: string) => string) { this.requireActions(); return this.runtime.submit(visitCommand(this.runtime, visitor, hosts, message ?? ((_, name) => `${name}，请接手下一步。`))) }
