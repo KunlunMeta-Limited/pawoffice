@@ -72,7 +72,7 @@ test('office work effects preserve all actor intents and require the shared atla
     const original = createReferenceOfficePresentation().projectActors(runtime)
     const pack = createReferenceOfficePresentation({ workEffects: true })
     assert.deepEqual(pack.projectActors(runtime), original)
-    assert.equal(pack.resourceCount, 9)
+    assert.equal(pack.resourceCount, 10)
     assert.throws(() => pack.createAmbientViews(runtime), /Load the office crafting atlas/)
   } finally { runtime.dispose() }
 })
