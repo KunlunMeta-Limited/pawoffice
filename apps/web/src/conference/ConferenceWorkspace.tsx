@@ -2,7 +2,7 @@
 // The original application, backend messages and public renderers stay unchanged.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { RefObject } from 'react'
-import { ArrowUp, Bell, ChevronLeft, Clapperboard, Grid2X2, MessageCircle, Play, Plus } from 'lucide-react'
+import { ArrowUp, Bell, ChevronLeft, Clapperboard, Grid2X2, MessageCircle, Play } from 'lucide-react'
 import App, { OfficeApp } from '../App.tsx'
 import { SseMessageTransport } from '@pawoffice/runtime/adapters/sse'
 import { officeIntegrationPaths } from '@pawoffice/protocol/office-integration'
@@ -22,9 +22,10 @@ import { requestOfficeUi } from '../application/requestOfficeUi.ts'
 import { readOfficeShell, saveOfficeShell } from '../ui/officeLayout.ts'
 import { DemoOfficeDirectory } from '../dashboard/demoOfficeDirectory.ts'
 import { createOfficeDataSource } from '../dashboard/createSource.ts'
+import type { OfficeCreationInput } from '../dashboard/officeDirectory.ts'
 import { OfficeShell } from '../ui/OfficeShell.tsx'
 import { MemberOfficeShell } from '../ui/MemberOfficeShell.tsx'
-import { OfficeCreationForm } from '../ui/team-switcher/OfficeCreationForm.tsx'
+import { OfficeEmptyState } from '../ui/OfficeEmptyState.tsx'
 import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
 import { captureScene, formalFrame, formalPlaceholder, frameParameter, frameScope, localOfficeSession, officeKey, previewOf } from './frameRuntime.ts'
@@ -141,19 +142,14 @@ function ConnectedOfficeFrame() {
       }
     }
     if (value.type === 'resolve') void state.offices.find(office => office.id === value.officeId)?.session.decisions.choose(value.officeId, value.decisionId, value.choiceId, value.customText)
-    if (value.type === 'create') void (async () => {
-      try {
-        if (!relayUrl) throw new Error('正式办公室尚未连接后端')
-        const result = await requestOfficeUi(baseUrl, { id: crypto.randomUUID(), teamId: '', conversationId: '', action: 'office.create', name: value.name })
-        if (result.target !== 'office') throw new Error(result.target === 'result' ? result.message || '未能创建办公室，请重试。' : '工作空间服务没有返回新办公室。')
-        await integration.registerCreatedOffice(result.snapshot)
-        select(result.snapshot.workspace.id)
-        sendReport(formalFrame, { type: 'created', requestId: value.requestId, officeId: result.snapshot.workspace.id })
-      } catch (error) { sendReport(formalFrame, { type: 'created', requestId: value.requestId, error: error instanceof Error ? error.message : String(error) }) }
-    })()
   })
   useHostedSessions(sessions, view.active)
   useEffect(() => { if (!relayUrl) return; void integration.start(); return () => integration.stop() }, [integration, relayUrl])
+  const createOffice = async ({ name }: OfficeCreationInput) => {
+    const result = await requestOfficeUi(baseUrl, { id: crypto.randomUUID(), teamId: '', conversationId: '', action: 'office.create', name })
+    if (result.target !== 'office') throw new Error(result.target === 'result' ? result.message || '未能创建办公室，请重试。' : '工作空间服务没有返回新办公室。')
+    await integration.registerCreatedOffice(result.snapshot)
+  }
   const pageLayout = { value: state.layout.currentLayoutId, busy: state.layoutBusy, onChange: (id: typeof state.layout.currentLayoutId) => { void integration.selectLayout(id) } }
   const placeholder = formalPlaceholder(!!relayUrl, state.connection), Shell = pageLayout.value === 'classic' ? OfficeShell : MemberOfficeShell
   return <div className="conference-frame" data-frame-office={office ? officeKey(true, office.id) : placeholder.id}>
@@ -161,7 +157,7 @@ function ConnectedOfficeFrame() {
       : <Shell connection={placeholder.connection} dashboard={null} dashboardError={state.error} sceneLinkError={null} dataMode="push" hasOffice={false}
         canExecuteActions={false} executeAction={noAction} pendingTaskIds={[]} actionError={null} appearanceIds={{}} editing={false}
         canRecoverLayout={false} recoverLayout={noop} exportCapabilities={noop} exportSnapshot={noop} renderScenePanel={() => null}
-        scene={<div className="conference-empty" role="status"><strong>正式办公室 · {placeholder.connection}</strong><p>{relayUrl ? '等待后端初始化办公室。其他办公室可独立演示。' : '当前页面未配置后端连接。其他办公室可独立演示。'}</p></div>} />}
+        scene={<OfficeEmptyState create={relayUrl ? createOffice : undefined} />} />}
   </div>
 }
 
@@ -245,16 +241,16 @@ function revealOffice(element: HTMLElement) {
 
 const previewViewport = () => typeof window === 'undefined' ? { width: 1440, height: 900 } : ({ width: Math.max(1440, window.innerWidth), height: Math.max(900, window.innerHeight) })
 type OverviewProps = { offices: OfficePreview[]; images: Record<string, string>; selectedId: string; onSelect: (office: OfficePreview, decisions?: boolean) => void;
-  create: (input: { name: string }) => Promise<void>; onClose: () => void; trigger?: RefObject<HTMLButtonElement | null> }
-export function OfficeOverview({ offices, images, selectedId, onSelect, create, onClose, trigger }: OverviewProps) {
+  onClose: () => void; trigger?: RefObject<HTMLButtonElement | null> }
+export function OfficeOverview({ offices, images, selectedId, onSelect, onClose, trigger }: OverviewProps) {
   const dialog = useRef<HTMLDialogElement>(null), zoom = useRef<HTMLDivElement>(null), transition = useRef<Animation | undefined>(undefined)
   const closing = useRef(false), closed = useRef(onClose), titleId = useId()
-  const [creating, setCreating] = useState(false), [busy, setBusy] = useState(false), [opening, setOpening] = useState(true), [isClosing, setClosing] = useState(false)
+  const [opening, setOpening] = useState(true), [isClosing, setClosing] = useState(false)
   const [entry, setEntry] = useState<{ office: OfficePreview; origin: OverviewOrigin }>(), [expanded, setExpanded] = useState(false)
   const [viewport, setViewport] = useState(previewViewport)
   const running = offices.filter(office => office.activity.running).length, pending = offices.reduce((sum, office) => sum + office.decisionCount, 0)
   const close = () => {
-    if (busy || closing.current) return
+    if (closing.current) return
     const element = dialog.current
     if (!element) return
     closing.current = true; setClosing(true)
@@ -264,7 +260,7 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, create, 
     transition.current = animation; void animation.finished.then(onClose).catch(() => {})
   }
   const enter = (office: OfficePreview, preview?: HTMLElement | null, decisions = false) => {
-    if (busy || closing.current || opening || !preview) return
+    if (closing.current || opening || !preview) return
     const origin = readOverviewOrigin(preview, parseFloat(getComputedStyle(preview).borderTopLeftRadius))
     if (!origin) return
     closing.current = true; setEntry({ office, origin }); onSelect(office, decisions)
@@ -300,17 +296,17 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, create, 
     return () => animation.cancel()
   }, [entry, expanded, ready])
   useEffect(() => { if (!entry) return; const timer = setTimeout(() => closed.current(), 10000); return () => clearTimeout(timer) }, [entry])
-  return <dialog ref={dialog} className="dispatch-overview" aria-labelledby={titleId} aria-busy={busy || isClosing || !!entry}
+  return <dialog ref={dialog} className="dispatch-overview" aria-labelledby={titleId} aria-busy={isClosing || !!entry}
     onCancel={event => { event.preventDefault(); if (entry) onClose(); else close() }}>
-    <h2 id={titleId} className="dispatch-visually-hidden">{creating ? '新建办公室' : '办公室总览'}</h2>
+    <h2 id={titleId} className="dispatch-visually-hidden">办公室总览</h2>
     <header className="dispatch-overview-heading">
-      <button type="button" className="dispatch-icon-button" title="返回办公室" aria-label="关闭办公室总览" disabled={busy || isClosing || !!entry} onClick={close}><ChevronLeft size={22} /></button>
-      <span className="dispatch-office-count">{creating ? '新建办公室' : `${offices.length} 个办公室`}</span>
-      <button type="button" className="dispatch-overview-ring" data-running={running > 0 || undefined} disabled={busy || isClosing || !!entry}
+      <button type="button" className="dispatch-icon-button" title="返回办公室" aria-label="关闭办公室总览" disabled={isClosing || !!entry} onClick={close}><ChevronLeft size={22} /></button>
+      <span className="dispatch-office-count">{offices.length} 个办公室</span>
+      <button type="button" className="dispatch-overview-ring" data-running={running > 0 || undefined} disabled={isClosing || !!entry}
         title={`${running}/${offices.length} 个办公室运行中${pending ? ` · ${pending} 项待确认` : ''} · 返回办公室`} aria-label="返回当前办公室" onClick={close}><span data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
     </header>
-    {creating ? <OfficeCreationForm create={create} onCancel={() => setCreating(false)} onCreated={onClose} onBusyChange={setBusy} />
-      : <div className="dispatch-overview-scroll" inert={opening || isClosing || !!entry}><div className="dispatch-office-grid">
+    <div className="dispatch-overview-scroll" inert={opening || isClosing || !!entry}>
+      <div className="dispatch-office-grid">
         {offices.map(office => <article className="dispatch-office-card" key={office.id} data-office={office.id} data-running={office.activity.running || undefined}
           data-current={office.id === selectedId || undefined} data-status={office.activity.status}>
           <div role="button" tabIndex={0} className="dispatch-card-enter" aria-label={`进入${office.name}`} aria-pressed={office.id === selectedId}
@@ -320,26 +316,24 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, create, 
             <div className="dispatch-preview"><OfficePreview office={office} image={images[office.id]} viewport={viewport} /></div>
             <span className="dispatch-card-caption"><span className="dispatch-card-name">{office.activity.status !== 'idle' && <span className="dispatch-status">{statuses[office.activity.status]}</span>}<strong>{office.name}</strong></span>
               {office.id === selectedId && !office.decisionCount && <span className="dispatch-current-label">当前办公室</span>}</span>
-            <span className="conference-source-label" data-connected={office.connected || undefined}>{office.connected ? `正式连接 · ${office.connection}` : '本地演示'}</span>
           </div>
           {!!office.decisionCount && <button type="button" className="dispatch-card-attention" aria-label={`${office.name}，${office.decisionCount} 项待确认`} title={`${office.decisionCount} 项待确认`}
             onClick={event => enter(office, event.currentTarget.closest('.dispatch-office-card')?.querySelector<HTMLElement>('.dispatch-preview'), true)}><Bell size={13} /><span>{office.decisionCount}</span></button>}
         </article>)}
-        <button type="button" className="dispatch-office-create" aria-label="新建办公室" title="新建办公室" onClick={() => setCreating(true)}><Plus size={46} strokeWidth={1.7} /></button>
-      </div></div>}
+      </div>
+    </div>
     {entry && <div ref={zoom} className="dispatch-office-zoom" aria-hidden="true"><OfficePreview office={entry.office} image={images[entry.office.id]} viewport={viewport} /></div>}
     {entry && expanded && !ready && <p className="dispatch-entry-status" role="status">正在进入{entry.office.name}…</p>}
   </dialog>
 }
 
 function MultiOfficeWorkspace() {
-  const [directory] = useState(() => new DemoOfficeDirectory(createOfficeDataSource(), localStorage)), [locals, setLocals] = useState(directory.list)
+  const [locals] = useState(() => new DemoOfficeDirectory(createOfficeDataSource(), localStorage).list())
   const [selected, select] = useState(() => sceneRelayUrl() ? formalPlaceholder(true).id : officeKey(false, locals[0].id))
   const [reports, setReports] = useState<Record<string, OfficePreview[]>>({}), [images, setImages] = useState<Record<string, string>>({})
   const [open, setOpen] = useState(false), [dismissed, setDismissed] = useState<string[]>([])
   const frames = useRef(new Map<string, HTMLIFrameElement>()), trigger = useRef<HTMLButtonElement>(null)
   const wasOverviewOpen = useRef(false)
-  const pendingCreates = useRef(new Map<string, { resolve: (id: string) => void; reject: (error: Error) => void }>())
   const frameIds = useMemo(() => [formalFrame, ...locals.map(office => officeKey(false, office.id))], [locals])
   const offices = [
     ...(reports[formalFrame]?.length ? reports[formalFrame] : [formalPlaceholder(!!sceneRelayUrl())]),
@@ -351,20 +345,15 @@ function MultiOfficeWorkspace() {
   const command = (frameId: string, value: FrameCommand) => frames.current.get(frameId)?.contentWindow?.postMessage({ scope: frameScope, frameId, command: value }, location.origin)
   const selectOffice = (office: OfficePreview, decisions = false) => { select(office.id); command(office.frameId, { type: decisions ? 'decisions' : 'select', officeId: office.rawId }) }
   useEffect(() => {
-    const requests = pendingCreates.current
     const receive = (event: MessageEvent) => {
       if (event.origin !== location.origin || event.data?.scope !== frameScope) return
       const { frameId, report } = event.data as { frameId: string; report: FrameReport }
       if (!report || event.source !== frames.current.get(frameId)?.contentWindow) return
       if (report.type === 'state') setReports(current => ({ ...current, [frameId]: report.offices }))
       if (report.type === 'image') setImages(current => ({ ...current, [report.officeId]: report.image }))
-      if (report.type === 'created') {
-        const request = pendingCreates.current.get(report.requestId); pendingCreates.current.delete(report.requestId)
-        if (report.error) request?.reject(new Error(report.error)); else if (report.officeId) request?.resolve(report.officeId)
-      }
     }
     window.addEventListener('message', receive)
-    return () => { window.removeEventListener('message', receive); requests.forEach(request => request.reject(new Error('页面已关闭'))); requests.clear() }
+    return () => window.removeEventListener('message', receive)
   }, [])
   useEffect(() => {
     const sync = () => frameIds.forEach(frameId => command(frameId, { type: 'view', active: !open && frameId === current.frameId, sampling: open }))
@@ -374,19 +363,6 @@ function MultiOfficeWorkspace() {
     if (wasOverviewOpen.current && !open) trigger.current?.focus()
     wasOverviewOpen.current = open
   }, [open])
-  const create = async ({ name }: { name: string }) => {
-    if (current.connected) {
-      const requestId = crypto.randomUUID()
-      const id = await new Promise<string>((resolve, reject) => {
-        pendingCreates.current.set(requestId, { resolve, reject })
-        command(formalFrame, { type: 'create', requestId, name })
-        setTimeout(() => { if (pendingCreates.current.delete(requestId)) reject(new Error('创建办公室超时，请检查后端连接')) }, 30000)
-      })
-      select(officeKey(true, id))
-    } else {
-      const office = await directory.create({ name }); setLocals([...directory.list()]); select(officeKey(false, office.id))
-    }
-  }
   const background = offices.filter(office => office.id !== current.id && office.decisionCount > 0)
   const notice = background.find(office => !dismissed.includes(`${office.id}:${office.pendingDecision?.id}`))
   const label = `办公室总览，${running} 个运行中，共 ${offices.length} 个办公室${pending ? `，${pending} 项待确认` : ''}`
@@ -402,7 +378,7 @@ function MultiOfficeWorkspace() {
     {!open && notice && <TeamDecisionNotice key={`${notice.id}:${notice.pendingDecision?.id}`} team={{ ...notice, sceneLabel: '办公室' } as OfficeTeamOption} otherCount={background.length - 1}
       onDismiss={() => setDismissed(values => [...values, `${notice.id}:${notice.pendingDecision?.id}`])} onOpen={() => selectOffice(notice, true)}
       onResolve={(decisionId, choiceId, customText) => command(notice.frameId, { type: 'resolve', officeId: notice.rawId, decisionId, choiceId, customText })} />}
-    {open && <OfficeOverview offices={offices} images={images} selectedId={current.id} onSelect={selectOffice} create={create} trigger={trigger} onClose={() => setOpen(false)} />}
+    {open && <OfficeOverview offices={offices} images={images} selectedId={current.id} onSelect={selectOffice} trigger={trigger} onClose={() => setOpen(false)} />}
   </div>
 }
 
