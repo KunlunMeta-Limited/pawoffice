@@ -20,8 +20,6 @@ import { sceneRelayUrl } from '../../../shared/scene/connectionConfig.ts'
 import { requestOfficeLayout } from '../application/requestOfficeLayout.ts'
 import { requestOfficeUi } from '../application/requestOfficeUi.ts'
 import { readOfficeShell, saveOfficeShell } from '../ui/officeLayout.ts'
-import { DemoOfficeDirectory } from '../dashboard/demoOfficeDirectory.ts'
-import { createOfficeDataSource } from '../dashboard/createSource.ts'
 import type { OfficeCreationInput } from '../dashboard/officeDirectory.ts'
 import { OfficeShell } from '../ui/OfficeShell.tsx'
 import { MemberOfficeShell } from '../ui/MemberOfficeShell.tsx'
@@ -30,6 +28,7 @@ import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
 import { captureScene, formalFrame, formalPlaceholder, frameParameter, frameScope, localOfficeSession, officeKey, previewOf } from './frameRuntime.ts'
 import type { FrameCommand, FrameReport, OfficePreview } from './frameRuntime.ts'
+import { conferenceLocalOffices } from './demoScenarios.ts'
 import './ConferenceWorkspace.css'
 
 const noop = () => {}, noAction = async () => {}
@@ -92,7 +91,7 @@ function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], comm
 }
 
 function LocalOfficeFrame({ frameId }: { frameId: string }) {
-  const [office] = useState(() => new DemoOfficeDirectory(createOfficeDataSource(), localStorage).list().find(office => officeKey(false, office.id) === frameId))
+  const [office] = useState(() => conferenceLocalOffices(localStorage).find(office => officeKey(false, office.id) === frameId))
   const [session] = useState(() => office ? localOfficeSession(office, localStorage) : undefined)
   const [shell, setShell] = useState(readOfficeShell), [decisionToken, setDecisionToken] = useState(0)
   const sessions = useMemo(() => session ? [session] : [], [session])
@@ -328,7 +327,7 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, onClose,
 }
 
 function MultiOfficeWorkspace() {
-  const [locals] = useState(() => new DemoOfficeDirectory(createOfficeDataSource(), localStorage).list())
+  const [locals] = useState(() => conferenceLocalOffices(localStorage))
   const [selected, select] = useState(() => sceneRelayUrl() ? formalPlaceholder(true).id : officeKey(false, locals[0].id))
   const [reports, setReports] = useState<Record<string, OfficePreview[]>>({}), [images, setImages] = useState<Record<string, string>>({})
   const [open, setOpen] = useState(false), [dismissed, setDismissed] = useState<string[]>([])

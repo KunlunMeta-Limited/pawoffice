@@ -5,11 +5,12 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
-let server, runtime, DemoOfficeDirectory, createOfficeDataSource, OfficeOverview, OfficeIntegrationSession, OfficeTeamSession, createOfficeRuntime
+let server, runtime, DemoOfficeDirectory, createOfficeDataSource, conferenceLocalOffices, OfficeOverview, OfficeIntegrationSession, OfficeTeamSession, createOfficeRuntime
 const flush = () => new Promise(resolve => setImmediate(resolve))
 before(async () => {
   server = await createTestServer()
   runtime = await server.ssrLoadModule('/apps/web/src/conference/frameRuntime.ts')
+  ;({ conferenceLocalOffices } = await server.ssrLoadModule('/apps/web/src/conference/demoScenarios.ts'))
   ;({ DemoOfficeDirectory } = await server.ssrLoadModule('/apps/web/src/dashboard/demoOfficeDirectory.ts'))
   ;({ createOfficeDataSource } = await server.ssrLoadModule('/apps/web/src/dashboard/createSource.ts'))
   ;({ OfficeOverview } = await server.ssrLoadModule('/apps/web/src/conference/ConferenceWorkspace.tsx'))
@@ -18,8 +19,8 @@ before(async () => {
   ;({ createOfficeRuntime } = await server.ssrLoadModule('/apps/web/src/application/createOfficeRuntime.ts'))
 })
 after(() => server?.close())
-async function setup(t) {
-  const offices = new DemoOfficeDirectory(createOfficeDataSource()).list().map(office => ({ ...office, session: runtime.localOfficeSession(office) }))
+async function setup(t, definitions = new DemoOfficeDirectory(createOfficeDataSource()).list()) {
+  const offices = definitions.map(office => ({ ...office, session: runtime.localOfficeSession(office) }))
   const hosts = offices.map(office => runtime.independentDemoHost(office.session))
   await Promise.all(offices.map(office => office.session.refresh()))
   await flush()
@@ -82,14 +83,14 @@ test('formal entry stays available with truthful unconfigured, awaiting initiali
 })
 
 test('PixOffice-style overview preserves ratio, count-only heading, running glow, current marker and formal identification', async t => {
-  const { offices } = await setup(t)
+  const { offices } = await setup(t, conferenceLocalOffices())
   offices[0].session.simulation.setDemo(true)
   await offices[0].session.refresh()
   const entries = [runtime.formalPlaceholder(false), ...offices.map(office => runtime.previewOf('test', false, office, 'members'))]
   entries[2] = { ...entries[2], decisionCount: 1 }
   const html = renderToStaticMarkup(createElement(OfficeOverview, { offices: entries, images: {}, selectedId: entries[1].id, onSelect() {}, onClose() {} }))
-  assert.match(html, /4 个办公室/)
-  assert.match(html, /1\/4 个办公室运行中 · 1 项待确认 · 返回办公室/)
+  assert.match(html, /9 个办公室/)
+  assert.match(html, /1\/9 个办公室运行中 · 1 项待确认 · 返回办公室/)
   assert.match(html, /data-running="true"/)
   assert.match(html, /当前办公室/)
   assert.match(html, /正式连接 · 未连接/)
@@ -97,7 +98,125 @@ test('PixOffice-style overview preserves ratio, count-only heading, running glow
   assert.doesNotMatch(html, /新建办公室|dispatch-office-create/)
   assert.doesNotMatch(html, /conference-source-label/)
   assert.match(html, /商品视觉团队，1 项待确认/)
-  assert.doesNotMatch(html, /大会|办公室与场景演示|SEO优化|报税办公室/)
+  for (const name of ['SEO优化办公室', '报税办公室', '自媒体运营办公室', '信息采集办公室', '多入口信息归纳办公室']) {
+    assert.ok(html.includes(`aria-label="进入${name}"`))
+  }
+  assert.doesNotMatch(html, /大会|办公室与场景演示/)
+})
+
+async function answerDemoQuestions(t, chats, inputs) {
+  const sending = chats.map((chat, index) => chat.send(inputs[index]))
+  for (let tick = 0; tick < 200 && chats.some(chat => chat.getSnapshot().phase !== 'idle'); tick++) {
+    await flush()
+    t.mock.timers.tick(100)
+  }
+  assert.ok(chats.every(chat => chat.getSnapshot().phase === 'idle'))
+  await Promise.all(sending)
+  return chats.map(chat => {
+    const message = chat.getSnapshot().messages.at(-1)
+    assert.equal(message.role, 'assistant')
+    assert.equal(message.state, 'complete')
+    return message.content
+  })
+}
+
+function advanceUntil(host, condition, limitMs = 60000) {
+  for (let elapsed = 0; elapsed < limitMs && !condition(); elapsed += 50) host.advance(50)
+  assert.ok(condition(), 'the office did not reach the expected stage')
+}
+
+test('the five themed offices answer the current question using their own keywords', async t => {
+  const { offices } = await setup(t, conferenceLocalOffices().slice(3))
+  const chats = offices.map(({ session }) => session.chat.selected)
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+
+  const questions = [
+    [['Ｈ１ 标题怎么写？', /H1.+「折叠电脑支架」/], ['关键词和内链怎么安排？', /便携笔记本支架.+六档调节支架/]],
+    [['要准备哪些材料？', /收入与支出台账|收支台账/], ['哪几条凭证要补？', /P-04.+付款凭证编号.+R-06.+入账凭证编号/]],
+    [['短视频的脚本是什么？', /整理线材/], ['周几发，排期怎么安排？', /周一.+周三.+周五/]],
+    [['从哪里采集？', /园区活动页、主办方公告和订阅简报/], ['有多少条，去重了吗？', /3 条重复记录.+15 条|15 条.+3 条是重复记录/]],
+    [['群聊说了什么？', /B 版封面|封面换成 B 版/], ['延期时以哪个时间为准？', /周三 15:00/]],
+  ]
+  for (const round of [0, 1]) {
+    const answers = await answerDemoQuestions(t, chats, questions.map(pair => pair[round][0]))
+    answers.forEach((answer, index) => assert.match(answer, questions[index][round][1]))
+  }
+  const repeatedInputs = questions.map(pair => pair[1][0])
+  const first = await answerDemoQuestions(t, chats, repeatedInputs)
+  const second = await answerDemoQuestions(t, chats, repeatedInputs)
+  second.forEach((answer, index) => {
+    assert.notEqual(answer, first[index])
+    assert.match(answer, questions[index][1][1])
+  })
+  const unmatched = await answerDemoQuestions(t, chats, chats.map(() => '明天会下雨吗？'))
+  assert.ok(unmatched.every(answer => answer.includes('可以问我')))
+  assert.ok(unmatched.every(answer => !answer.includes('演示')))
+  const [combined] = await answerDemoQuestions(t, [chats[0]], ['标题和内链怎么改？'])
+  assert.match(combined, /折叠电脑支架｜六档调节与便携收纳/)
+  assert.match(combined, /产品对比.+产品页/)
+})
+
+test('demo chat starts only an explicit local run and reports its actual progress and results', async t => {
+  const { offices, hosts, refresh } = await setup(t, conferenceLocalOffices().slice(3, 5))
+  const [seo, tax] = offices
+  const chats = [seo.session.chat.selected]
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const ask = async question => (await answerDemoQuestions(t, chats, [question]))[0]
+
+  assert.match(await ask('现在有结果吗？'), /当前没有任务在运行/)
+  assert.match(await ask('可以先看成果预览吗？'), /交付内容的预览/)
+  await ask('不要开始处理')
+  assert.equal(seo.session.simulation.isDemoRunning, false)
+
+  assert.match(await ask('请帮我开始处理。'), /已开始「产品页 SEO 检查」/)
+  assert.equal(seo.session.simulation.isDemoRunning, true)
+  assert.equal(tax.session.simulation.isDemoRunning, false)
+  assert.match(await ask('现在进度如何？'), /王明正在交代「检查页面标题与描述」/)
+  advanceUntil(hosts[0], () => seo.source.getConversations()[0].tasks[1].status === 'running')
+  await refresh()
+  assert.match(await ask('现在做到哪一步了？'), /已完成 1\/3 项。正在「整理关键词与内链」/)
+  assert.match(await ask('结果出来了吗？'), /已完成 1\/3 项/)
+
+  advanceUntil(hosts[0], () => !seo.session.simulation.isDemoRunning)
+  await refresh()
+  const firstResult = await ask('给我看最终结果。')
+  const secondResult = await ask('给我看最终结果。')
+  assert.match(firstResult, /SEO 优化清单/)
+  assert.match(secondResult, /SEO 优化清单/)
+  assert.notEqual(firstResult, secondResult)
+  assert.equal(seo.session.simulation.isDemoRunning, false)
+})
+
+test('each themed office waits for the leader handoff before working and can stop and replay independently', async t => {
+  const { offices, hosts, refresh } = await setup(t, conferenceLocalOffices().slice(3))
+  for (const [index, office] of offices.entries()) {
+    const others = offices.filter(candidate => candidate !== office)
+    const before = await Promise.all(others.map(({ source }) => source.getSnapshot()))
+    office.session.simulation.setDemo(true)
+    await refresh()
+    assert.equal(runtime.previewOf('test', false, office, 'members').activity.running, true)
+    const statuses = () => office.source.getConversations()[0].tasks.map(task => task.status)
+    const leaderPosition = () => office.session.runtime.readActors().find(actor => actor.id === 'office-lead').position
+    const { x, y } = leaderPosition()
+    assert.deepEqual(statuses(), ['queued', 'queued', 'queued'])
+    advanceUntil(hosts[index], () => leaderPosition().x !== x || leaderPosition().y !== y)
+    assert.deepEqual(statuses(), ['queued', 'queued', 'queued'])
+
+    advanceUntil(hosts[index], () => statuses()[1] === 'running')
+    await refresh()
+    assert.deepEqual((await office.source.getSnapshot()).tasks.map(task => task.status), ['completed', 'running', 'queued'])
+    office.session.simulation.setDemo(false)
+    await refresh()
+    assert.equal((await office.source.getSnapshot()).whiteboard.status, 'queued')
+    assert.equal(office.session.simulation.isDemoRunning, false)
+
+    office.session.simulation.setDemo(true)
+    advanceUntil(hosts[index], () => !office.session.simulation.isDemoRunning)
+    await refresh()
+    assert.equal((await office.source.getSnapshot()).whiteboard.status, 'completed')
+    assert.equal(office.session.simulation.isDemoRunning, false)
+    assert.deepEqual(await Promise.all(others.map(({ source }) => source.getSnapshot())), before)
+  }
 })
 
 test('backend initialization, reconnection reconciliation and restart leave independent demos intact, even with identical raw IDs', async t => {
