@@ -343,7 +343,6 @@ export class SceneView {
     }
     this.syncTaskOcclusion(dt)
     for (const view of this.ambientViews) view.update(this.runtime.isEditing ? 0 : dt, world, agents)
-    this.activeMotion ||= this.ambientViews.some(view => view.activeMotion)
     this.layer?.sortChildren()
     this.overlays.sortChildren()
   }

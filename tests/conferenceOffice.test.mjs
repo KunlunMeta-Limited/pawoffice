@@ -88,11 +88,20 @@ test('PixOffice-style overview preserves ratio, count-only heading, running glow
   await offices[0].session.refresh()
   const entries = [runtime.formalPlaceholder(false), ...offices.map(office => runtime.previewOf('test', false, office, 'members'))]
   entries[2] = { ...entries[2], decisionCount: 1 }
-  const html = renderToStaticMarkup(createElement(OfficeOverview, { offices: entries, images: {}, selectedId: entries[1].id, onSelect() {}, onClose() {} }))
+  entries[4] = runtime.localOfficePreview(offices[3], 'classic')
+  const images = { [entries[1].id]: 'blob:cached-office-preview' }
+  const html = renderToStaticMarkup(createElement(OfficeOverview, {
+    offices: entries, images, selectedId: entries[1].id, onSelect() {}, onClose() {}, livePreviews: false, onToggleLivePreviews() {},
+  }))
   assert.match(html, /9 个办公室/)
   assert.match(html, /1\/9 个办公室运行中 · 1 项待确认 · 返回办公室/)
   assert.match(html, /data-running="true"/)
   assert.match(html, /当前办公室/)
+  assert.match(html, /class="runtime-workspace /)
+  assert.match(html, /检查页面标题与描述/)
+  assert.match(html, /src="blob:cached-office-preview"/)
+  assert.match(html, /src="[^"]*assets\/office\/preview\.webp"/)
+  assert.match(html, /role="switch" class="dispatch-live-preview-toggle" aria-checked="false"[^>]*>实时预览<span aria-hidden="true">关<\/span>/)
   assert.match(html, /正式连接 · 未连接/)
   assert.match(html, /aria-label="进入正式办公室"/)
   assert.doesNotMatch(html, /新建办公室|dispatch-office-create/)

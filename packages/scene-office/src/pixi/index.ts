@@ -55,7 +55,7 @@ export function createOfficePresentation(trialEnabled: () => boolean = () => tru
   return pack
 }
 
-export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean; catEnabled?: () => boolean } = {}): ScenePresentationPack {
+export function createReferenceOfficePresentation(options: { taskForActor?: (id: string) => ActorTaskPresentation | undefined; whiteboardProgress?: WhiteboardProgress; workEffects?: boolean; coffeeEffects?: boolean; supportsCoffee?: (appearanceId: string) => boolean } = {}): ScenePresentationPack {
   const base = createOfficePresentation(undefined, options.coffeeEffects, options.supportsCoffee)
   const workEffects = options.workEffects ?? false
   let workEffectTexture: Texture | undefined
@@ -67,7 +67,7 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
     loadBackground: loadReferenceOfficeBackground,
     async loadObjects(report) {
       await Promise.all([base.loadObjects(report), loadReferenceOfficeObjects(part => report(`reference:${part}`)),
-        loadOfficeTexture('office-cat-motion-v2', 'ambient/cat-motion-v2').then(texture => { catTexture = texture; report('office-cat-motion-v2') }),
+        loadOfficeTexture('office-sleeping-cat', 'ambient/sleeping-cat').then(texture => { catTexture = texture; report('office-sleeping-cat') }),
         workEffects ? loadOfficeTexture('office-work-crafting-lite-v1', 'effects/work-crafting-lite-v1').then(texture => { workEffectTexture = texture; report('office-work-crafting-lite-v1') }) : undefined])
     },
     createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress),
@@ -88,8 +88,8 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
   }
   pack.createAmbientViews = runtime => {
     if (workEffects && !workEffectTexture) throw new Error('Load the office crafting atlas before mounting the work effect')
-    if (!catTexture) throw new Error('Load the office cat atlas before mounting the cat')
-    return [createOfficeCat(catTexture, options.catEnabled), ...(workEffects
+    if (!catTexture) throw new Error('Load the sleeping cat texture before mounting the cat')
+    return [createOfficeCat(catTexture), ...(workEffects
       ? [createOfficeWorkEffects(workEffectTexture!, runtime, runtime.readActors().map(actor => actor.id), world => pack.projectActors(runtime, world))] : [])]
   }
   return pack

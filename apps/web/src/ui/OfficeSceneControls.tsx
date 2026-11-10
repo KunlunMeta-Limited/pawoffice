@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { Coffee, Grid2X2, Pause, PawPrint, Play, RotateCw, FolderOpen } from 'lucide-react'
+import { Coffee, Grid2X2, Pause, Play, RotateCw, FolderOpen } from 'lucide-react'
 import { officeResultSchema } from '@pawoffice/protocol/office-ui'
 import { resultPresentation } from '../results/presentation.ts'
 import type { AgentState } from '@pawoffice/scene-office/types'
@@ -35,14 +35,10 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
   const editorRuntime = runtime, editor = runtime.editorSnapshot()
   const [coffee, setCoffee] = useState(true)
   const [canCoffee, setCanCoffee] = useState(false)
-  const [cat, setCat] = useState(false)
-  const [canCat, setCanCat] = useState(false)
   const [preparingEdit, setPreparingEdit] = useState(false)
   useEffect(() => {
     setCanCoffee(loaded && Boolean(sceneRef.current?.canIdleCoffee))
-    setCanCat(loaded && Boolean(sceneRef.current?.canOfficeCat))
     if (loaded) setCoffee(sceneRef.current?.idleCoffeeEnabled ?? false)
-    setCat(loaded && (sceneRef.current?.officeCatEnabled ?? false))
   }, [loaded, runtime, sceneRef])
   useEffect(() => {
     const close = (event: PointerEvent) => {
@@ -111,8 +107,6 @@ export function OfficeSceneControls({ runtime, controller, mapView, setMapView, 
           <button type="button" title={preparingEdit ? '人物正在返回工位' : '编辑布局'} aria-label="编辑布局" disabled={!loaded || !actions.ready || preparingEdit} onClick={() => { void edit() }}><Grid2X2 size={17} /></button>
           {canCoffee && <button type="button" title={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-label={coffee ? '关闭空闲闲聊' : '开启空闲闲聊'} aria-pressed={coffee} disabled={!actions.ready}
             onClick={() => { const enabled = !coffee; sceneRef.current?.setIdleCoffee(enabled); setCoffee(enabled) }}><Coffee size={17} /></button>}
-          {canCat && <button type="button" title={cat ? '关闭办公室猫咪' : '开启办公室猫咪'} aria-label={cat ? '关闭办公室猫咪' : '开启办公室猫咪'} aria-pressed={cat}
-            onClick={() => { const enabled = !cat; sceneRef.current?.setOfficeCat(enabled); setCat(enabled) }}><PawPrint size={17} aria-hidden="true" /></button>}
           {canDemo && <button type="button" title={demo ? '停止演示' : '开始演示'} aria-label={demo ? '停止演示' : '开始演示'} disabled={!loaded || !actions.ready} onClick={toggleDemo}>{demo ? <Pause size={17} /> : <Play size={17} />}</button>}
           {loaded && !actions.ready && <span role="status" title={actions.error}>{actions.error ? '互动动作加载失败' : `准备互动动作 · ${actions.completed}/${actions.total}`}</span>}
           {loaded && actions.error && <button type="button" title="重试加载互动动作" aria-label="重试加载互动动作" onClick={() => { void sceneRef.current?.prepareActions() }}><RotateCw size={16} /></button>}
