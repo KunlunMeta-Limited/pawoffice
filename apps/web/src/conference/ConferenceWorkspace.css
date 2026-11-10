@@ -56,10 +56,7 @@
 .dispatch-current-label { flex: 0 0 auto; font-size: 12px; line-height: 20px; color: #b5b5b5; }
 .dispatch-card-attention { position: absolute; right: 6px; bottom: 1px; display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 2px 4px; border: 0; border-radius: 4px; color: #a87928; background: transparent; font-size: 12px; cursor: pointer; }
 .dispatch-card-attention:hover { background: #f6e9cf; }
-.dispatch-office-create { display: grid; place-items: center; width: 100%; aspect-ratio: 16 / 9; padding: 0; border: 1px solid #e3e3e3; border-radius: 24px; color: #cecece; background: #f4f4f4; cursor: pointer; }
-.dispatch-office-create:hover { border-color: #cbcbcb; color: #a0a0a0; background: #f0f0f0; }
 .dispatch-empty { margin: 32px 0; color: #999; text-align: center; font-size: 13px; }
-.dispatch-overview .office-creation-form { width: min(480px, calc(100% - 48px)); margin: 28px auto; overflow-y: auto; }
 .dispatch-office-zoom { position: absolute; z-index: 3; top: 0; left: 0; width: 100vw; height: 100dvh; overflow: hidden; background: #fff; pointer-events: none; }
 .dispatch-office-zoom > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .dispatch-entry-status { position: absolute; z-index: 4; bottom: 24px; left: 50%; max-width: calc(100% - 32px); margin: 0; padding: 8px 12px; transform: translateX(-50%); border-radius: 6px; color: #68736d; background: #fffffff0; font-size: 12px; text-align: center; }
@@ -73,7 +70,7 @@
   .dispatch-overview-heading { flex-basis: 68px; padding: 12px 16px; }
   .dispatch-overview-scroll { padding: 24px 24px 36px; }
   .dispatch-office-grid { grid-template-columns: minmax(0, 1fr); row-gap: 28px; }
-  .dispatch-preview, .dispatch-office-create { border-radius: 20px; }
+  .dispatch-preview { border-radius: 20px; }
 }
 @media (max-width: 760px) {
   .dispatch-live-page > .member-workspace { display: grid; grid-template-columns: 320px minmax(0, 1fr); }
@@ -101,12 +98,8 @@
 .conference-frame .member-office-control, .conference-frame .team-space-trigger { display: none; }
 .conference-frame .runtime-scene-toolbar { right: 72px; }
 .conference-empty { display: flex; width: 100%; height: 100%; min-height: 300px; padding: 32px; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #78847c; background: #f6f8f7; text-align: center; }
-.conference-empty p { margin: 0; font-size: 14px; }
-.conference-source-label { display: block; padding: 2px 8px 0; color: #a0a0a0; font-size: 11px; line-height: 18px; }
-.conference-source-label[data-connected] { color: #5286b7; }
 .conference-current-source { position: fixed; z-index: 21; bottom: 7px; left: 12px; pointer-events: none; padding: 3px 7px; border-radius: 4px; background: #ffffffdc; color: #8a968d; font-size: 11px; }
 .conference-current-source[data-connected] { color: #3979ae; }
-.dispatch-card-attention { bottom: 20px; }
 .dispatch-live-canvas { object-fit: contain; }
 /* The preview has a virtual desktop viewport, independent of the overview's breakpoint. */
 .dispatch-live-page > .member-workspace { grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: 112px minmax(0, 1fr); gap: 18px; padding: 20px; }
