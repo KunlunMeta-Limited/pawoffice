@@ -1,5 +1,5 @@
-import { useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Ref } from 'react'
+import { createContext, useContext, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Check, ChevronUp, Copy, LoaderCircle, MessageCircle, RefreshCw } from 'lucide-react'
 import type { ChatSession, ChatSnapshot } from '../chat/ChatSession.ts'
@@ -9,6 +9,16 @@ import { deliveriesByTurn } from '../results/chatDeliveries.ts'
 import { ChatDeliveries } from './ChatDeliveries.tsx'
 
 export type ChatTranscriptHandle = { toBottom: () => void }
+
+type TranscriptPresentation = {
+  pendingLabel: string
+  renderReply: (content: string) => { body: ReactNode; copyText: string; scrollToStart?: boolean } | undefined
+}
+const PresentationContext = createContext<TranscriptPresentation | undefined>(undefined)
+
+export function ChatTranscriptPresentation({ value, children }: { value?: TranscriptPresentation; children: ReactNode }) {
+  return <PresentationContext.Provider value={value}>{children}</PresentationContext.Provider>
+}
 
 export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit, deliveries, onOpenDelivery }: {
   ref: Ref<ChatTranscriptHandle>; session: ChatSession; chat: ChatSnapshot; expanded: boolean
@@ -20,6 +30,11 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
   const [atStart, setAtStart] = useState(false)
   const turnDeliveries = useMemo(() => deliveriesByTurn(deliveries ?? []), [deliveries])
   const [copied, setCopied] = useState(''), copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const presentation = useContext(PresentationContext)
+  const revealedReply = useRef('')
+  const latest = chat.messages.at(-1)
+  const latestReply = latest?.role === 'assistant' ? presentation?.renderReply(latest.content) : undefined
+  const startAlignedReply = latestReply?.scrollToStart ? latest?.id : undefined
   useEffect(() => () => clearTimeout(copyTimer.current), [])
   const rows = useMemo(() => [
     ...chat.messages.map(message => ({ id: message.id, kind: 'message' as const, message })),
@@ -30,7 +45,8 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
   // eslint-disable-next-line react-hooks/incompatible-library -- Keep this mutable virtualizer local to the non-memoized transcript.
   const virtualizer = useVirtualizer({
     count: rows.length, getScrollElement: () => scroll.current, getItemKey: index => rows[index].id,
-    estimateSize: () => 140, overscan: 6, anchorTo: 'end', followOnAppend: true, scrollEndThreshold: 64,
+    // Keep start-aligned replies at their heading when their height is first measured.
+    estimateSize: () => 140, overscan: 6, anchorTo: startAlignedReply ? 'start' : 'end', followOnAppend: true, scrollEndThreshold: 64,
     // The collapsed panel retains its layout. Disabling clears its rows, but direct DOM updates can skip rendering the same range on reopen.
     directDomUpdates: true, paddingStart: 22, paddingEnd: 18,
     // Delivery cards resize after live snapshots; measure them outside the observer's current layout cycle.
@@ -40,6 +56,14 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
   useImperativeHandle(ref, () => ({ toBottom: () => virtualizer.scrollToEnd() }), [virtualizer])
   const latestUser = chat.messages.findLast(message => message.role === 'user')?.id
   useLayoutEffect(() => { if (expanded) virtualizer.scrollToEnd() }, [expanded, latestUser, virtualizer])
+  useLayoutEffect(() => {
+    if (!expanded || !startAlignedReply || revealedReply.current === startAlignedReply) return
+    const frame = requestAnimationFrame(() => {
+      revealedReply.current = startAlignedReply
+      virtualizer.scrollToIndex(chat.messages.length - 1, { align: 'start' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [expanded, startAlignedReply, chat.messages.length, virtualizer])
   const copy = async (id: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content); setCopied(id); clearTimeout(copyTimer.current)
@@ -56,11 +80,15 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
     <div ref={virtualizer.containerRef} className="office-chat-virtual-list">
       {virtualizer.getVirtualItems().map(item => {
         const row = rows[item.index]
+        const reply = row.kind === 'message' && row.message.role === 'assistant'
+          ? row.message === latest ? latestReply : presentation?.renderReply(row.message.content) : undefined
         return <div key={row.id} data-index={item.index} ref={virtualizer.measureElement} className="office-chat-row">
           {row.kind === 'message' && <article className={`office-chat-message is-${row.message.role}`} aria-label={row.message.role === 'user' ? '你' : leaderName}>
             <span className="office-chat-message-avatar">{row.message.role === 'assistant' ? 'AI' : '我'}</span><div className="office-chat-message-content">
-              <div className="office-chat-message-meta"><span>{row.message.role === 'user' ? '你' : '办公室助手'}</span>{row.message.role === 'assistant' && row.message.content && row.message.state !== 'pending' && <button type="button" title={copied === row.id ? '已复制' : '复制回复'} aria-label={copied === row.id ? '已复制' : '复制回复'} onClick={() => { void copy(row.id, row.message.content) }}>{copied === row.id ? <Check size={14} /> : <Copy size={14} />}</button>}</div>
-              <div className="office-chat-bubble">{row.message.content ? row.message.role === 'assistant' ? <ChatMarkdown content={row.message.content} pending={row.message.state === 'pending'} /> : <p className="office-chat-user-text">{row.message.content}</p> : row.message.state === 'pending' ? <div className="office-chat-pending"><span /><span /><span /><small>{session.source.kind === 'preview' ? '预览回复准备中' : '正在思考'}</small></div> : null}
+              <div className="office-chat-message-meta"><span>{row.message.role === 'user' ? '你' : '办公室助手'}</span>{row.message.role === 'assistant' && row.message.content && row.message.state !== 'pending' && <button type="button" title={copied === row.id ? '已复制' : '复制回复'} aria-label={copied === row.id ? '已复制' : '复制回复'} onClick={() => { void copy(row.id, reply?.copyText ?? row.message.content) }}>{copied === row.id ? <Check size={14} /> : <Copy size={14} />}</button>}</div>
+              <div className="office-chat-bubble">{reply ? reply.body
+                : row.message.content ? row.message.role === 'assistant' ? <ChatMarkdown content={row.message.content} pending={row.message.state === 'pending'} /> : <p className="office-chat-user-text">{row.message.content}</p>
+                  : row.message.state === 'pending' ? <div className="office-chat-pending"><span /><span /><span /><small>{presentation?.pendingLabel ?? (session.source.kind === 'preview' ? '预览回复准备中' : '正在思考')}</small></div> : null}
                 {row.message.state === 'stopped' && <small className="office-chat-interrupted">已停止生成</small>}
                 {row.message.state === 'error' && <small className="office-chat-interrupted">回复未完成</small>}
               </div>

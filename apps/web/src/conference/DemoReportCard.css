@@ -1,0 +1,49 @@
+.office-chat-message-content:has(.demo-office-report) { width: 100%; }
+.office-chat-bubble:has(.demo-office-report) { padding: 0; border: 0; background: transparent; }
+.demo-office-report {
+  --report-ink: #163154;
+  --report-muted: #486581;
+  --report-accent: #356bb0;
+  --report-soft: #e3eefb;
+  --report-bar: #87afe0;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #dbe7f2;
+  border-radius: 12px;
+  background: #f7fafd;
+  color: var(--report-ink);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.demo-office-report[data-tone=teal] { --report-accent: #1e716b; --report-soft: #deefeb; --report-bar: #78b9af; }
+.demo-office-report[data-tone=amber] { --report-accent: #9a5430; --report-soft: #faeee4; --report-bar: #dda889; }
+.demo-report-header { padding: 18px 20px 16px; background: linear-gradient(120deg, var(--report-soft), #f3f7fc 82%); border-bottom: 1px solid #dde8f2; }
+.demo-report-masthead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; color: var(--report-accent); font-size: 11px; font-weight: 650; }
+.demo-report-masthead > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
+.demo-report-status { padding: 3px 8px; border-radius: 20px; background: #fff; }
+.demo-report-header h2 { margin: 8px 0 5px; color: var(--report-ink); font-size: clamp(20px, 3vw, 27px); line-height: 1.25; font-weight: 720; letter-spacing: -.02em; }
+.demo-report-header p, .demo-report-footer p, .demo-report-findings p { margin: 0; color: var(--report-muted); }
+.demo-report-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 130px), 1fr)); gap: 8px; margin: 0; padding: 13px 16px 10px; }
+.demo-report-metrics > div { min-width: 0; padding: 8px 10px; border: 1px solid #dde8f2; border-radius: 7px; background: #fff; }
+.demo-report-metrics dt { color: var(--report-muted); font-size: 11px; }
+.demo-report-metrics dd { margin: 1px 0 0; color: var(--report-accent); font-size: clamp(17px, 2.7vw, 23px); line-height: 1.3; font-weight: 700; font-variant-numeric: tabular-nums; }
+.demo-report-metrics small { display: block; color: var(--report-muted); font-size: 10px; font-weight: 400; }
+.demo-report-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 10px; padding: 0 16px; }
+.demo-report-chart, .demo-report-findings { min-width: 0; margin: 0; padding: 12px; border: 1px solid #dde8f2; border-radius: 8px; background: #fff; }
+.demo-report-chart figcaption { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.demo-report-chart figcaption svg { color: var(--report-accent); flex: 0 0 auto; }
+.demo-report-chart figcaption > span { margin-left: auto; color: var(--report-muted); font-size: 10px; font-weight: 400; }
+.demo-report-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 7px; padding: 0; margin: 10px 0 0; list-style: none; text-align: center; }
+.demo-report-bar-track { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; height: 82px; border-bottom: 1px solid #cdd9e6; background: repeating-linear-gradient(to top, transparent 0 19px, #eaf0f6 19px 20px); }
+.demo-report-bar-track strong { color: var(--report-accent); font-size: 11px; line-height: 1; font-variant-numeric: tabular-nums; }
+.demo-report-bar-track span { width: min(72%, 44px); border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--report-bar), var(--report-soft)); }
+.demo-report-bar-label { display: block; margin-top: 4px; color: var(--report-muted); font-size: 10px; }
+.demo-report-findings h3 { margin: 0 0 6px; color: var(--report-ink); font-size: 13px; }
+.demo-report-findings ol { display: grid; gap: 6px; margin: 0; padding-left: 18px; }
+.demo-report-findings li::marker { color: var(--report-accent); font-weight: 650; }
+.demo-report-findings li p { font-size: 11px; }
+.demo-report-footer { padding: 10px 16px 13px; }
+.demo-report-footer > div { display: flex; align-items: baseline; gap: 8px; padding: 7px 10px; border-radius: 6px; background: var(--report-soft); font-size: 11px; }
+.demo-report-footer > div strong { flex: 0 0 auto; color: var(--report-accent); }
+.demo-report-footer small { display: block; margin: 6px 1px 0; color: var(--report-muted); font-size: 10px; }
