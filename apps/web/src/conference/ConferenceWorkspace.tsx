@@ -1,9 +1,10 @@
 // Temporary composition. Removal: restore main.tsx's App import and delete this directory.
-// The original application, backend messages and public renderers stay unchanged.
+// This presentation is installed only in local demo frames.
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { RefObject } from 'react'
 import { ArrowUp, Bell, ChevronLeft, Clapperboard, Grid2X2, MessageCircle, Play } from 'lucide-react'
 import App, { OfficeApp } from '../App.tsx'
+import { ChatTranscriptPresentation } from '../components/ChatTranscript.tsx'
 import { SseMessageTransport } from '@pawoffice/runtime/adapters/sse'
 import { officeIntegrationPaths } from '@pawoffice/protocol/office-integration'
 import { chatPath } from '@pawoffice/protocol/chat'
@@ -28,8 +29,19 @@ import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
 import { captureScene, formalFrame, formalPlaceholder, frameParameter, frameScope, localOfficePreview, localOfficeSession, officeKey, previewOf } from './frameRuntime.ts'
 import type { FrameCommand, FrameReport, OfficePreview } from './frameRuntime.ts'
-import { conferenceLocalOffices } from './demoScenarios.ts'
+import { conferenceLocalOffices, ScenarioOfficeDataSource } from './demoScenarios.ts'
+import { ConferenceChatSource } from './ConferenceChatSource.ts'
+import { DemoReportCard } from './DemoReportCard.tsx'
+import { demoReportMarkdown, readDemoReport } from './demoReports.ts'
 import './ConferenceWorkspace.css'
+
+const demoTranscript = {
+  pendingLabel: '正在整理回复',
+  renderReply(content: string) {
+    const report = readDemoReport(content)
+    if (report) return { body: <DemoReportCard report={report} />, copyText: demoReportMarkdown(report), scrollToStart: true }
+  },
+}
 
 const noop = () => {}, noAction = async () => {}
 const statuses = { unknown: '未同步', attention: '待处理', running: '运行中', completed: '已完成', idle: '空闲' }
@@ -56,13 +68,14 @@ function useHostedSessions(sessions: readonly OfficeTeamSession[], active: boole
   }, [sessions])
 }
 
-function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], command: (value: FrameCommand) => void) {
-  const [view, setView] = useState(() => ({ active: parent === window, rendering: parent === window }))
+function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], command: (value: FrameCommand) => void, prewarm = false) {
+  const [view, setView] = useState(() => ({ active: parent === window, rendering: parent === window || prewarm }))
   const current = useRef({ getOffices, command })
   useEffect(() => { current.current = { getOffices, command } }, [getOffices, command])
   useEffect(() => {
     if (parent === window) return
     let desiredView = { active: false, rendering: false, sampling: false }
+    let warming = prewarm
     let capture: AbortController | undefined
     const navigation = document.createElement('base')
     navigation.target = '_top'; document.head.append(navigation)
@@ -73,7 +86,7 @@ function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], comm
       void captureScene(pending.signal, live).catch(() => undefined).then(image => {
         if (capture !== pending) return
         capture = undefined
-        if (!live) setView({ active: desiredView.active, rendering: desiredView.rendering })
+        if (!live) setView({ active: desiredView.active, rendering: desiredView.rendering || warming })
         if (image) sendReport(frameId, { type: 'image', officeId, image })
       })
     }
@@ -87,21 +100,29 @@ function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], comm
       desiredView = value
       capture?.abort()
       capture = undefined
-      setView({ active: value.active, rendering: value.rendering || !!officeId })
+      setView({ active: value.active, rendering: value.rendering || warming || !!officeId })
       if (officeId) takePreview(officeId, false)
     }
     const publish = () => {
       const offices = current.current.getOffices(), loaded = !document.querySelector('.office-loading')
       const canvas = document.querySelector('.office-render-surface canvas')
       const officeId = activeOffice()
+      if (warming) {
+        const initialization = document.querySelector<HTMLElement>('.office-canvas')?.dataset.sceneInitialization
+        if (initialization === 'ready' || initialization === 'failed') {
+          warming = false
+          setView({ active: desiredView.active, rendering: desiredView.rendering || !!capture })
+        }
+      }
       sendReport(frameId, { type: 'state', offices: offices.map(office => ({ ...office,
+        initialized: prewarm && !warming,
         ready: !office.rawId || office.id === officeId && loaded && !!canvas })) })
       if (desiredView.sampling && !capture && officeId && loaded && canvas) takePreview(officeId, true)
     }
     window.addEventListener('message', receive); publish()
     const timer = setInterval(publish, 500)
     return () => { capture?.abort(); capture = undefined; clearInterval(timer); window.removeEventListener('message', receive); navigation.remove() }
-  }, [frameId])
+  }, [frameId, prewarm])
   return view
 }
 
@@ -114,11 +135,13 @@ function LocalOfficeFrame({ frameId }: { frameId: string }) {
     if (!session) return
     if (value.type === 'decisions') { const id = session.decisions.getSnapshot().pending[0]?.conversationId; if (id) session.chat.select(id); setDecisionToken(token => token + 1) }
     if (value.type === 'resolve') void session.decisions.choose(session.runtime.sceneId, value.decisionId, value.choiceId, value.customText)
-  })
+  }, office?.source instanceof ScenarioOfficeDataSource)
   useHostedSessions(sessions, view.active)
   return <div className="conference-frame" data-frame-office={office && officeKey(false, office.id)}>
-    {session ? <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
-      pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
+    {session ? <ChatTranscriptPresentation value={session.chat.source instanceof ConferenceChatSource ? demoTranscript : undefined}>
+      <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
+        pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
+    </ChatTranscriptPresentation>
       : <div className="conference-empty" role="status">办公室未找到，请返回总览。</div>}
   </div>
 }
@@ -358,8 +381,18 @@ function MultiOfficeWorkspace() {
   const imageUrls = useRef(new Map<string, string>())
   const wasOverviewOpen = useRef(false)
   const [visitedFrameIds, setVisitedFrameIds] = useState(() => [sceneRelayUrl() ? formalFrame : officeKey(false, locals[0].id)])
+  const preloadFrameIds = useMemo(() => new Set(locals.filter(office => office.source instanceof ScenarioOfficeDataSource)
+    .map(office => officeKey(false, office.id))), [locals])
   const frameIds = useMemo(() => [formalFrame, ...locals.map(office => officeKey(false, office.id))]
-    .filter(id => !optimized || visitedFrameIds.includes(id)), [locals, optimized, visitedFrameIds])
+    .filter(id => preloadFrameIds.has(id) || !optimized || visitedFrameIds.includes(id)), [locals, preloadFrameIds, optimized, visitedFrameIds])
+  const [startupTimedOut, setStartupTimedOut] = useState(false)
+  const initializedCount = [...preloadFrameIds].filter(id => reports[id]?.[0]?.initialized).length
+  const starting = !startupTimedOut && initializedCount < preloadFrameIds.size
+  useEffect(() => {
+    if (!starting) return
+    const timer = setTimeout(() => setStartupTimedOut(true), 60_000)
+    return () => clearTimeout(timer)
+  }, [starting])
   const open = overview !== 'closed'
   const localLayout = readOfficeShell()
   const localPreviews = useMemo(() => locals.map(office => localOfficePreview(office, localLayout)), [locals, localLayout])
@@ -381,7 +414,7 @@ function MultiOfficeWorkspace() {
   const toggleOptimization = () => {
     if (!optimized) {
       setReports(current => Object.fromEntries(Object.entries(current).map(([id, offices]) => [
-        id, visitedFrameIds.includes(id) ? offices : offices.map(office => ({ ...office, ready: false })),
+        id, preloadFrameIds.has(id) || visitedFrameIds.includes(id) ? offices : offices.map(office => ({ ...office, ready: false })),
       ])))
     }
     setOptimized(!optimized)
@@ -425,16 +458,20 @@ function MultiOfficeWorkspace() {
   return <div className="conference-workspace">
     <div className="conference-frames">{frameIds.map(frameId => <iframe key={frameId} ref={frame => { if (frame) frames.current.set(frameId, frame); else frames.current.delete(frameId) }}
       src={frameUrl(frameId)} title={frameId === formalFrame ? '正式办公室' : locals.find(office => officeKey(false, office.id) === frameId)?.name}
-      className="conference-office-frame" data-active={frameId === current.frameId || undefined} aria-hidden={frameId !== current.frameId || open}
-      inert={frameId !== current.frameId || open} onLoad={() => {
+      className="conference-office-frame" data-active={frameId === current.frameId || undefined} aria-hidden={starting || frameId !== current.frameId || open}
+      inert={starting || frameId !== current.frameId || open} onLoad={() => {
         const active = frameId === activeFrame
         command(frameId, { type: 'view', active, rendering: !optimized || active, sampling })
       }} />)}</div>
     <span className="conference-current-source" data-connected={current.connected || undefined}>{current.connected ? `正式连接 · ${current.connection}` : '本地演示'}</span>
     {current.activity.running && <div className="dispatch-running-frame" aria-hidden="true" />}
     <button ref={trigger} type="button" className="dispatch-ring-button" data-running={running > 0 || undefined} aria-label={label} title={label}
-      aria-expanded={open} aria-haspopup="dialog" onClick={() => setOverview('browse')}><span aria-hidden="true" data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
-    {!open && notice && <TeamDecisionNotice key={`${notice.id}:${notice.pendingDecision?.id}`} team={{ ...notice, sceneLabel: '办公室' } as OfficeTeamOption} otherCount={background.length - 1}
+      disabled={starting} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOverview('browse')}><span aria-hidden="true" data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
+    {starting && <div className="conference-startup" role="status">
+      <span>正在初始化办公室 · {initializedCount}/{preloadFrameIds.size}</span>
+      <progress aria-label="办公室初始化进度" value={initializedCount} max={preloadFrameIds.size} />
+    </div>}
+    {!starting && !open && notice && <TeamDecisionNotice key={`${notice.id}:${notice.pendingDecision?.id}`} team={{ ...notice, sceneLabel: '办公室' } as OfficeTeamOption} otherCount={background.length - 1}
       onDismiss={() => setDismissed(values => [...values, `${notice.id}:${notice.pendingDecision?.id}`])} onOpen={() => selectOffice(notice, true)}
       onResolve={(decisionId, choiceId, customText) => command(notice.frameId, { type: 'resolve', officeId: notice.rawId, decisionId, choiceId, customText })} />}
     {open && <OfficeOverview offices={offices} images={images} selectedId={current.id} onSelect={selectOffice} trigger={trigger}

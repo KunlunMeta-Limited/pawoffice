@@ -8,8 +8,9 @@ const WhiteboardReader = lazy(() => import('./WhiteboardReader.tsx').then(module
 export function OfficeCanvas({ controller, editing = false, catalogOpen = false, children }: {
   controller: OfficeSceneController; editing?: boolean; catalogOpen?: boolean; children?: ReactNode
 }) {
-  const { host, loaded, notice, setNotice, progress } = controller
-  return <div className={`office-canvas ${editing ? 'is-decorating' : ''} ${catalogOpen ? '' : 'catalog-closed'}`}>
+  const { host, loaded, notice, setNotice, progress, actions } = controller
+  const initialization = loaded && actions.ready ? 'ready' : (!loaded && notice) || actions.error ? 'failed' : 'loading'
+  return <div className={`office-canvas ${editing ? 'is-decorating' : ''} ${catalogOpen ? '' : 'catalog-closed'}`} data-scene-initialization={initialization}>
     <SceneSurface host={host} className="office-render-surface" />
     {!loaded && !notice && <div className="office-loading" role="status" aria-live="polite">
       <span>正在加载办公室{progress.total > 0 ? ` · ${progress.completed}/${progress.total}` : '…'}</span>

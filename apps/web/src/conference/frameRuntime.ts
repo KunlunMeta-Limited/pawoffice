@@ -14,6 +14,7 @@ import { PreviewChatSource } from '../chat/sources.ts'
 import { browserChatPersistence } from '../chat/persistence.ts'
 import type { DecisionRequest } from '../application/decisions/DecisionSession.ts'
 import type { OfficeTeamDefinition } from '../dashboard/officeDirectory.ts'
+import { ConferenceChatSource } from './ConferenceChatSource.ts'
 import { ScenarioDemoSource, ScenarioOfficeDataSource } from './demoScenarios.ts'
 
 export const frameScope = 'pawoffice-temporary-overview-v1'
@@ -25,6 +26,7 @@ export type OfficePreview = {
   id: string; frameId: string; rawId: string; name: string; connected: boolean; connection: string
   dashboard: DashboardSnapshot | null; appearances: Record<string, string>; layout: OfficeLayoutId
   conversationTitle: string; activity: Activity; decisionCount: number; pendingDecision?: DecisionRequest; ready: boolean
+  initialized?: boolean
   decisionSubmittingId?: string; decisionError?: string
 }
 export type FrameCommand =
@@ -55,17 +57,20 @@ export function localOfficeSession(office: OfficeTeamDefinition, storage?: Stora
     seatStepDuration: seatStepDurationMs, persistence: storage ? browserPersistence(storage, office.id) : undefined,
   })
   const scenario = source instanceof ScenarioOfficeDataSource ? source : undefined
-  const demo = scenario ? new ScenarioDemoSource(runtime, scenario) : undefined
-  const chatSource = new PreviewChatSource(demo ? request => demo.reply(request) : undefined)
+  const demo = scenario ? new ScenarioDemoSource(runtime, scenario, () => session) : undefined
+  // Keep the five existing scenarios' archives. The three replacements use
+  // a separate key so they don't restore the classic commerce conversations.
+  const historyKey = office.id.startsWith('office-demo-') ? 'commerce-demo-v1' : undefined
+  const chatSource = demo ? new ConferenceChatSource(request => demo.reply(request), historyKey) : new PreviewChatSource()
   const simulation = demo ? new OfficeSimulation(runtime, demo, { idleCoffee: {} }) : undefined
-  return new OfficeTeamSession(runtime, source, {
+  const session: OfficeTeamSession = new OfficeTeamSession(runtime, source, {
     chatSource, simulation, decisionPreview: !scenario,
     chatPersistence: storage ? browserChatPersistence(office.id, chatSource.historyKey) : undefined,
   })
+  return session
 }
 
-// A commerce host intentionally coordinates every office it owns. Each temporary
-// demo therefore gets its own host, while retaining the original demo content.
+// Match the local frame, which owns and advances a single office session.
 export function independentDemoHost(session: OfficeTeamSession) {
   const host = new OfficeTeamHost()
   host.update([session])
