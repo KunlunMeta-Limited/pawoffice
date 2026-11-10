@@ -33,11 +33,12 @@ function download(value: unknown, filename: string) {
   link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url)
 }
 
-export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, connection, dashboard, dashboardError, sceneLinkError, dataMode, canExecuteActions = true, executeAction, createEmployee, memberCreation, pendingTaskIds, actionError, chatSession, decisionSession, uiSession, decisionOpenToken = 0, teamSelection, layout = 'full', pageLayout, shell: suppliedShell }: {
+export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, connection, dashboard, dashboardError, sceneLinkError, dataMode, canExecuteActions = true, executeAction, createEmployee, memberCreation, pendingTaskIds, actionError, chatSession, decisionSession, uiSession, decisionOpenToken = 0, teamSelection, layout = 'full', pageLayout, shell: suppliedShell, renderingSuspended = false }: {
   simulation?: OfficeSimulation
   whiteboardProgress?: WhiteboardProgress
   teamSelection?: OfficeTeamSelection
   runtime: SceneRuntime
+  renderingSuspended?: boolean
   connection: string
   dashboard: DashboardSnapshot | null
   dashboardError: string | null
@@ -95,7 +96,7 @@ export function RuntimeWorkspace({ runtime, simulation, whiteboardProgress, conn
   const covered = layout === 'full' && chatExpanded && !snapshot.editor
   const inspectActor = useCallback((actorId: string) => { void uiSession?.request({ action: 'actor.inspect', actorId }).catch(() => {}) }, [uiSession])
   const inspectEmployee = useCallback((employeeId: string) => { void uiSession?.request({ action: 'employee.inspect', employeeId }).catch(() => {}) }, [uiSession])
-  const controller = useOfficeSceneController(runtime, covered || teamPickerOpen, simulation, dashboard, uiSession?.enabled ? inspectActor : undefined, whiteboardProgress, selectActor)
+  const controller = useOfficeSceneController(runtime, renderingSuspended || covered || teamPickerOpen, simulation, dashboard, uiSession?.enabled ? inspectActor : undefined, whiteboardProgress, selectActor)
   useEffect(() => {
     controller.sceneRef.current?.selectActor(memberLayout ? selectedActorId : undefined)
   }, [memberLayout, selectedActorId, controller.loaded, controller.sceneRef, runtime])
