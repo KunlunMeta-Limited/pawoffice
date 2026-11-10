@@ -87,14 +87,15 @@ test('PixOffice-style overview preserves ratio, count-only heading, running glow
   await offices[0].session.refresh()
   const entries = [runtime.formalPlaceholder(false), ...offices.map(office => runtime.previewOf('test', false, office, 'members'))]
   entries[2] = { ...entries[2], decisionCount: 1 }
-  const html = renderToStaticMarkup(createElement(OfficeOverview, { offices: entries, images: {}, selectedId: entries[1].id, onSelect() {}, create: async () => {}, onClose() {} }))
+  const html = renderToStaticMarkup(createElement(OfficeOverview, { offices: entries, images: {}, selectedId: entries[1].id, onSelect() {}, onClose() {} }))
   assert.match(html, /4 个办公室/)
   assert.match(html, /1\/4 个办公室运行中 · 1 项待确认 · 返回办公室/)
   assert.match(html, /data-running="true"/)
   assert.match(html, /当前办公室/)
   assert.match(html, /正式连接 · 未连接/)
   assert.match(html, /aria-label="进入正式办公室"/)
-  assert.match(html, /aria-label="新建办公室"/)
+  assert.doesNotMatch(html, /新建办公室|dispatch-office-create/)
+  assert.doesNotMatch(html, /conference-source-label/)
   assert.match(html, /商品视觉团队，1 项待确认/)
   assert.doesNotMatch(html, /大会|办公室与场景演示|SEO优化|报税办公室/)
 })

@@ -28,11 +28,9 @@ export type FrameCommand =
   | { type: 'view'; active: boolean; sampling: boolean }
   | { type: 'select' | 'decisions'; officeId: string }
   | { type: 'resolve'; officeId: string; decisionId: string; choiceId: string; customText?: string }
-  | { type: 'create'; requestId: string; name: string }
 export type FrameReport =
   | { type: 'state'; offices: OfficePreview[] }
   | { type: 'image'; officeId: string; image: string }
-  | { type: 'created'; requestId: string; officeId?: string; error?: string }
 
 export function officeActivity(conversations: readonly Pick<DashboardConversation, 'tasks' | 'events' | 'whiteboard'>[],
   current: DashboardSnapshot | null, pending = 0, unavailable = false): Activity {
