@@ -56,9 +56,15 @@ export class OfficeDemoSource {
       if (!returning.length) this.round++
       this.delay = returning.length ? 0 : 1200
     } catch (error) {
-      this.enabled = false; this.delay = 0; this.commandIds = []
-      this.error = error instanceof Error ? error.message : '演示启动失败'
-      notifySubscribers(this.listeners, 'OfficeDemoSource')
+      this.fail(error instanceof Error ? error.message : '演示启动失败')
     }
+  }
+
+  protected fail(message: string) {
+    this.enabled = false
+    this.delay = 0
+    this.commandIds = []
+    this.error = message
+    notifySubscribers(this.listeners, 'OfficeDemoSource')
   }
 }
