@@ -6,12 +6,14 @@ import { browserPersistence } from '@pawoffice/runtime/adapters/storage'
 import { seatStepDurationMs } from '@pawoffice/scene-office/pixi/projection'
 import { OfficeTeamSession } from '../application/OfficeTeamSession.ts'
 import { OfficeTeamHost } from '../application/OfficeTeamHost.ts'
+import { OfficeSimulation } from '../application/OfficeSimulation.ts'
 import { createOfficeRuntime } from '../application/createOfficeRuntime.ts'
 import { supportsCharacterPose } from '../application/poseSupport.ts'
 import { PreviewChatSource } from '../chat/sources.ts'
 import { browserChatPersistence } from '../chat/persistence.ts'
 import type { DecisionRequest } from '../application/decisions/DecisionSession.ts'
 import type { OfficeTeamDefinition } from '../dashboard/officeDirectory.ts'
+import { ScenarioDemoSource, ScenarioOfficeDataSource } from './demoScenarios.ts'
 
 export const frameScope = 'pawoffice-temporary-overview-v1'
 export const frameParameter = 'office-frame'
@@ -46,10 +48,19 @@ export function officeActivity(conversations: readonly Pick<DashboardConversatio
 }
 
 export function localOfficeSession(office: OfficeTeamDefinition, storage?: Storage) {
-  const chatSource = new PreviewChatSource()
-  return new OfficeTeamSession(createOfficeRuntime({ sceneId: office.id, referenceLayout: true, supportsPose: supportsCharacterPose,
-    seatStepDuration: seatStepDurationMs, persistence: storage ? browserPersistence(storage, office.id) : undefined }), office.source,
-  { chatSource, decisionPreview: true, chatPersistence: storage ? browserChatPersistence(office.id, chatSource.historyKey ?? chatSource.kind) : undefined })
+  const { source } = office
+  const runtime = createOfficeRuntime({
+    sceneId: office.id, referenceLayout: true, supportsPose: supportsCharacterPose,
+    seatStepDuration: seatStepDurationMs, persistence: storage ? browserPersistence(storage, office.id) : undefined,
+  })
+  const scenario = source instanceof ScenarioOfficeDataSource ? source : undefined
+  const demo = scenario ? new ScenarioDemoSource(runtime, scenario) : undefined
+  const chatSource = new PreviewChatSource(demo ? request => demo.reply(request) : undefined)
+  const simulation = demo ? new OfficeSimulation(runtime, demo, { idleCoffee: {} }) : undefined
+  return new OfficeTeamSession(runtime, source, {
+    chatSource, simulation, decisionPreview: !scenario,
+    chatPersistence: storage ? browserChatPersistence(office.id, chatSource.historyKey) : undefined,
+  })
 }
 
 // A commerce host intentionally coordinates every office it owns. Each temporary
@@ -63,12 +74,18 @@ export function independentDemoHost(session: OfficeTeamSession) {
 export function previewOf(frameId: string, connected: boolean, office: { id: string; name: string; session: OfficeTeamSession },
   layout: OfficeLayoutId, connection?: string): OfficePreview {
   const session = office.session, state = session.getSnapshot(), chat = session.chat.getSnapshot(), decisions = session.decisions.getSnapshot(), pending = decisions.pending
+  const activity = officeActivity(session.source.getConversations?.() ?? [], state.dashboard, pending.length, !!state.dashboardError)
+  const demo = session.simulation.demoSource
+  if (demo instanceof ScenarioDemoSource && demo.isDispatching && !state.dashboardError) {
+    activity.running = true
+    if (activity.status !== 'attention') activity.status = 'running'
+  }
   return { id: officeKey(connected, office.id), frameId, rawId: office.id, connected, name: state.dashboard?.workspace.name ?? office.name,
     connection: connection ?? state.connection, dashboard: state.dashboard, appearances: Object.fromEntries(session.runtime.readActors().map(actor => [actor.id, actor.templateId])),
     layout, conversationTitle: chat.conversations.find(item => item.id === chat.selectedId)?.title ?? '', decisionCount: pending.length, pendingDecision: pending[0],
     decisionSubmittingId: decisions.submittingIds?.find(id => id === pending[0]?.id),
     decisionError: decisions.errorDecisionId === pending[0]?.id ? decisions.error ?? '' : '',
-    activity: officeActivity(session.source.getConversations?.() ?? [], state.dashboard, pending.length, !!state.dashboardError), ready: false }
+    activity, ready: false }
 }
 
 export function formalPlaceholder(configured: boolean, connection = '连接中'): OfficePreview {
