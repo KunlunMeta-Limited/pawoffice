@@ -166,3 +166,18 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 | 截图 | `node scripts/result-board/capture.mjs` | 9 张重新产出，`fixtureSmoke` 15/15 ok，`consoleErrors: []`；03 完整长图 1121×2220 |
 | 交互回归（Playwright 实测） | 打开预览 / Escape 关闭且焦点回到「阅读」/ 复制摘要写入剪贴板 / 下载报告 `登录模块交付成果.md` / diff 13 行 / 文档索引打开同一预览入口 | 全部通过，无 console 错误 |
 | 对比度 | 脚本遍历 4 个 fixture 的可见文本，检查 CSS 颜色与等效背景对比度 | 0 项低于 4.5 |
+## 7. 第三轮（数据类型专用视觉体系）执行记录
+
+> 设计：`07-data-type-visual-system.md`。本轮只改前端表现层（新增/重写类型组件与 dev-only 夹具），协议/服务端/依赖未变。
+
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 新增类型视觉测试 | `node tests/resultTypeVisual.test.mjs` | **8/8 pass，exit 0**（阅读模式、6 metric、4 artifact、documents 同源、review/risks、versions、inline changes、sections 机制） |
+| 既有 + 新增结果测试 | `node --test tests/resultTypeVisual.test.mjs tests/resultBoard.test.mjs tests/resultWorkspace.test.mjs tests/resultReader.test.mjs tests/resultPresentation.test.mjs tests/whiteboardDetails.test.mjs tests/resultHistory.test.mjs tests/resultSectionRouting.test.mjs` | **88/88 pass，exit 0** |
+| 类型检查 | `npx tsc -p tsconfig.app.json --noEmit --tsBuildInfoFile .tmp/final.tsbuildinfo` | exit 0 |
+| Lint | `npx eslint apps/web/src tests scripts` | exit 0 |
+| 构建 | `npm run build` | **exit 0**（`✓ built in 920ms`） |
+| 类型截图 | `node scripts/result-board/capture.mjs` | **17 张**（既有 9 + type-01…08），`consoleErrors: []`、`fixtureSmoke 23/23`、`interrupted: null`；连续重跑幂等 |
+| 全量测试（绕过 npm pretest 的既有 license 阻塞） | `node --test <tests/*.test.mjs>` | **1027 tests / 1023 pass / 2 fail（改动前基线：teamOverview 源码正则、thirdPartyNotices license 漂移）/ 2 skipped** |\n| 浏览器交互（Playwright 实测） | 点击 changes 首行 → inline diff、`aria-expanded=true`；Esc 收起并回焦；图片加载失败 → 虚线占位（无破图）；gallery 失败项占位 | 通过，无 console error |
+
+已知限制（与 05 一致）：link 统一外链新窗口；data 格式只由 `mimeType` 派生；closed 风险同列表弱化；12 种 custom block 视觉沿用既有实现（本轮优先五类核心内容）；视觉主观评分仍由审核方按截图判定。

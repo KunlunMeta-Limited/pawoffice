@@ -578,10 +578,404 @@ export const resultBoardStates: Record<ResultPresentationKey, StateFixture> = {
 }
 
 /* -------------------------------------------------------------------------------------------------
+ * 6. Type samples — one focused fixture per data type (screenshots type-01 … type-08)
+ *
+ * Each result deliberately concentrates on a single data type so the acceptance screenshot can show
+ * one visual language at a time. Every value is a hand-authored legal protocol value; none of them
+ * claims to be real business data.
+ * ----------------------------------------------------------------------------------------------- */
+
+const TYPE_FIXTURE_NOTE = '前端验收 fixture，非真实业务数据。'
+
+/**
+ * Same-origin asset URL in the browser so the acceptance screenshot shows a real thumbnail instead
+ * of racing a remote 404 / onError placeholder. SSR (tests, node) keeps the literal https fallback.
+ */
+function runtimeAssetUrl(pathname: string, fallback: string) {
+  return typeof location === 'undefined' ? fallback : new URL(pathname, location.origin).href
+}
+
+/** 6 metric kinds, one each, with emphasis=primary. `auto` carries a previous value → comparison. */
+const typeMetrics: MetricInput[] = [
+  { id: 'type-metric-value', kind: 'value', label: '测试用例', value: '86', unit: '个' },
+  {
+    id: 'type-metric-comparison', kind: 'comparison', label: '访问成交率', value: '3.8', unit: '%',
+    previous: '2.9%', change: '+0.9pp', trend: 'up', tone: 'positive', emphasis: 'primary',
+  },
+  { id: 'type-metric-status', kind: 'status', label: '发布状态', value: '待发布', tone: 'neutral' },
+  {
+    id: 'type-metric-target', kind: 'target', label: '测试通过率', value: '96', unit: '%',
+    target: '95%', targetStatus: 'met', progress: 96, tone: 'positive',
+  },
+  { id: 'type-metric-text', kind: 'text', label: '覆盖范围', value: '仅覆盖登录模块' },
+  {
+    id: 'type-metric-auto', kind: 'auto', label: '自动识别（含前值）', value: '128', unit: '次',
+    previous: '120 次', change: '+8', trend: 'up', tone: 'positive',
+  },
+]
+
+export const typeMetricsResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-metrics', title: '指标类型视觉验收（6 种 kind）', status: 'ready',
+  summary: '6 种指标类型各出现一次：数字主视觉、双点对比、状态灯、目标刻度、事实句与自动识别。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T09:00:00+08:00', updatedAt: '2026-11-11T09:10:00+08:00',
+  metricsTitle: '指标类型（6 种 kind）',
+  metricsCaption: 'value/comparison/status/target/text/auto→comparison',
+  metrics: typeMetrics,
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeMetrics.result')
+export const typeMetricsBoard = boardFor(typeMetricsResult, 'completed', typeMetricsResult.title, completedSteps)
+
+/** 3 document artifacts + a `documents` section indexing exactly the same artifactId + versionId. */
+const typeDeliveryArtifacts: ArtifactInput[] = [
+  {
+    id: 'type-doc-prd', kind: 'document', title: '需求说明', description: 'Markdown 正文，含标题、列表、表格与代码块。',
+    change: 'updated', versionId: 'type-doc-prd-v2', version: 'v2.0', runId: 'run-type-delivery',
+    producedAt: '2026-11-11T09:00:00+08:00', mimeType: 'text/markdown',
+    content: [
+      '# 需求说明 v2.0', '',
+      '## 登录范围', '- 账号密码登录', '- 短信验证码登录', '- 退出登录与权限校验', '',
+      '## 验收要求', '',
+      '| 项目 | 要求 | 状态 |', '| --- | --- | --- |',
+      '| 验证码有效期 | 5 分钟 | 已确认 |', '| 连续失败限制 | 5 次后限制 10 分钟 | 待复核 |', '',
+      '> 本文档为前端验收 fixture，不是真实业务正文。',
+    ].join('\n'),
+  },
+  {
+    id: 'type-doc-api', kind: 'document', title: '接口文档', description: 'Markdown 正文，只描述既有接口。',
+    change: 'added', versionId: 'type-doc-api-v1', version: 'v1.0', runId: 'run-type-delivery',
+    producedAt: '2026-11-11T09:05:00+08:00', mimeType: 'text/markdown',
+    content: [
+      '# 接口文档 v1.0', '',
+      '## 登录接口', '',
+      '- `POST /api/auth/login`：账号密码登录',
+      '- `POST /api/auth/sms`：短信验证码登录',
+      '- `DELETE /api/auth/logout`：退出登录', '',
+      '## 说明', '', '接口文档只描述既有接口，不包含「试请求」按钮。',
+    ].join('\n'),
+  },
+  {
+    id: 'type-doc-accept', kind: 'document', title: '验收记录', description: 'Markdown 正文，记录本轮验证范围与缺口。',
+    change: 'added', versionId: 'type-doc-accept-v1', version: 'v1.0', runId: 'run-type-delivery',
+    producedAt: '2026-11-11T09:10:00+08:00', mimeType: 'text/markdown',
+    content: [
+      '# 验收记录 v1.0', '',
+      '## 已验证', '- 主流程冒烟通过', '- 异常路径回归通过', '',
+      '## 待补充', '- 性能基线与冷启动尚未覆盖', '',
+      '## 结论', '', '本轮验收记录为前端样例，不代表真实业务结论。',
+    ].join('\n'),
+  },
+]
+
+const typeDeliverySections: SectionInput[] = [{
+  kind: 'documents', id: 'type-section-documents', title: '交付文档（与上方同源）',
+  caption: 'artifactId + versionId 精确关联，点开同一预览入口', span: 'full',
+  items: [
+    { id: 'type-document-prd', artifactId: 'type-doc-prd', versionId: 'type-doc-prd-v2', title: '需求说明', version: 'v2.0', at: '2026-11-11 09:00', status: 'done' },
+    { id: 'type-document-api', artifactId: 'type-doc-api', versionId: 'type-doc-api-v1', title: '接口文档', version: 'v1.0', at: '2026-11-11 09:05', status: 'done' },
+    { id: 'type-document-accept', artifactId: 'type-doc-accept', versionId: 'type-doc-accept-v1', title: '验收记录', version: 'v1.0', at: '2026-11-11 09:10', status: 'active' },
+    { id: 'type-document-unlinked', title: '会议纪要（未关联文件）', status: 'pending' },
+  ],
+}]
+
+export const typeDeliveryResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-delivery', title: '文档交付与同源文档区', status: 'ready',
+  summary: '3 份 Markdown 文档交付，并在 documents 区块以精确 artifactId + versionId 同源展示。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T09:00:00+08:00', updatedAt: '2026-11-11T09:15:00+08:00',
+  artifacts: typeDeliveryArtifacts, sections: typeDeliverySections,
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeDelivery.result')
+export const typeDeliveryBoard = boardFor(typeDeliveryResult, 'completed', typeDeliveryResult.title, completedSteps)
+
+/** document / image(valid+empty) / link(valid+empty) / data + a gallery with one empty thumbnail. */
+const typeArtifacts: ArtifactInput[] = [
+  {
+    id: 'type-artifact-doc', kind: 'document', title: '交付说明', description: 'Markdown 文档，走既有阅读器。',
+    change: 'updated', versionId: 'type-artifact-doc-v1', version: 'v1.0', mimeType: 'text/markdown',
+    content: [
+      '# 交付说明 v1.0', '',
+      '本次交付包含文档、截图、外链与数据资源各一份，以及空地址回退样例。', '',
+      '- 有效地址：直接预览或新窗口打开',
+      '- 空地址：显示禁用文案，不造假跳转',
+    ].join('\n'),
+  },
+  {
+    id: 'type-artifact-image', kind: 'image', title: '登录页截图', description: '带合法 https 地址的图片产物。',
+    change: 'added', versionId: 'type-artifact-image-v1', version: 'v1.0', mimeType: 'image/png',
+    url: runtimeAssetUrl('/brand/logo.png', 'https://example.com/pawoffice/type-login-page.png'),
+  },
+  {
+    id: 'type-artifact-image-empty', kind: 'image', title: '待补截图', description: 'URL 为空时的统一占位回退。',
+    versionId: 'type-artifact-image-empty-v1', version: 'v1.0', mimeType: 'image/png',
+  },
+  {
+    id: 'type-artifact-link', kind: 'link', title: '接口规范（外链）', description: '仅合法 https 地址可打开。',
+    url: 'https://example.com/pawoffice/type-api-spec', versionId: 'type-artifact-link-v1', version: 'v1.0', mimeType: 'text/html',
+  },
+  {
+    id: 'type-artifact-link-empty', kind: 'link', title: '待补外链', description: '空 URL 不生成假跳转。',
+    versionId: 'type-artifact-link-empty-v1', version: 'v1.0',
+  },
+  {
+    id: 'type-artifact-data', kind: 'data', title: '回归用例数据', description: 'JSON 数据资源，走既有数据预览。',
+    versionId: 'type-artifact-data-v1', version: 'v1.0', mimeType: 'application/json',
+    content: '{"cases": [{"name": "密码登录成功", "result": "通过"}, {"name": "验证码过期", "result": "待复核"}]}',
+  },
+]
+
+const typeArtifactSections: SectionInput[] = [{
+  kind: 'gallery', id: 'type-section-gallery', title: '页面画廊（含空图占位）',
+  caption: '2 张有效地址 + 1 项无图统一占位', span: 'full',
+  items: [
+    { id: 'type-gallery-login', title: '登录页', meta: '登录', status: 'done', image: runtimeAssetUrl('/brand/logo.png', 'https://example.com/pawoffice/type-gallery-login.png') },
+    { id: 'type-gallery-empty', title: '待补截图', meta: '占位', status: 'pending' },
+    { id: 'type-gallery-code', title: '验证码页', meta: '短信', status: 'active', image: runtimeAssetUrl('/brand/icon.png', 'https://example.com/pawoffice/type-gallery-code.png') },
+  ],
+}]
+
+export const typeArtifactsResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-artifacts', title: '图像 / 外链 / 数据与画廊混合', status: 'ready',
+  summary: '四种交付物类型 + 空地址回退 + 画廊空图占位，用于核对文件交付语言。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00',
+  artifacts: typeArtifacts, sections: typeArtifactSections,
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeArtifacts.result')
+export const typeArtifactsBoard = boardFor(typeArtifactsResult, 'completed', typeArtifactsResult.title, completedSteps)
+
+/** 4 checks (passed / pending / failed / stale) + 3 risks (high·open / medium·mitigating / low·closed). */
+const typeReviewArtifacts: ArtifactInput[] = [{
+  id: 'type-review-doc', kind: 'document', title: '需求说明 v2.0', description: '当前交付版本，旧版本的通过检查不能沿用。',
+  change: 'updated', versionId: 'type-review-doc-v2', version: 'v2.0', mimeType: 'text/markdown',
+  content: '# 需求说明 v2.0\n\n本轮范围以本文件为准；旧版本的检查记录已失效。\n',
+}]
+
+export const typeReviewResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-review', title: '验证结论与风险登记', status: 'ready',
+  summary: '4 项检查覆盖通过、待处理、未通过与旧版本失效；3 条风险覆盖高/中/低等级与三种处理状态。',
+  verdict: '检查结论：1 项未通过、1 项待处理、1 项待补充验证，建议完成复核后再验收。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00', updatedAt: '2026-11-11T10:30:00+08:00',
+  artifacts: typeReviewArtifacts,
+  checks: [
+    { id: 'type-check-passed', label: '主流程冒烟', status: 'passed' },
+    { id: 'type-check-pending', label: '性能基线复核', status: 'pending' },
+    { id: 'type-check-failed', label: '异常路径回归', status: 'failed' },
+    { id: 'type-check-stale', label: '需求范围检查', status: 'passed', artifactId: 'type-review-doc', versionId: 'type-review-doc-v1' },
+  ],
+  risks: [
+    { id: 'type-risk-high', title: '短信验证码频率限制待复核', level: 'high', status: 'open', owner: '周宁', note: '发布前检查同一手机号与 IP 的频率限制。' },
+    { id: 'type-risk-medium', title: '性能基线尚未覆盖冷启动', level: 'medium', status: 'mitigating', owner: '王明', note: '补充冷启动采样后更新质量报告。' },
+    { id: 'type-risk-low', title: '旧版本文档已归档', level: 'low', status: 'closed', owner: '王明', note: '归档完成，不再作为验收依据。' },
+  ],
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeReview.result')
+export const typeReviewBoard = boardFor(typeReviewResult, 'completed', typeReviewResult.title, completedSteps)
+
+/** Versions in all three contract states, nothing else, so the timeline is the only record. */
+export const typeVersionsResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-versions', title: '成果版本时间线（三种状态）', status: 'ready',
+  summary: '版本记录覆盖草稿、已发布与已回滚三种状态，用于核对版本时间线的节点语言。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00',
+  versions: [
+    { id: 'type-version-draft', version: '第 4 轮草稿', note: '补充范围说明，尚未发布。', at: '2026-11-11 10:00', author: '王明', status: 'draft' },
+    { id: 'type-version-released', version: '第 3 轮交付', note: '已发布为当前交付版本。', at: '2026-11-10 16:00', author: '王明', status: 'released' },
+    { id: 'type-version-rolled-back', version: '第 2 轮交付', note: '范围调整后回滚，不再作为验收依据。', at: '2026-11-09 15:00', author: '周宁', status: 'rolled-back' },
+  ],
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeVersions.result')
+export const typeVersionsBoard = boardFor(typeVersionsResult, 'completed', typeVersionsResult.title, completedSteps)
+
+/** 24 changed files + a complete first unified diff for the inline expansion screenshot. */
+const typeChangesFirstFile: ChangeFileInput = {
+  path: 'src/features/auth/LoginForm.tsx', status: 'modified', added: 14, deleted: 2,
+  diff: [
+    'diff --git a/src/features/auth/LoginForm.tsx b/src/features/auth/LoginForm.tsx',
+    'index 4a1f2c3..8be5d90 100644',
+    '--- a/src/features/auth/LoginForm.tsx',
+    '+++ b/src/features/auth/LoginForm.tsx',
+    '@@ -12,6 +12,18 @@ export function LoginForm() {',
+    '+const AUTO_SUBMIT_GUARD = 500',
+    "   const [error, setError] = useState('')",
+    '-  const submit = () => login()',
+    '+  const [submitting, setSubmitting] = useState(false)',
+    '+  const submit = async () => {',
+    '+    if (submitting) return',
+    '+    setSubmitting(true)',
+    '+    try {',
+    '+      await login()',
+    '+    } finally {',
+    '+      setSubmitting(false)',
+    '+    }',
+    '+  }',
+    '   return (',
+    '-    <button onClick={submit}>登录</button>',
+    '+    <button disabled={submitting} onClick={submit}>',
+    "+      {submitting ? '登录中…' : '登录'}",
+    '+    </button>',
+    '   )',
+    ' }',
+  ].join('\n'),
+}
+
+const typeChangeStatuses = ['added', 'modified', 'deleted', 'renamed'] as const
+
+function typeChangeFile(index: number): ChangeFileInput {
+  const sequence = String(index + 7).padStart(2, '0')
+  const status = typeChangeStatuses[index % typeChangeStatuses.length]
+  return {
+    path: `src/modules/type-${sequence}/index.ts`, status,
+    previousPath: status === 'renamed' ? `src/modules/legacy-${sequence}/index.ts` : '',
+    added: status === 'deleted' ? 0 : (index % 5) + 1,
+    deleted: status === 'added' ? 0 : (index % 3) + 1,
+    diff: index < 4
+      ? `--- a/src/modules/type-${sequence}/index.ts\n+++ b/src/modules/type-${sequence}/index.ts\n@@ -1,3 +1,4 @@\n export const moduleId = '${sequence}'\n-export const enabled = false\n+export const enabled = true\n+export const revision = ${index + 1}\n`
+      : '',
+  }
+}
+
+const typeChangeFiles: ChangeFileInput[] = [
+  typeChangesFirstFile,
+  {
+    path: 'src/features/auth/useLogin.ts', status: 'added', added: 8, deleted: 0,
+    diff: '--- /dev/null\n+++ b/src/features/auth/useLogin.ts\n@@ -0,0 +1,4 @@\n+export async function login() {\n+  const response = await api.post(\'/auth/login\')\n+  return response.json()\n+}\n',
+  },
+  {
+    path: 'src/features/auth/legacyLogin.ts', status: 'deleted', added: 0, deleted: 42,
+    diff: '--- a/src/features/auth/legacyLogin.ts\n+++ /dev/null\n@@ -1,3 +0,0 @@\n-export function legacyLogin() {\n-  return loginWithCookie()\n-}\n',
+  },
+  {
+    path: 'src/features/auth/session.ts', status: 'renamed', previousPath: 'src/features/auth/storage.ts',
+    added: 1, deleted: 1,
+    diff: 'rename from src/features/auth/storage.ts\nrename to src/features/auth/session.ts\n--- a/src/features/auth/storage.ts\n+++ b/src/features/auth/session.ts\n@@ -1,1 +1,1 @@\n-export const sessionKey = \'legacy-token\'\n+export const sessionKey = \'access-token\'\n',
+  },
+  { path: 'docs/login-flow.png', status: 'added', added: 0, deleted: 0, binary: true },
+  {
+    path: 'src/services/legacy-report.ts', status: 'modified', added: 4200, deleted: 3800,
+    oversized: true, diffTruncated: true,
+  },
+  ...range(18).map(typeChangeFile),
+]
+
+if (typeChangeFiles.length !== 24) throw new Error(`[dev fixture] type-changes 必须恰好 24 个文件，实际 ${typeChangeFiles.length}`)
+
+const typeChangesSections: SectionInput[] = [{
+  kind: 'changes', id: 'type-section-changes', title: '文件变更（24 个文件）',
+  caption: '点击第一行就地展开真实 unified diff；二进制与较大文件不给假文本', span: 'full',
+  files: typeChangeFiles,
+}]
+
+export const typeChangesResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-changes', title: '代码变更与行内 diff', status: 'ready',
+  summary: '24 个文件变更覆盖新增、修改、删除、重命名、二进制与较大文件；第一行提供完整 unified diff。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00',
+  sections: typeChangesSections,
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeChanges.result')
+export const typeChangesBoard = boardFor(typeChangesResult, 'completed', typeChangesResult.title, completedSteps)
+
+/** Fact-only reading: no artifacts and no changes, the prose carries the result. */
+const typeFactSections: SectionInput[] = [
+  {
+    kind: 'custom', id: 'type-section-context', title: '背景与范围', layout: 'stack', span: 'full',
+    blocks: [
+      { type: 'heading', text: '为什么要做这次说明', level: 'h3' },
+      { type: 'text', text: '本成果没有文件交付，也没有代码变更，阅读重心是结论与事实正文。\n\n- 目标：说清楚本轮完成了什么、依据是什么。\n- 边界：不包含任何真实业务数据。' },
+    ],
+  },
+  {
+    kind: 'custom', id: 'type-section-findings', title: '结论与依据', layout: 'stack', span: 'full',
+    blocks: [
+      { type: 'heading', text: '结论', level: 'h3' },
+      { type: 'text', text: '现有信息足以支撑本轮说明，但仍有 2 个待确认事实，已在下一步列出。\n\n> 引用：本轮为说明型成果，不适用文件下载或版本预览。' },
+    ],
+  },
+]
+
+export const typeFactResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-fact', title: '说明型成果阅读验收（无交付物）', status: 'ready',
+  summary: '本轮只提供结论与事实说明，没有文件交付，也没有代码变更。',
+  verdict: '说明型成果：阅读重点在正文与结论，而非文件下载。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00', updatedAt: '2026-11-11T10:20:00+08:00',
+  sections: typeFactSections,
+  decisions: [
+    { id: 'type-decision-scope', question: '本轮说明需要覆盖哪些内容？', choice: '结论、事实依据与下一步', at: '2026-11-11' },
+    { id: 'type-decision-no-file', question: '是否需要提供文件交付？', choice: '不需要，仅提供说明型正文', at: '2026-11-11' },
+  ],
+  next: ['补充性能基线的观察窗口说明。', '确认验证码频率限制的最终取值。'],
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeFact.result')
+export const typeFactBoard = boardFor(typeFactResult, 'completed', typeFactResult.title, completedSteps)
+
+/** Section machinery only: api / environments / files / tests. */
+const typeSections: SectionInput[] = [
+  {
+    kind: 'api', id: 'type-section-api', title: '接口清单',
+    rows: [
+      { id: 'type-api-login', endpoint: '/api/auth/login', method: 'POST', status: 'done', at: '2026-11-11 09:00' },
+      { id: 'type-api-session', endpoint: '/api/auth/session', method: 'GET', status: 'active', at: '2026-11-11 09:05' },
+      { id: 'type-api-logout', endpoint: '/api/auth/logout', method: 'DELETE', status: 'pending' },
+    ],
+  },
+  {
+    kind: 'environments', id: 'type-section-environments', title: '运行环境',
+    items: [
+      { id: 'type-env-dev', name: '本地开发', status: 'running', version: 'v2.0', at: '2026-11-11 09:00' },
+      { id: 'type-env-staging', name: '预发布', status: 'pending', version: 'v2.0-rc1' },
+      { id: 'type-env-legacy', name: '旧版灰度', status: 'stopped', version: 'v1.0', at: '2026-11-01 10:00' },
+      { id: 'type-env-canary', name: '灰度节点', status: 'failed', at: '2026-11-11 08:40' },
+    ],
+  },
+  {
+    kind: 'files', id: 'type-section-files', title: '附件清单',
+    items: [
+      { id: 'type-file-shot', name: '登录页截图.png', kind: 'image', size: '248 KB', url: 'https://example.com/pawoffice/type-login.png' },
+      { id: 'type-file-report', name: '验收报告.md', kind: 'report', size: '12 KB' },
+      { id: 'type-file-doc', name: '需求说明.docx', kind: 'document', size: '64 KB', url: 'https://example.com/pawoffice/type-prd.docx' },
+      { id: 'type-file-cases', name: '测试数据.zip', kind: 'archive', size: '1.2 MB' },
+    ],
+  },
+  {
+    kind: 'tests', id: 'type-section-tests', title: '质量报告',
+    metrics: [
+      { id: 'type-test-cases', label: '用例', value: '86', unit: '个' },
+      { id: 'type-test-rate', label: '通过率', value: '96', unit: '%', tone: 'positive' },
+      { id: 'type-test-failed', label: '失败', value: '1', unit: '项', tone: 'negative' },
+    ],
+    progress: 82, progressLabel: '回归测试进度',
+    checks: [
+      { id: 'type-test-main', label: '主流程冒烟', status: 'passed' },
+      { id: 'type-test-edge', label: '异常路径回归', status: 'failed' },
+      { id: 'type-test-perf', label: '性能基线复核', status: 'pending' },
+    ],
+  },
+]
+
+export const typeSectionsResult = checkedResult({
+  template: 'result-v1', runId: 'run-type-sections', title: '接口 / 环境 / 附件 / 质量报告', status: 'ready',
+  summary: 'api 3 行、environments 4 种状态、files 4 项、tests 指标 + 进度 + 检查，四种区块机制各出现一次。',
+  owner: '验收夹具', team: 'P9 验收组', teamSize: 2,
+  producedAt: '2026-11-11T10:00:00+08:00',
+  sections: typeSections,
+  note: TYPE_FIXTURE_NOTE,
+}, 'typeSections.result')
+export const typeSectionsBoard = boardFor(typeSectionsResult, 'completed', typeSectionsResult.title, completedSteps)
+
+/* -------------------------------------------------------------------------------------------------
  * Fixture catalogue consumed by the dev preview page
  * ----------------------------------------------------------------------------------------------- */
 
-export type ResultBoardFixtureName = 'sample' | 'history' | 'matrix' | 'layouts' | 'limits'
+export const typeFixtureNames = [
+  'type-metrics', 'type-delivery', 'type-artifacts', 'type-review',
+  'type-versions', 'type-changes', 'type-fact', 'type-sections',
+] as const
+export type TypeFixtureName = typeof typeFixtureNames[number]
+
+export type ResultBoardFixtureName = 'sample' | 'history' | 'matrix' | 'layouts' | 'limits' | TypeFixtureName
 
 export type ResultBoardFixture = {
   name: ResultBoardFixtureName
@@ -618,6 +1012,48 @@ export const resultBoardFixtures: Record<ResultBoardFixtureName, ResultBoardFixt
     note: '所有数组取协议上限，验证不溢出、不丢项。',
     board: limitsBoard, result: limitsResult,
   },
+  'type-metrics': {
+    name: 'type-metrics', title: '指标类型（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖指标类型：6 种 metric kind + emphasis=primary。',
+    board: typeMetricsBoard, result: typeMetricsResult,
+  },
+  'type-delivery': {
+    name: 'type-delivery', title: '文档交付（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖文档交付：3 份 document artifact + documents 区块精确同源 + 1 项未关联文档。',
+    board: typeDeliveryBoard, result: typeDeliveryResult,
+  },
+  'type-artifacts': {
+    name: 'type-artifacts', title: '混合交付物与画廊（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖交付物类型：document / image / link / data（含空地址回退）+ gallery 空图占位。',
+    board: typeArtifactsBoard, result: typeArtifactsResult,
+  },
+  'type-review': {
+    name: 'type-review', title: '检查与风险（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖审查语言：4 项检查（含失效版本）与 3 条不同等级/状态的风险。',
+    board: typeReviewBoard, result: typeReviewResult,
+  },
+  'type-versions': {
+    name: 'type-versions', title: '版本时间线（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖版本记录：draft / released / rolled-back 三种状态。',
+    board: typeVersionsBoard, result: typeVersionsResult,
+  },
+  'type-changes': {
+    name: 'type-changes', title: '代码变更（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖 diff 语言：24 个文件（含二进制/重命名/较大文件），第一条提供完整 unified diff。',
+    board: typeChangesBoard, result: typeChangesResult,
+  },
+  'type-fact': {
+    name: 'type-fact', title: '说明型成果（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖说明型阅读：无 artifacts、无 changes，只有 summary/verdict + 正文 + 决策/下一步/备注。',
+    board: typeFactBoard, result: typeFactResult,
+  },
+  'type-sections': {
+    name: 'type-sections', title: '区块机制（前端验收 fixture）', dataSource: 'frontend-fixture',
+    note: '仅覆盖区块机制：api / environments / files / tests 四种 section kind。',
+    board: typeSectionsBoard, result: typeSectionsResult,
+  },
 }
 
-export const resultBoardFixtureNames = ['sample', 'history', 'matrix', 'layouts', 'limits'] as const
+export const resultBoardFixtureNames = [
+  'sample', 'history', 'matrix', 'layouts', 'limits', ...typeFixtureNames,
+] as const

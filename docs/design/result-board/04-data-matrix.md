@@ -115,3 +115,18 @@
 - **真实样例**只覆盖：`auto`（→value）、`document`、`changes`/`documents`、presentation `draft/ready/verified/rejected`、
   以及 §6 中的检查失效/风险/任务/版本/历史/note；“部分/否”的类型全部由前端 fixture 覆盖并已明示。
 - 没有为覆盖类型新增任何协议字段、接口或依赖。
+
+## 视觉样例对照（本轮新增）
+
+| 数据类型 | 视觉样例截图 | 组件/结构 | 备注 |
+| --- | --- | --- | --- |
+| 6 metric kind（auto/comparison/value/status/target/text） | `screenshots/type-01-metrics-kinds.png` | `ResultMetrics` | auto 由既有规则解析，不出现 auto 原形 |
+| document artifact + documents section | `screenshots/type-02-delivery-document.png` | `ResultArtifactList` + `ResultSectionCard(documents)` | 精确同源进同一预览入口 |
+| image/link/data artifact + gallery | `screenshots/type-03-artifacts-mixed.png` | `ResultArtifactList` + `ResultSectionCard(gallery)` | 有效/空 URL 两种回退 |
+| checks + risks | `screenshots/type-04-review-checks-risks.png` | `ResultReviewLog` | passed 降级、failed/stale 高亮、stale 版本差异 |
+| versions | `screenshots/type-05-versions-timeline.png` | `ResultVersionTimeline` | 三种状态节点 |
+| changes（24 文件 + inline diff） | `screenshots/type-06-changes-inline-diff.png` | `ResultChanges` | 二进制/较大文件不造假 |
+| 说明型成果（无交付物） | `screenshots/type-07-fact-mode.png` | `ResultWorkspace` + `readingMode` | 无「本轮交付」、正文前置 |
+| api/environments/files/tests | `screenshots/type-08-sections-machinery.png` | `ResultSectionCard` | 源顺序不变 |
+
+> 上述 type-* 均为前端验收 fixture（非真实业务数据），数据来源在 `screenshots/manifest.json` 逐张标注；真实样例的 9 张验收截图仍为视觉基准。

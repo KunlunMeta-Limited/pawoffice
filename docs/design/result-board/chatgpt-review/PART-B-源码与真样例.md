@@ -1,33 +1,37 @@
 # PawOffice 成果阅读页重构 · 审核材料 B（源码 + 真实样例 + 变更证明）
 
-> 审核对象：feat/result-board-design（commit 4ce09c8）。本文件包含关键前端源码、两份用户真实样例（逐字节复制）、样式 token 摘要，以及「协议层零改动」的 git 证明。
-> 说明：源码为只读审核材料；样式文件较大，未全部内嵌（ResultWorkspace.css / ResultMetrics.css / ResultArtifactList.css 可按需索取或见仓库）。截图是视觉验收的主要证据。
+> 审核对象：feat/result-board-design。本文件含本轮新增/重写的类型组件源码、两份用户真实样例（逐字节复制）、样式 token 摘要与「协议零改动」git 证明。
+> 样式文件较大未内嵌（ResultWorkspace.css / ResultMetrics.css / ResultArtifactList.css / ResultSectionKinds.css / ResultReviewLog.css / ResultVersionTimeline.css / ResultChanges.css），需要时可在仓库查看。
 
 ## 1. 源码文件职责
 
 | 文件 | 作用 |
 | --- | --- |
-| `apps\web\src\components\ResultWorkspace.tsx` | 页面组合：封面/结论/交付/验证/指标/源顺序 sections/过程/追溯 |
-| `apps\web\src\components\ResultMetrics.tsx` | 指标带：6 类 metric、1/2/3/4/6 卡片与 7–12 紧凑行 |
-| `apps\web\src\components\ResultArtifactList.tsx` | 交付文件带：4 类 artifact、空内容诚实回退、预览/复制/下载 |
-| `apps\web\src\components\ResultSectionCard.tsx` | 8 类 section 渲染；documents 与 artifacts 精确同源时降为单行索引 |
-| `apps\web\src\components\WhiteboardReader.tsx` | 阅读器容器：dialog/Escape/焦点恢复/JSON 导出；导出 ResultReaderDialog |
-| `apps\web\src\components\ResultDeliveryShell.tsx` | 历史交付切换/快照加载/失败隔离；文件预览 Provider |
-| `apps\web\src\results\board.ts` | 展示层派生：检查摘要/版本失效说明/精确文档关联/sections 源顺序 |
-| `tests\resultBoard.test.mjs` | 新增 24 项 SSR 验收测试（A05/A07/A08/A09/A11/A12/A13/A14/A15/A16/A18/A19/A20/A21/A22 + 10 展示态） |
+| `apps/web/src/components/ResultWorkspace.tsx` | 页面组合：阅读模式（delivery/fact）、封面/结论/交付/审查/指标/sections/记录/追溯 |
+| `apps/web/src/results/readingMode.ts` | 阅读重心派生（纯前端，不写回数据） |
+| `apps/web/src/components/ResultMetrics.tsx` | 6 种 metric kind 专用形态 + 密度 |
+| `apps/web/src/components/ResultArtifactList.tsx` | 4 种 artifact 交付语言 + 诚实回退 |
+| `apps/web/src/components/ResultSectionCard.tsx` | 8 类 section；documents/files/gallery 重做 |
+| `apps/web/src/components/ResultReviewLog.tsx` | 检查结论带/比例条/风险登记 |
+| `apps/web/src/components/ResultVersionTimeline.tsx` | 版本时间线 |
+| `apps/web/src/components/ResultChanges.tsx` | 代码变更清单 + 行内 diff |
+| `apps/web/src/components/ResultDeliveryShell.tsx` | 历史交付切换/文件预览 Provider |
+| `apps/web/src/components/WhiteboardReader.tsx` | 阅读器容器（dialog/Escape/焦点/导出） |
+| `apps/web/src/results/board.ts` | 展示层派生（检查摘要/版本失效/精确文档关联/section 顺序） |
+| `tests/resultBoard.test.mjs` | 既有 24 项 SSR 验收测试 |
+| `tests/resultTypeVisual.test.mjs` | 本轮新增 8 项数据类型视觉测试 |
 
 ## 2. 关键源码
 
-### `apps\web\src\components\ResultWorkspace.tsx`
+### `apps/web/src/components/ResultWorkspace.tsx`
 
 ```tsx
 import type { ReactNode } from 'react'
 import {
-  ArrowRight, Check, CheckCircle2, CircleDashed, CircleX, Clock3, FileText,
-  GitBranch, Info, ListChecks, ShieldAlert, UserRound, Users,
+  ArrowRight, Check, Clock3, FileText, GitBranch, Info, ListChecks, ShieldAlert, UserRound, Users,
 } from 'lucide-react'
 import type {
-  OfficeResult, ResultDecision, ResultRisk, ResultTask, ResultVersion, WhiteboardTaskBoardData,
+  OfficeResult, ResultDecision, ResultTask, WhiteboardTaskBoardData,
 } from '@pawoffice/protocol/office-ui'
 import { ResultSectionCard } from './ResultSectionCard.tsx'
 import { Chip, Track } from './ResultPrimitives.tsx'
@@ -35,13 +39,16 @@ import { ResultReader } from './ResultReader.tsx'
 import { ResultDeliveryShell } from './ResultDeliveryShell.tsx'
 import { ResultMetrics } from './ResultMetrics.tsx'
 import { ResultArtifactList } from './ResultArtifactList.tsx'
+import { ResultReviewLog } from './ResultReviewLog.tsx'
+import { ResultVersionTimeline } from './ResultVersionTimeline.tsx'
 import { WhiteboardBoardView } from './WhiteboardBoardView.tsx'
 import { formatResultTimestamp, resultHasContent, resultTeamLabel } from '../results/format.ts'
 import { boardStatusLabels, resultPresentation } from '../results/presentation.ts'
 import {
   resultBoardChecks, resultBoardSections, resultChangedFileCount, resultCheckSummary,
-  resultDocumentMetadata, resultSectionArtifact, resultStaleCheckDetail,
+  resultDocumentMetadata, resultSectionArtifact,
 } from '../results/board.ts'
+import { resultReadingMode } from '../results/readingMode.ts'
 import './ResultWorkspace.css'
 
 /** Kept for source compatibility with callers that still provide initialTab/onTabChange. No tabs are rendered. */
@@ -52,11 +59,6 @@ type BoardStatus = NonNullable<WhiteboardTaskBoardData['status']>
 
 const taskStatusLabels: Record<ResultTask['status'], string> = { todo: '待开始', doing: '进行中', blocked: '受阻', done: '已完成' }
 const taskStatusTones: Record<ResultTask['status'], ChipTone> = { todo: 'pending', doing: 'active', blocked: 'danger', done: 'done' }
-const versionStatusLabels: Record<ResultVersion['status'], string> = { draft: '草稿', released: '已发布', 'rolled-back': '已回滚' }
-const riskLevelLabels: Record<ResultRisk['level'], string> = { high: '高', medium: '中', low: '低' }
-const riskStatusLabels: Record<ResultRisk['status'], string> = { open: '待处理', mitigating: '处理中', closed: '已关闭' }
-const checkStatusLabels = { passed: '已通过', pending: '待补充', failed: '未通过' } as const
-const checkStatusIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
 
 type WorkspaceProps = {
   board: WhiteboardTaskBoardData; result: OfficeResult; boardHtml?: string
@@ -104,32 +106,6 @@ function TaskRow({ task }: { task: ResultTask }) {
   </li>
 }
 
-function VersionRow({ version }: { version: ResultVersion }) {
-  const meta = [version.author, version.at].filter(Boolean).join(' · ')
-  return <li className="result-workspace-version" data-status={version.status}>
-    <span className="result-workspace-version-tag">{version.version}</span>
-    <span className="result-workspace-version-main">
-      {version.note && <p>{version.note}</p>}
-      {meta && <span className="result-workspace-version-meta">{meta}</span>}
-    </span>
-    <span className="result-workspace-version-state" data-status={version.status}>{versionStatusLabels[version.status]}</span>
-  </li>
-}
-
-function RiskRow({ risk }: { risk: ResultRisk }) {
-  return <li className="result-workspace-risk" data-level={risk.level} data-status={risk.status}>
-    <div className="result-workspace-risk-head">
-      <span className="result-workspace-risk-level" data-level={risk.level} title={`风险等级：${riskLevelLabels[risk.level]}`}>{riskLevelLabels[risk.level]}</span>
-      <h4 className="result-workspace-risk-title">{risk.title}</h4>
-      <span className="result-workspace-risk-state" data-status={risk.status}>{riskStatusLabels[risk.status]}</span>
-    </div>
-    {(risk.owner || risk.note) && <p className="result-workspace-risk-body">
-      {risk.owner && <span className="result-workspace-risk-owner"><UserRound size={12} strokeWidth={2} aria-hidden="true" />{risk.owner} · </span>}
-      {risk.note}
-    </p>}
-  </li>
-}
-
 function DecisionRow({ decision }: { decision: ResultDecision }) {
   return <li className="result-workspace-decision">
     <p className="result-workspace-decision-question">{decision.question}</p>
@@ -138,13 +114,12 @@ function DecisionRow({ decision }: { decision: ResultDecision }) {
 }
 
 /** A quiet label row replaces the old per-block card header: one label, one count, no container. */
-function LabelRow({ title, aside, note, children }: {
-  title: string; aside?: string; note?: string; children?: ReactNode
+function LabelRow({ title, aside, children }: {
+  title: string; aside?: string; children?: ReactNode
 }) {
   return <header className="result-workspace-label">
     <h3 className="result-workspace-label-title">{title}</h3>
     {aside && <p className="result-workspace-label-aside">{aside}</p>}
-    {note && <p className="result-workspace-label-note">{note}</p>}
     {children}
   </header>
 }
@@ -175,16 +150,11 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
   const summary = result.summary.trim()
   const goal = (board.description ?? '').trim()
   const showGoal = Boolean(goal && goal !== summary && goal !== result.verdict.trim())
-  const hasDelivery = artifacts.length > 0 || changeCount > 0
+  const readingMode = resultReadingMode(result)
+  const hasDelivery = artifacts.length > 0
   const hasReview = checks.length > 0 || Boolean(result.verdict) || result.risks.length > 0
-  const hasRecords = result.decisions.length > 0 || result.tasks.length > 0 || result.versions.length > 0
+  const hasRecords = result.decisions.length > 0 || result.tasks.length > 0
   const hasTrail = Boolean(board.detailSections?.length) || (statusKnown && board.steps.length > 0)
-  const checkSummaryParts = [
-    checkSummary.passed ? `${checkSummary.passed} 项标记通过` : '',
-    checkSummary.pending ? `${checkSummary.pending} 项待处理` : '',
-    checkSummary.failed ? `${checkSummary.failed} 项未通过` : '',
-    checkSummary.stale ? `${checkSummary.stale} 项待补充验证` : '',
-  ].filter(Boolean)
   const attentionParts = [
     checkSummary.pending ? `${checkSummary.pending} 项待处理检查` : '',
     checkSummary.failed ? `${checkSummary.failed} 项未通过检查` : '',
@@ -193,7 +163,77 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
     blockedTasks ? `${blockedTasks} 项受阻任务` : '',
   ].filter(Boolean)
   const outsizedTitle = title.length > 48
-  return <div className="result-workspace" data-result-status={presentation.key} data-status={boardStatus} data-historical={historical ? 'true' : undefined}>
+
+  const deliveryBlock = hasDelivery ? <section className="result-workspace-delivery" aria-label="本轮交付">
+    <LabelRow title="本轮交付" aside={[
+      artifacts.length ? `${artifacts.length} 份交付文件` : '',
+      changeCount ? `${changeCount} 个文件变更` : '',
+    ].filter(Boolean).join(' · ')} />
+    {artifacts.length > 0
+      ? <ResultArtifactList artifacts={artifacts} documentMeta={documentMeta} />
+      : <p className="result-workspace-hint">本轮没有文件交付，工作成果以变更记录与正文呈现。</p>}
+  </section> : null
+
+  const reviewBlock = hasReview ? <section className="result-workspace-review" aria-label="验证与验收">
+    <LabelRow title="验证与验收">
+      <p className="result-workspace-caption" data-state={presentation.key}>{presentation.description}</p>
+    </LabelRow>
+    <ResultReviewLog result={result} />
+  </section> : null
+
+  const metricsBlock = result.metrics.length > 0 ? <section className="result-workspace-metric-band" aria-label={result.metricsTitle || '关键指标'}>
+    <LabelRow title={result.metricsTitle || '关键指标'} aside={result.metricsCaption || undefined} />
+    <ResultMetrics metrics={result.metrics} />
+  </section> : null
+
+  const sectionsBlock = sections.length > 0 ? <section className="result-workspace-detail" data-reading-mode={readingMode} aria-label={readingMode === 'fact' ? '说明与结论' : '详细内容'}>
+    {readingMode === 'fact' && <LabelRow title="说明与结论" aside={`${sections.length} 项`} />}
+    {sections.map(section => <ResultSectionCard key={section.id} section={section} artifacts={artifacts}
+      sourceArtifact={resultSectionArtifact(result, section)} />)}
+  </section> : null
+
+  const recordsBlock = (hasRecords || result.versions.length > 0) ? <section className="result-workspace-records" aria-label="工作过程">
+    <LabelRow title="工作过程" aside={[
+      result.decisions.length ? `决策 ${result.decisions.length}` : '',
+      result.tasks.length ? `任务 ${result.tasks.length}` : '',
+      result.versions.length ? `版本 ${result.versions.length}` : '',
+    ].filter(Boolean).join(' · ')} />
+    {hasRecords && <div className="result-workspace-record-grid">
+      {result.decisions.length > 0 && <div className="result-workspace-record">
+        <h4 className="result-workspace-subhead"><ListChecks size={14} strokeWidth={2} aria-hidden="true" />决策记录</h4>
+        <ol className="result-workspace-decisions">{result.decisions.map(decision => <DecisionRow key={decision.id} decision={decision} />)}</ol>
+      </div>}
+      {result.tasks.length > 0 && <div className="result-workspace-record">
+        <h4 className="result-workspace-subhead"><UserRound size={14} strokeWidth={2} aria-hidden="true" />任务推进</h4>
+        <ul className="result-workspace-tasks">{result.tasks.map(task => <TaskRow key={task.id} task={task} />)}</ul>
+      </div>}
+    </div>}
+    {result.versions.length > 0 && <div className="result-workspace-record result-workspace-record-versions">
+      <h4 className="result-workspace-subhead"><GitBranch size={14} strokeWidth={2} aria-hidden="true" />版本记录</h4>
+      <ResultVersionTimeline result={result} />
+    </div>}
+  </section> : null
+
+  const nextBlock = result.next.length > 0 ? <section className="result-workspace-next" aria-label="下一步">
+    <LabelRow title="下一步" aside={`${result.next.length} 项行动`} />
+    <ol className="result-workspace-next-list">{result.next.map((item, index) => <li key={`${index}-${item}`}>
+      <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><p>{item}</p>
+    </li>)}</ol>
+  </section> : null
+
+  const trailBlock = hasTrail ? <section className="result-workspace-trail" aria-label="执行过程与任务详情">
+    {statusKnown && board.steps.length > 0 && <details className="result-workspace-disclosure">
+      <summary><ArrowRight size={14} strokeWidth={2} aria-hidden="true" />执行阶段<span>{board.steps.length}</span></summary>
+      <StageSteps steps={board.steps} status={boardStatus} />
+    </details>}
+    {Boolean(board.detailSections?.length) && <details className="result-workspace-disclosure">
+      <summary><FileText size={14} strokeWidth={2} aria-hidden="true" />任务详情与协作</summary>
+      <WhiteboardBoardView sections={board.detailSections ?? []} />
+    </details>}
+  </section> : null
+
+  return <div className="result-workspace" data-result-status={presentation.key} data-status={boardStatus}
+    data-reading-mode={readingMode} data-historical={historical ? 'true' : undefined}>
     <header className="result-workspace-head">
       <div className="result-workspace-head-main">
         <h2 className="result-workspace-title" data-long={outsizedTitle ? 'true' : undefined} title={title}>{title}</h2>
@@ -234,186 +274,220 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
       </p>}
     </section>
 
-    {hasDelivery && <section className="result-workspace-delivery" aria-label="本轮交付">
-      <LabelRow title="本轮交付" aside={[
-        artifacts.length ? `${artifacts.length} 份交付文件` : '',
-        changeCount ? `${changeCount} 个文件变更` : '',
-      ].filter(Boolean).join(' · ')} />
-      {artifacts.length > 0
-        ? <ResultArtifactList artifacts={artifacts} documentMeta={documentMeta} />
-        : <p className="result-workspace-hint">本轮没有文件交付，工作成果以变更记录与正文呈现。</p>}
-    </section>}
+    {readingMode === 'delivery'
+      ? <>{deliveryBlock}{reviewBlock}{metricsBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
+      : <>{sectionsBlock}{metricsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>}
 
-    {hasReview && <section className="result-workspace-review" aria-label="验证与验收">
-      <LabelRow title="验证与验收">
-        <p className="result-workspace-caption" data-state={presentation.key}>{presentation.description}</p>
-      </LabelRow>
-      {checks.length > 0 && <>
-        <p className="result-workspace-check-summary">{`共 ${checkSummary.total} 项检查：${checkSummaryParts.join(' · ')}`}</p>
-        {checkSummary.stale > 0 && <p className="result-workspace-check-hint">待补充验证项的原验证对象与当前交付版本不一致，不能按通过计。</p>}
-        <ul className="result-workspace-checks">{checks.map(check => {
-          const status = check.stale ? 'pending' : check.status
-          const Icon = checkStatusIcons[status]
-          return <li key={JSON.stringify([check.id, check.artifactId, check.versionId])} data-status={check.stale ? 'stale' : check.status}>
-            <Icon size={15} strokeWidth={2} aria-hidden="true" />
-            <span className="result-workspace-check-label">{check.label}</span>
-            <em>{check.stale ? '待补充验证' : checkStatusLabels[status]}</em>
-            {check.stale && <small>{resultStaleCheckDetail(result, check)}</small>}
-          </li>
-        })}</ul>
-      </>}
-      {result.risks.length > 0 && <div className="result-workspace-risks">
-        <h4 className="result-workspace-subhead"><ShieldAlert size={14} strokeWidth={2} aria-hidden="true" />风险记录<span>{result.risks.length}</span></h4>
-        <ul className="result-workspace-risk-list">{result.risks.map(risk => <RiskRow key={risk.id} risk={risk} />)}</ul>
-      </div>}
-      {!hasReview && <p className="result-workspace-hint">本轮没有提供检查项或验收结论。</p>}
-    </section>}
-
-    {result.metrics.length > 0 && <section className="result-workspace-metric-band" aria-label={result.metricsTitle || '关键指标'}>
-      <LabelRow title={result.metricsTitle || '关键指标'} aside={result.metricsCaption || undefined} />
-      <ResultMetrics metrics={result.metrics} />
-    </section>}
-
-    {sections.length > 0 && <section className="result-workspace-detail" aria-label="详细内容">
-      {sections.map(section => <ResultSectionCard key={section.id} section={section} artifacts={artifacts}
-        sourceArtifact={resultSectionArtifact(result, section)} />)}
-    </section>}
-
-    {hasRecords && <section className="result-workspace-records" aria-label="工作过程">
-      <LabelRow title="工作过程" aside={[
-        result.decisions.length ? `决策 ${result.decisions.length}` : '',
-        result.tasks.length ? `任务 ${result.tasks.length}` : '',
-        result.versions.length ? `版本 ${result.versions.length}` : '',
-      ].filter(Boolean).join(' · ')} />
-      <div className="result-workspace-record-grid">
-        {result.decisions.length > 0 && <div className="result-workspace-record">
-          <h4 className="result-workspace-subhead"><ListChecks size={14} strokeWidth={2} aria-hidden="true" />决策记录</h4>
-          <ol className="result-workspace-decisions">{result.decisions.map(decision => <DecisionRow key={decision.id} decision={decision} />)}</ol>
-        </div>}
-        {result.tasks.length > 0 && <div className="result-workspace-record">
-          <h4 className="result-workspace-subhead"><UserRound size={14} strokeWidth={2} aria-hidden="true" />任务推进</h4>
-          <ul className="result-workspace-tasks">{result.tasks.map(task => <TaskRow key={task.id} task={task} />)}</ul>
-        </div>}
-        {result.versions.length > 0 && <div className="result-workspace-record">
-          <h4 className="result-workspace-subhead"><GitBranch size={14} strokeWidth={2} aria-hidden="true" />版本记录</h4>
-          <ol className="result-workspace-versions">{result.versions.map(version => <VersionRow key={version.id} version={version} />)}</ol>
-        </div>}
-      </div>
-    </section>}
-
-    {result.next.length > 0 && <section className="result-workspace-next" aria-label="下一步">
-      <LabelRow title="下一步" aside={`${result.next.length} 项行动`} />
-      <ol className="result-workspace-next-list">{result.next.map((item, index) => <li key={`${index}-${item}`}>
-        <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span><p>{item}</p>
-      </li>)}</ol>
-    </section>}
-
-    {hasTrail && <section className="result-workspace-trail" aria-label="执行过程与任务详情">
-      {statusKnown && board.steps.length > 0 && <details className="result-workspace-disclosure">
-        <summary><ArrowRight size={14} strokeWidth={2} aria-hidden="true" />执行阶段<span>{board.steps.length}</span></summary>
-        <StageSteps steps={board.steps} status={boardStatus} />
-      </details>}
-      {Boolean(board.detailSections?.length) && <details className="result-workspace-disclosure">
-        <summary><FileText size={14} strokeWidth={2} aria-hidden="true" />任务详情与协作</summary>
-        <WhiteboardBoardView sections={board.detailSections ?? []} />
-      </details>}
-    </section>}
-
+    {trailBlock}
     {result.note && <p className="result-workspace-note"><Info size={14} strokeWidth={2} aria-hidden="true" /><span>{result.note}</span></p>}
-
     {!hasResult && <p className="result-workspace-empty">当前没有可阅读的成果内容。任务推进并交付后，结果会显示在这里。</p>}
   </div>
 }
 ```
 
-### `apps\web\src\components\ResultMetrics.tsx`
+### `apps/web/src/results/readingMode.ts`
+
+```ts
+import type { OfficeResult } from '@pawoffice/protocol/office-ui'
+import { resultChangedFileCount } from './board.ts'
+
+/** Two reading focuses derived from the existing fields; nothing is stored or sent back. */
+export type ResultReadingMode = 'delivery' | 'fact'
+
+const deliverySectionKinds = new Set(['documents', 'files', 'changes', 'api', 'environments', 'gallery'])
+
+/** Delivery-first when the result actually carries files or structured deliverables. */
+export function resultHasDeliverables(result: OfficeResult) {
+  return result.artifacts.length > 0
+    || resultChangedFileCount(result) > 0
+    || result.sections.some(section => deliverySectionKinds.has(section.kind))
+}
+
+/**
+ * `delivery`: the reader leads with what was handed over.
+ * `fact`: there are no deliverables, so the conclusion and prose sections carry the reading.
+ */
+export function resultReadingMode(result: OfficeResult): ResultReadingMode {
+  return resultHasDeliverables(result) ? 'delivery' : 'fact'
+}
+
+export const readingModeLabels: Record<ResultReadingMode, string> = {
+  delivery: '交付型成果',
+  fact: '说明型成果',
+}
+```
+
+### `apps/web/src/components/ResultMetrics.tsx`
 
 ```tsx
-import { ArrowDownRight, ArrowUpRight, CheckCircle2, CircleDashed, CircleX, Minus, Target } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CheckCircle2, CircleDashed, CircleX, Minus } from 'lucide-react'
 import type { ResultMetric } from '@pawoffice/protocol/office-ui'
 import { resultMetricKind } from '../results/format.ts'
 import './ResultMetrics.css'
 
+/**
+ * Six data types, six shapes — the metric band is a typographic observation strip, not a KPI wall.
+ *
+ *   value      number first, unit small, label as caption
+ *   comparison current figure, previous/change second, optional two-bar contrast
+ *   status     state light + state text (never the number size)
+ *   target     value + 目标 chip + optional thin scale with a target tick
+ *   text       a fact sentence at 18px, never a number with an invented unit
+ *   auto       resolved by resultMetricKind() before rendering — no raw auto shell
+ *
+ * `tone`/`trend`/`targetStatus` only choose semantic colour and an arrow direction; they never
+ * reorder metrics or change a value. Density (1 / 2–3 / 4 / 5–6 / 7–12 rows) is pure presentation.
+ */
+
+type MetricKind = ReturnType<typeof resultMetricKind>
+
 const trendIcons = { up: ArrowUpRight, down: ArrowDownRight, flat: Minus } as const
-const toneIcons = { positive: CheckCircle2, negative: CircleX, neutral: CircleDashed } as const
 const targetIcons = { met: CheckCircle2, missed: CircleX, 'at-risk': CircleDashed } as const
 const targetLabels = { met: '已达标', missed: '未达标', 'at-risk': '有风险' } as const
 
 function Unit({ unit }: { unit: string }) {
-  return unit ? <span className="result-metric-unit">{unit}</span> : null
+  return unit ? <span className="result-metric-unit" data-tight={unit === '%' ? 'true' : undefined}>{unit}</span> : null
 }
 
-/** Value first, label under: the number is the figure, the label is its caption — not a KPI tile. */
-function MetricFigure({ metric }: { metric: ResultMetric }) {
-  return <p className="result-metric-value"><strong>{metric.value}</strong><Unit unit={metric.unit} /></p>
+/**
+ * Parses only plain observations such as "3.8", "2.9%" or "18 项" for a purely visual ratio.
+ * Prose, ranges or anything ambiguous returns null, so no invented number can leak into the UI.
+ */
+function parseMetricNumber(value: string): number | null {
+  const match = /^([+-]?\d+(?:\.\d+)?)\s*([^\d\s].{0,11})?$/.exec(value.trim())
+  if (!match) return null
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) ? parsed : null
 }
 
-function MetricCaption({ metric }: { metric: ResultMetric }) {
-  return <p className="result-metric-label">{metric.label}</p>
+/** A target tick is drawn only for a self-describing 0–100 percentage; "≤2s" gets no invented scale. */
+function targetPercent(target: string): number | null {
+  const match = /^(\d+(?:\.\d+)?)\s*%$/.exec(target.trim())
+  if (!match) return null
+  const parsed = Number(match[1])
+  return parsed >= 0 && parsed <= 100 ? parsed : null
+}
+
+function metricWithUnit(metric: ResultMetric) {
+  if (!metric.unit) return metric.value
+  return `${metric.value}${metric.unit === '%' ? '' : ' '}${metric.unit}`
+}
+
+function Figure({ metric, size }: { metric: ResultMetric; size: 'value' | 'comparison' }) {
+  return <p className="result-metric-figure" data-size={size}>
+    <strong className="result-metric-number">{metric.value}</strong><Unit unit={metric.unit} />
+  </p>
+}
+
+function Caption({ metric }: { metric: ResultMetric }) {
+  return <p className="result-metric-caption">{metric.label}</p>
+}
+
+/** Direction comes from `trend`; colour comes only from the backend `tone`, so "up" is not "good". */
+function ChangeChip({ metric, size = 12 }: { metric: ResultMetric; size?: number }) {
+  if (!metric.change) return null
+  const Trend = trendIcons[metric.trend]
+  return <span className="result-metric-change" data-tone={metric.tone} data-trend={metric.trend}>
+    <Trend size={size} strokeWidth={2.4} aria-hidden="true" />{metric.change}
+  </span>
+}
+
+/** Two thin bars are an extra visual read of the same two observations — no third number is shown. */
+function ComparisonBars({ previous, current }: { previous: number; current: number }) {
+  const max = Math.max(previous, current)
+  if (!(max > 0)) return null
+  const width = (value: number) => `${(Math.round(value / max * 1000) / 10)}%`
+  return <div className="result-metric-bars" aria-hidden="true">
+    <span className="result-metric-bar-row">
+      <span className="result-metric-bar-label">前值</span>
+      <span className="result-metric-bar"><i style={{ width: width(previous) }} /></span>
+    </span>
+    <span className="result-metric-bar-row">
+      <span className="result-metric-bar-label">当前</span>
+      <span className="result-metric-bar" data-current="true"><i style={{ width: width(current) }} /></span>
+    </span>
+  </div>
+}
+
+function ValueMetric({ metric }: { metric: ResultMetric }) {
+  return <>
+    <Figure metric={metric} size="value" />
+    <Caption metric={metric} />
+    {metric.change && <p className="result-metric-note">{metric.change}</p>}
+  </>
 }
 
 function ComparisonMetric({ metric }: { metric: ResultMetric }) {
-  const Trend = trendIcons[metric.trend]
+  const previousNumber = parseMetricNumber(metric.previous)
+  const currentNumber = parseMetricNumber(metric.value)
+  const showBars = previousNumber !== null && currentNumber !== null
+    && previousNumber >= 0 && currentNumber >= 0 && Math.max(previousNumber, currentNumber) > 0
   return <>
-    <MetricFigure metric={metric} />
-    <MetricCaption metric={metric} />
-    <p className="result-metric-foot">
-      {metric.change && <span className="result-metric-change" data-tone={metric.tone}>
-        <Trend size={12} strokeWidth={2.4} aria-hidden="true" />{metric.change}</span>}
+    <Figure metric={metric} size="comparison" />
+    <Caption metric={metric} />
+    <div className="result-metric-compare" title={metric.previous ? `首轮 ${metric.previous} → 当前 ${metricWithUnit(metric)}` : undefined}>
+      <ChangeChip metric={metric} size={13} />
       {metric.previous && <span className="result-metric-previous">首轮 {metric.previous}</span>}
-    </p>
+    </div>
+    {showBars && previousNumber !== null && currentNumber !== null && <ComparisonBars previous={previousNumber} current={currentNumber} />}
   </>
 }
 
 function StatusMetric({ metric }: { metric: ResultMetric }) {
-  const Icon = toneIcons[metric.tone]
+  // A status is a state: light + word. It deliberately does not borrow the numeric figure size.
   return <>
-    <p className="result-metric-state" data-tone={metric.tone}>
-      <Icon size={15} strokeWidth={2} aria-hidden="true" /><strong>{metric.value}</strong><Unit unit={metric.unit} />
+    <p className="result-metric-status" data-tone={metric.tone}>
+      <span className="result-metric-status-dot" aria-hidden="true" />
+      <span className="result-metric-status-text">{metric.value}</span>
+      <Unit unit={metric.unit} />
     </p>
-    <MetricCaption metric={metric} />
-    {metric.change && <p className="result-metric-foot"><span className="result-metric-previous">{metric.change}</span></p>}
+    <Caption metric={metric} />
+    {metric.change && <p className="result-metric-note">{metric.change}</p>}
   </>
 }
 
 function TargetMetric({ metric }: { metric: ResultMetric }) {
   const status = metric.targetStatus
-  const StatusIcon = status ? targetIcons[status] : Target
+  const StatusIcon = status ? targetIcons[status] : null
+  const tick = metric.target ? targetPercent(metric.target) : null
   return <>
-    <MetricFigure metric={metric} />
-    <MetricCaption metric={metric} />
-    {metric.progress !== undefined && <div className="result-metric-track" role="progressbar" aria-label={`${metric.label}进度`}
-      aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(metric.progress)}><i style={{ width: `${Math.min(100, Math.max(0, metric.progress))}%` }} /></div>}
-    <p className="result-metric-foot">
-      {status && <span className="result-metric-target" data-status={status}><StatusIcon size={12} strokeWidth={2.2} aria-hidden="true" />{targetLabels[status]}</span>}
-      {metric.target && <span className="result-metric-previous">目标 {metric.target}</span>}
-      {!status && metric.change && <span className="result-metric-previous">{metric.change}</span>}
-    </p>
+    <Figure metric={metric} size="value" />
+    <Caption metric={metric} />
+    <div className="result-metric-target-line">
+      {metric.target && <span className="result-metric-target-chip">目标 {metric.target}</span>}
+      {status && StatusIcon && <span className="result-metric-target-status" data-status={status}>
+        <StatusIcon size={12} strokeWidth={2.2} aria-hidden="true" />{targetLabels[status]}
+      </span>}
+    </div>
+    {metric.progress !== undefined && <div className="result-metric-scale" role="progressbar" aria-label={`${metric.label}进度`}
+      aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(metric.progress)}>
+      <i className="result-metric-scale-fill" data-tone={metric.tone}
+        style={{ width: `${Math.min(100, Math.max(0, metric.progress))}%` }} />
+      {tick !== null && <span className="result-metric-scale-tick" style={{ left: `${tick}%` }} aria-hidden="true" />}
+    </div>}
+    {!status && metric.change && <p className="result-metric-note">{metric.change}</p>}
   </>
 }
 
 function TextMetric({ metric }: { metric: ResultMetric }) {
-  // A text metric is a fact, not a number: no unit or percent is appended by the reader.
+  // A fact, not a figure: the reader never appends a unit or a percent sign to it.
   return <>
-    <p className="result-metric-text">{metric.value}</p>
-    <MetricCaption metric={metric} />
-    {metric.change && <p className="result-metric-foot"><span className="result-metric-previous">{metric.change}</span></p>}
+    <p className="result-metric-fact">{metric.value}</p>
+    <Caption metric={metric} />
+    {metric.change && <p className="result-metric-note">{metric.change}</p>}
   </>
 }
 
 function MetricBody({ metric }: { metric: ResultMetric }) {
-  const kind = resultMetricKind(metric)
+  const kind: MetricKind = resultMetricKind(metric)
   if (kind === 'comparison') return <ComparisonMetric metric={metric} />
   if (kind === 'status') return <StatusMetric metric={metric} />
   if (kind === 'target') return <TargetMetric metric={metric} />
   if (kind === 'text') return <TextMetric metric={metric} />
-  return <>
-    <MetricFigure metric={metric} />
-    <MetricCaption metric={metric} />
-    {metric.change && <p className="result-metric-foot"><span className="result-metric-previous">{metric.change}</span></p>}
-  </>
+  return <ValueMetric metric={metric} />
 }
 
+/** The card class string is exactly `result-metric`; per-kind state lives in data-* attributes. */
 function MetricCard({ metric }: { metric: ResultMetric }) {
   const kind = resultMetricKind(metric)
   return <article className="result-metric" data-kind={kind} data-tone={metric.tone} data-trend={metric.trend} data-emphasis={metric.emphasis}>
@@ -421,21 +495,25 @@ function MetricCard({ metric }: { metric: ResultMetric }) {
   </article>
 }
 
-/** Metrics 7–12 become compact label/value data rows so twelve observations stay scannable. */
+/** 7–12 observations collapse to rows, but every row still speaks its own kind's language. */
 function CompactMetricRow({ metric }: { metric: ResultMetric }) {
   const kind = resultMetricKind(metric)
+  const Trend = trendIcons[metric.trend]
   const detail = kind === 'comparison'
     ? [metric.previous && `首轮 ${metric.previous}`, metric.change].filter(Boolean).join(' · ')
     : kind === 'target'
       ? [metric.targetStatus ? targetLabels[metric.targetStatus] : '', metric.target && `目标 ${metric.target}`,
         metric.progress !== undefined ? `${Math.round(metric.progress)}%` : ''].filter(Boolean).join(' · ')
       : metric.change
-  const Icon = kind === 'status' ? toneIcons[metric.tone] : kind === 'target' && metric.targetStatus ? targetIcons[metric.targetStatus] : null
   return <li className="result-metric-row" data-kind={kind} data-tone={metric.tone} data-emphasis={metric.emphasis}>
     <span className="result-metric-row-label">{metric.label}</span>
     <span className="result-metric-row-value">
-      {Icon && <Icon size={13} strokeWidth={2.2} aria-hidden="true" />}
+      {kind === 'status' && <span className="result-metric-row-dot" data-tone={metric.tone} aria-hidden="true" />}
       {kind === 'text' ? metric.value : <>{metric.value}<Unit unit={metric.unit} /></>}
+      {kind === 'comparison' && metric.change && <Trend size={11} strokeWidth={2.4} aria-hidden="true" />}
+      {kind === 'target' && metric.progress !== undefined && <span className="result-metric-row-scale" aria-hidden="true">
+        <i style={{ width: `${Math.min(100, Math.max(0, metric.progress))}%` }} />
+      </span>}
     </span>
     {detail && <span className="result-metric-row-note">{detail}</span>}
   </li>
@@ -444,7 +522,7 @@ function CompactMetricRow({ metric }: { metric: ResultMetric }) {
 export function ResultMetrics({ metrics }: { metrics: readonly ResultMetric[] }) {
   if (!metrics.length) return null
   const dense = metrics.length >= 7
-  return <div className="result-metrics" data-count={dense ? 'dense' : metrics.length}
+  return <div className="result-metrics" data-count={dense ? 'dense' : String(metrics.length)}
     data-density={dense ? 'compact' : 'card'} data-lead={metrics.some(metric => metric.emphasis === 'primary') ? 'true' : undefined}>
     {dense
       ? <ul className="result-metric-rows">{metrics.map(metric => <CompactMetricRow key={metric.id} metric={metric} />)}</ul>
@@ -453,10 +531,11 @@ export function ResultMetrics({ metrics }: { metrics: readonly ResultMetric[] })
 }
 ```
 
-### `apps\web\src\components\ResultArtifactList.tsx`
+### `apps/web/src/components/ResultArtifactList.tsx`
 
 ```tsx
 import { useContext, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Check, Copy, Download, ExternalLink, FileText, Image as ImageIcon, Link2, Table2 } from 'lucide-react'
 import type { ResultArtifact } from '@pawoffice/protocol/office-ui'
 import { ArtifactPreviewContext } from '../results/artifactContext.ts'
@@ -467,9 +546,13 @@ import type { ResultDocumentMetadata } from '../results/board.ts'
 import { ResultMarkdown } from './ResultMarkdown.tsx'
 import './ResultArtifactList.css'
 
-const artifactIcons = { document: FileText, image: ImageIcon, link: Link2, data: Table2 } as const
+const artifactGlyphs = { document: FileText, image: ImageIcon, link: Link2, data: Table2 } as const
 const changeLabels = { added: '本次新增', updated: '本次更新', removed: '本次移除（保留历史版本）', unchanged: '沿用已有版本' } as const
 const documentStatusLabels = { done: '已完成', active: '进行中', pending: '待开始' } as const
+
+/** Content format shown for `data` artifacts, derived only from the existing mimeType. */
+const dataFormatLabels = { json: 'JSON', csv: 'CSV', sheet: '表格', text: '文本', unknown: '未知' } as const
+type DataFormat = keyof typeof dataFormatLabels
 
 function isHttpUrl(value: string) {
   return /^https?:\/\//i.test(value)
@@ -479,10 +562,29 @@ function isDisplayableImage(artifact: ResultArtifact) {
   return artifact.kind === 'image' && isHttpUrl(artifact.url)
 }
 
-function documentMetaLine(artifact: ResultArtifact, metadata?: ResultDocumentMetadata) {
-  const version = artifact.version || metadata?.version || artifact.versionId || ''
-  const producedAt = artifact.producedAt ? formatResultTimestamp(artifact.producedAt) : ''
-  return [...new Set([version, producedAt, metadata?.at, metadata ? documentStatusLabels[metadata.status] : ''].filter(Boolean))].join(' · ')
+function dataFormatOf(mimeType: string): DataFormat {
+  const mime = mimeType.toLowerCase().split(';')[0].trim()
+  if (mime === 'application/json' || mime.endsWith('+json')) return 'json'
+  if (mime === 'text/csv') return 'csv'
+  if (mime === 'text/tab-separated-values' || mime.includes('spreadsheet') || mime.includes('ms-excel') || mime.includes('excel') || mime.includes('sheet')) return 'sheet'
+  if (mime.startsWith('text/')) return 'text'
+  return 'unknown'
+}
+
+/** Domain chip for the existing link URL, never a second source of truth. */
+function linkDomain(url: string) {
+  if (!isHttpUrl(url)) return ''
+  try { return new URL(url).hostname.replace(/^www\./i, '') } catch { return '' }
+}
+
+function artifactVersionLabel(artifact: ResultArtifact, metadata?: ResultDocumentMetadata) {
+  return artifact.version || metadata?.version || artifact.versionId || ''
+}
+
+/** One moment only: the explicit document record time wins, producedAt is a fallback (no duplicate time). */
+function artifactTimeLabel(artifact: ResultArtifact, metadata?: ResultDocumentMetadata) {
+  if (metadata?.at) return metadata.at
+  return artifact.producedAt ? formatResultTimestamp(artifact.producedAt) : ''
 }
 
 export function ResultArtifactList({ artifacts, documentMeta }: {
@@ -493,10 +595,21 @@ export function ResultArtifactList({ artifacts, documentMeta }: {
   const [expanded, setExpanded] = useState('')
   const [copied, setCopied] = useState('')
   const [downloadError, setDownloadError] = useState('')
+  // A legal URL can still 404; the row then falls back to the same dashed placeholder as an empty image.
+  const [failedImages, setFailedImages] = useState<ReadonlySet<string>>(() => new Set())
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
   if (!artifacts.length) return null
-  const Icon = (artifact: ResultArtifact) => artifactIcons[artifact.kind]
+
+  const markImageFailed = (id: string) => {
+    setFailedImages(current => {
+      if (current.has(id)) return current
+      const next = new Set(current)
+      next.add(id)
+      return next
+    })
+  }
+
   const copy = async (artifact: ResultArtifact) => {
     try {
       await navigator.clipboard.writeText(artifact.content)
@@ -505,6 +618,7 @@ export function ResultArtifactList({ artifacts, documentMeta }: {
       timer.current = setTimeout(() => setCopied(''), 1800)
     } catch { setCopied('') }
   }
+
   return <div className="result-deliverables">
     {downloadError && <p className="result-deliverable-error" role="alert">{downloadError}</p>}
     <span className="result-sr-only" role="status">{copied ? '已复制到剪贴板' : ''}</span>
@@ -515,38 +629,87 @@ export function ResultArtifactList({ artifacts, documentMeta }: {
         const versioned = Boolean(preview && artifact.versionId && (artifact.content || isHttpUrl(artifact.url)))
         const canExpand = !versioned && Boolean(artifact.content) && artifactIsText(artifact)
         const open = expanded === artifact.id
-        const metaLine = documentMetaLine(artifact, metadata)
-        const KindIcon = Icon(artifact)
-        return <li key={artifact.id} className="result-deliverable" data-kind={artifact.kind} data-change={artifact.change || undefined}>
+        const legalUrl = isHttpUrl(artifact.url)
+        const hasImageUrl = isDisplayableImage(artifact)
+        const showImage = hasImageUrl && !failedImages.has(artifact.id)
+        const versionLabel = artifactVersionLabel(artifact, metadata)
+        const timeLabel = artifactTimeLabel(artifact, metadata)
+        const stateLabel = metadata ? documentStatusLabels[metadata.status] : ''
+        const dataFormat = artifact.kind === 'data' ? dataFormatOf(artifact.mimeType) : undefined
+        const domain = artifact.kind === 'link' ? linkDomain(artifact.url) : ''
+        const KindIcon = artifactGlyphs[artifact.kind]
+
+        const primaryAction = (): ReactNode => {
+          if (artifact.kind === 'image') {
+            if (versioned && preview) {
+              return <button type="button" className="result-deliverable-action is-primary" aria-haspopup="dialog"
+                onClick={event => preview.open(artifact, event.currentTarget)}>查看大图</button>
+            }
+            if (legalUrl) {
+              return <a className="result-deliverable-action is-primary" href={artifact.url} target="_blank" rel="noopener noreferrer">
+                打开原图<ExternalLink size={12} aria-hidden="true" /></a>
+            }
+            return <span className="result-deliverable-action is-disabled" aria-disabled="true">暂无图片可预览</span>
+          }
+          if (artifact.kind === 'link') {
+            if (legalUrl) {
+              return <a className="result-deliverable-action is-primary" href={artifact.url} target="_blank" rel="noopener noreferrer">
+                打开链接<ExternalLink size={12} aria-hidden="true" /></a>
+            }
+            if (versioned && preview) {
+              return <button type="button" className="result-deliverable-action is-primary" aria-haspopup="dialog"
+                onClick={event => preview.open(artifact, event.currentTarget)}>阅读</button>
+            }
+            return <span className="result-deliverable-action is-disabled" aria-disabled="true">未提供可用链接</span>
+          }
+          if (versioned && preview) {
+            return <button type="button" className="result-deliverable-action is-primary" aria-haspopup="dialog"
+              onClick={event => preview.open(artifact, event.currentTarget)}>阅读</button>
+          }
+          if (canExpand) {
+            return <button type="button" className="result-deliverable-action is-primary" aria-expanded={open}
+              onClick={() => setExpanded(current => current === artifact.id ? '' : artifact.id)}>{open ? '收起正文' : '阅读'}</button>
+          }
+          if (legalUrl) {
+            return <a className="result-deliverable-action is-primary" href={artifact.url} target="_blank" rel="noopener noreferrer">
+              打开<ExternalLink size={12} aria-hidden="true" /></a>
+          }
+          return <span className="result-deliverable-action is-disabled" aria-disabled="true">暂无正文或文件地址</span>
+        }
+
+        return <li key={artifact.id} className="result-deliverable" data-kind={artifact.kind}
+          data-change={artifact.change || undefined} data-status={metadata?.status || undefined}
+          data-format={dataFormat} data-source={artifact.kind === 'link' ? (legalUrl ? 'url' : 'none') : undefined}>
+          {artifact.kind === 'image' && <div className="result-deliverable-media" data-placeholder={showImage ? undefined : 'true'}>
+            {showImage
+              ? <img className="result-deliverable-thumb" src={artifact.url} alt="" loading="lazy" aria-hidden="true"
+                onError={() => markImageFailed(artifact.id)} />
+              : <ImageIcon size={21} strokeWidth={1.7} aria-hidden="true" />}
+          </div>}
           <div className="result-deliverable-main">
             <div className="result-deliverable-heading">
-              {isDisplayableImage(artifact)
-                ? <img className="result-deliverable-thumb" src={artifact.url} alt="" loading="lazy" aria-hidden="true" />
-                : <KindIcon className="result-deliverable-glyph" size={16} strokeWidth={1.9} aria-hidden="true" />}
+              {artifact.kind !== 'image' && <span className="result-deliverable-glyph" aria-hidden="true">
+                <KindIcon size={17} strokeWidth={1.9} />
+              </span>}
               <span className="result-deliverable-title" title={artifact.title}>{artifact.title}</span>
+              {versionLabel && <span className="result-deliverable-version" title="版本">{versionLabel}</span>}
+              {domain && <span className="result-deliverable-domain" title={artifact.url}>
+                {domain}<ExternalLink size={11} aria-hidden="true" /></span>}
+              {dataFormat && <span className="result-deliverable-format" data-format={dataFormat}>{dataFormatLabels[dataFormat]}</span>}
               {artifact.change && <span className="result-deliverable-change" data-change={artifact.change}>{changeLabels[artifact.change]}</span>}
-              {metaLine && <span className="result-deliverable-meta">{metaLine}</span>}
             </div>
-            {artifact.description && <p className="result-deliverable-description">{artifact.description}</p>}
+            {(timeLabel || stateLabel || artifact.description) && <p className="result-deliverable-line">
+              {timeLabel && <span className="result-deliverable-time">{timeLabel}</span>}
+              {stateLabel && <span className="result-deliverable-state" data-status={metadata?.status}>{stateLabel}</span>}
+              {artifact.description && <span className="result-deliverable-description" title={artifact.description}>{artifact.description}</span>}
+            </p>}
             {canExpand && open && <div className="result-deliverable-body"><ResultMarkdown content={artifact.content} /></div>}
           </div>
           <div className="result-deliverable-actions">
-            {versioned && <button type="button" className="result-deliverable-action is-primary" aria-haspopup="dialog"
-              onClick={event => preview!.open(artifact, event.currentTarget)}>
-              {artifact.kind === 'image' ? '查看大图' : artifact.kind === 'link' ? '查看链接' : '阅读'}
-            </button>}
-            {canExpand && <button type="button" className="result-deliverable-action is-primary" aria-expanded={open}
-              onClick={() => setExpanded(current => current === artifact.id ? '' : artifact.id)}>{open ? '收起正文' : artifact.kind === 'image' ? '查看说明' : '阅读'}</button>}
-            {artifact.kind === 'link' && !versioned && (isHttpUrl(artifact.url)
-              ? <a className="result-deliverable-action is-primary" href={artifact.url} target="_blank" rel="noopener noreferrer">打开链接<ExternalLink size={12} aria-hidden="true" /></a>
-              : <span className="result-deliverable-action is-disabled" aria-disabled="true">未提供可用链接</span>)}
-            {!versioned && artifact.kind !== 'link' && !canExpand && isHttpUrl(artifact.url)
-              && <a className="result-deliverable-action is-primary" href={artifact.url} target="_blank" rel="noopener noreferrer">打开<ExternalLink size={12} aria-hidden="true" /></a>}
-            {!versioned && !canExpand && artifact.kind !== 'link' && !isHttpUrl(artifact.url)
-              && <span className="result-deliverable-action is-disabled" aria-disabled="true">{artifact.kind === 'image' ? '暂无图片可预览' : '暂无正文或文件地址'}</span>}
+            {primaryAction()}
             {artifact.content && <button type="button" className="result-deliverable-action" onClick={() => { void copy(artifact) }}>
               {copied === artifact.id ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}{copied === artifact.id ? '已复制' : '复制'}</button>}
-            {(artifact.content || isHttpUrl(artifact.url)) && <button type="button" className="result-deliverable-action"
+            {(artifact.content || legalUrl) && <button type="button" className="result-deliverable-action"
               onClick={() => { setDownloadError(''); void downloadArtifact(artifact).catch(error => setDownloadError(error instanceof Error ? error.message : '下载失败')) }}>
               <Download size={12} aria-hidden="true" />下载</button>}
           </div>
@@ -557,16 +720,17 @@ export function ResultArtifactList({ artifacts, documentMeta }: {
 }
 ```
 
-### `apps\web\src\components\ResultSectionCard.tsx`
+### `apps/web/src/components/ResultSectionCard.tsx`
 
 ```tsx
-import { useContext, useId } from 'react'
-import { CheckCircle2, CircleDashed, CircleX, ClipboardCheck, File, FileArchive, FileBarChart, FileDiff, FileText, FolderOpen, Gauge, Images, Image as ImageIcon, LayoutGrid, Server, Webhook } from 'lucide-react'
+import { useContext, useId, useState } from 'react'
+import { CheckCircle2, CircleDashed, CircleX, ClipboardCheck, ExternalLink, File, FileArchive, FileBarChart, FileDiff, FileText, FolderOpen, Gauge, Images, Image as ImageIcon, LayoutGrid, Server, Webhook } from 'lucide-react'
 import type { ResultArtifact, ResultApiSection, ResultDocumentsSection, ResultEnvironmentsSection, ResultFilesSection, ResultGallerySection, ResultSection, ResultTestsSection } from '@pawoffice/protocol/office-ui'
 import { ArtifactPreviewContext } from '../results/artifactContext.ts'
 import { CustomSectionBody } from './ResultBlocks.tsx'
 import { ResultChanges } from './ResultChanges.tsx'
 import { Chip, Track } from './ResultPrimitives.tsx'
+import './ResultSectionKinds.css'
 type ChipTone = 'done' | 'active' | 'progress' | 'pending' | 'danger'
 const galleryStatusLabels: Record<ResultGallerySection['items'][number]['status'], string> = {
   done: '已完成', active: '开发中', pending: '待开始',
@@ -601,50 +765,81 @@ const metricToneIcons = { positive: CheckCircle2, negative: CircleX, neutral: Ga
 const checkIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
 const fileKindIcons = { image: ImageIcon, document: FileText, report: FileBarChart, archive: FileArchive, other: File } as const
 
+function isHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value)
+}
+
+/**
+ * Gallery: an adaptive image grid. A legal image URL becomes a real thumbnail that opens the source
+ * in a new window; anything else keeps a neutral placeholder and says 暂无预览 instead of inventing an
+ * image. Item order is the source order — the grid only reflows, it never sorts.
+ */
 function GalleryBody({ section }: { section: ResultGallerySection }) {
+  // A legal URL can still fail to load; that item then uses the same dashed placeholder as an empty one.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set())
+  const markFailed = (id: string) => {
+    setFailed(current => {
+      if (current.has(id)) return current
+      const next = new Set(current)
+      next.add(id)
+      return next
+    })
+  }
   return <ul className="result-workspace-gallery">
-    {section.items.map(item => <li key={item.id} className="result-workspace-gallery-item" data-preview={Boolean(item.image)} title={item.title}>
-      <div className="result-workspace-thumb">
-        {item.image
-          ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`查看${item.title}原图（新窗口）`}><img src={item.image} alt={item.title} loading="lazy" /></a>
-          : <ImageIcon size={22} aria-hidden="true" />}
-      </div>
-      <div className="result-workspace-gallery-meta">
-        <span className="result-workspace-gallery-label">{item.meta || item.title}</span>
-        {!item.image && <small>暂无预览</small>}
-        <Chip tone={galleryStatusTones[item.status]}>{galleryStatusLabels[item.status]}</Chip>
-      </div>
-    </li>)}
+    {section.items.map(item => {
+      const hasImage = isHttpUrl(item.image) && !failed.has(item.id)
+      return <li key={item.id} className="result-workspace-gallery-item" data-status={item.status}
+        data-preview={hasImage ? 'true' : undefined} title={item.title}>
+        <div className="result-workspace-thumb" data-placeholder={hasImage ? undefined : 'true'}>
+          {hasImage
+            ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`查看${item.title}原图（新窗口）`}>
+              <img src={item.image} alt={item.title} loading="lazy" onError={() => markFailed(item.id)} />
+            </a>
+            : <span className="result-workspace-thumb-placeholder" aria-hidden="true"><ImageIcon size={22} strokeWidth={1.7} /></span>}
+        </div>
+        <div className="result-workspace-gallery-meta">
+          <span className="result-workspace-gallery-label">{item.title}</span>
+          {item.meta && <span className="result-workspace-gallery-note">{item.meta}</span>}
+          {!hasImage && <small className="result-workspace-gallery-empty">暂无预览</small>}
+          <span className="result-workspace-kind-chip" data-tone={galleryStatusTones[item.status]}>{galleryStatusLabels[item.status]}</span>
+        </div>
+      </li>
+    })}
   </ul>
 }
 
 /**
- * Documents that are exactly the same artifact + version as one already listed in 本轮交付 are
- * rendered as a compact index line: the click target is the same preview entry, so a second full
- * file list would only repeat the shelf. Unique items and unmatched items stay visible as text.
+ * Documents: version file rows. A row opens the shared preview entry only when the counterpart in
+ * 本轮交付 is the same artifactId + versionId — titles never create a link. Unmatched rows stay as
+ * honest plain text with the reason they cannot open.
  */
 function DocumentsBody({ section, artifacts }: { section: ResultDocumentsSection; artifacts?: readonly ResultArtifact[] }) {
   const preview = useContext(ArtifactPreviewContext)
-  return <p className="result-workspace-doc-index">
-    {section.items.map((item, index) => {
+  return <ul className="result-workspace-docs">
+    {section.items.map(item => {
       const matched = artifacts?.find(artifact => artifact.id === item.artifactId
         && item.versionId !== '' && artifact.versionId === item.versionId)
-      const meta = [item.version, item.at].filter(Boolean).join(' · ')
-      const stateText = documentStatusLabels[item.status]
-      return <span className="result-workspace-doc-item" key={item.id}>
-        {index > 0 && <span className="result-workspace-doc-sep" aria-hidden="true">·</span>}
-        {matched && preview
-          ? <button type="button" className="result-workspace-doc-open" aria-haspopup="dialog"
-            data-status={item.status} title={[item.title, meta, stateText].filter(Boolean).join(' · ')}
-            onClick={event => preview.open(matched, event.currentTarget)}>
-            {item.title}<small>{item.version}</small>
+      const openable = Boolean(matched && preview)
+      const meta = [item.version, item.at, documentStatusLabels[item.status]].filter(Boolean).join(' · ')
+      return <li key={item.id} className="result-workspace-doc" data-status={item.status}
+        data-linked={openable ? 'true' : 'false'}>
+        <span className="result-workspace-doc-glyph" aria-hidden="true"><FileText size={16} strokeWidth={1.9} /></span>
+        {openable
+          ? <button type="button" className="result-workspace-doc-open" aria-haspopup="dialog" title={[item.title, meta].filter(Boolean).join(' · ')}
+            onClick={event => preview!.open(matched!, event.currentTarget)}>
+            <span className="result-workspace-doc-title">{item.title}</span>
+            {item.version && <span className="result-workspace-doc-version">{item.version}</span>}
           </button>
-          : <span className="result-workspace-doc-plain" data-status={item.status} title={[item.title, meta, stateText].filter(Boolean).join(' · ')}>
-            {item.title}<small>{item.artifactId ? '关联文件不在本轮交付中' : '文档说明（未关联文件）'}</small>
+          : <span className="result-workspace-doc-plain" title={[item.title, meta].filter(Boolean).join(' · ')}>
+            <span className="result-workspace-doc-title">{item.title}</span>
+            {item.version && <span className="result-workspace-doc-version">{item.version}</span>}
+            <small className="result-workspace-doc-reason">{item.artifactId ? '关联文件不在本轮交付中' : '文档说明（未关联文件）'}</small>
           </span>}
-      </span>
+        {item.at && <time className="result-workspace-doc-time">{item.at}</time>}
+        <span className="result-workspace-doc-state" data-status={item.status}>{documentStatusLabels[item.status]}</span>
+      </li>
     })}
-  </p>
+  </ul>
 }
 
 function TestsBody({ section }: { section: ResultTestsSection }) {
@@ -709,17 +904,24 @@ function EnvironmentsBody({ section }: { section: ResultEnvironmentsSection }) {
   </ul>
 }
 
+/**
+ * Files: attachment rows in the delivery language — type glyph, name, category and size. Only a legal
+ * http(s) URL opens; an attachment bound to an artifact stays a plain row instead of a fake download.
+ */
 function FilesBody({ section }: { section: ResultFilesSection }) {
   return <ul className="result-workspace-files">
     {section.items.map(item => {
       const Icon = fileKindIcons[item.kind]
+      const openable = isHttpUrl(item.url) && !item.artifactId
       const body = <>
         <span className="result-workspace-file-icon" data-kind={item.kind} aria-hidden="true"><Icon size={16} strokeWidth={1.9} /></span>
         <span className="result-workspace-file-name" title={item.name}>{item.name}</span>
+        <span className="result-workspace-file-kind" data-kind={item.kind}>{fileKindLabels[item.kind]}</span>
         {item.size && <span className="result-workspace-file-size">{item.size}</span>}
+        {openable && <ExternalLink className="result-workspace-file-open" size={13} strokeWidth={2} aria-hidden="true" />}
       </>
-      return <li key={item.id} className="result-workspace-file">
-        {item.url && !item.artifactId
+      return <li key={item.id} className="result-workspace-file" data-kind={item.kind} data-linked={openable ? 'true' : undefined}>
+        {openable
           ? <a className="result-workspace-file-card" href={item.url} target="_blank" rel="noopener noreferrer"
             aria-label={`${item.name}（${fileKindLabels[item.kind]}），在新窗口打开`}>{body}</a>
           : <div className="result-workspace-file-card" title={item.name}>{body}</div>}
@@ -760,81 +962,263 @@ export function ResultSectionCard({ section, sourceArtifact, artifacts }: {
 }
 ```
 
-### `apps\web\src\components\WhiteboardReader.tsx`
+### `apps/web/src/components/ResultReviewLog.tsx`
 
 ```tsx
-import { useEffect, useMemo, useRef } from 'react'
-import { Download, X } from 'lucide-react'
-import { whiteboardTaskBoard, whiteboardTaskBoardSchema } from '@pawoffice/scene-office/whiteboard'
-import type { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
-import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
-import { officeResultSchema } from '@pawoffice/protocol/office-ui'
-import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
-import { ResultWorkspace } from './ResultWorkspace.tsx'
-import { resultFileBase } from '../results/format.ts'
-import './WhiteboardReader.css'
+import { CheckCircle2, CircleDashed, CircleX, Clock3, ShieldAlert, UserRound } from 'lucide-react'
+import type { OfficeResult, ResultRisk } from '@pawoffice/protocol/office-ui'
+import {
+  resultBoardChecks, resultCheckSummary, resultStaleCheckDetail,
+} from '../results/board.ts'
+import type { ResultAnnotatedCheck } from '../results/board.ts'
+import './ResultReviewLog.css'
 
-/**
- * The single result-reading container. It keeps the existing `<dialog>` open/close, Escape behaviour,
- * focus restoration and raw-data export while hosting the one-page reader. The dev-only acceptance
- * preview mounts the same component, so screenshots never show a simplified mock.
- */
-export function ResultReaderDialog({ board, result, boardId = 'result-reader', initialDeliveryId, onClose, exportable = true }: {
-  board: WhiteboardTaskBoardData; result: OfficeResult; boardId?: string; initialDeliveryId?: string
-  onClose: () => void; exportable?: boolean
-}) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  const content = useRef<HTMLElement>(null)
-  useEffect(() => {
-    const element = dialog.current!
-    const trigger = document.activeElement
-    element.showModal()
-    return () => {
-      element.close()
-      requestAnimationFrame(() => {
-        if (trigger instanceof HTMLElement && trigger.isConnected && !document.querySelector('dialog[open]')) trigger.focus()
-      })
-    }
-  }, [])
-  const download = () => {
-    if (!exportable) return
-    const url = URL.createObjectURL(new Blob([stringifyDocumentObject(board, 2)], { type: 'application/json;charset=utf-8' }))
-    const link = document.createElement('a')
-    link.href = url; link.download = resultFileBase({ ...result, title: board.title || result.title }) + '-whiteboard.json'; link.click()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  }
-  return <dialog className="whiteboard-reader is-result" ref={dialog} aria-labelledby="whiteboard-reader-title" onCancel={onClose}
-    onClick={event => {
-      if (event.target !== event.currentTarget) return
-      const rect = event.currentTarget.getBoundingClientRect()
-      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose()
-    }}>
-    <header>
-      <div className="whiteboard-reader-heading"><h2 id="whiteboard-reader-title">{initialDeliveryId ? '历史交付' : '本轮成果'}</h2></div>
-      <div className="whiteboard-reader-actions">
-        <button type="button" aria-label="导出全部轮次原始数据" title="导出全部轮次原始数据" disabled={!exportable} onClick={download}><Download size={18} /></button>
-        <button type="button" aria-label="关闭当前成果" title="关闭" onClick={onClose}><X size={20} /></button>
-      </div>
-    </header>
-    <article className="whiteboard-reader-content is-result" ref={content} aria-label="当前成果内容">
-      {board ? <ResultWorkspace key={boardId} board={board} result={result} initialDeliveryId={initialDeliveryId} />
-        : <p className="result-workspace-empty">当前没有可读取的任务信息。</p>}
-    </article>
-  </dialog>
+type CheckDisplayState = 'passed' | 'pending' | 'failed' | 'stale'
+
+const checkStatusLabels = { passed: '已通过', pending: '待补充', failed: '未通过' } as const
+const checkStatusIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
+const riskLevelLabels: Record<ResultRisk['level'], string> = { high: '高', medium: '中', low: '低' }
+const riskStatusLabels: Record<ResultRisk['status'], string> = { open: '待处理', mitigating: '处理中', closed: '已关闭' }
+
+function checkState(check: ResultAnnotatedCheck): CheckDisplayState {
+  return check.stale ? 'stale' : check.status
 }
 
-export function WhiteboardReader({ state, boardId, onClose, initialDeliveryId }: {
-  state: Record<string, unknown>; boardId: string; progress: WhiteboardProgress; onClose: () => void
-  initialDeliveryId?: string
-}) {
-  const serialized = JSON.stringify(state)
-  const board = useMemo(() => whiteboardTaskBoard(JSON.parse(serialized)) ?? whiteboardTaskBoardSchema.parse({}), [serialized])
-  const result = useMemo(() => officeResultSchema.parse(board.result), [board])
-  return <ResultReaderDialog board={board} result={result} boardId={boardId} initialDeliveryId={initialDeliveryId} onClose={onClose} />
+function CheckRow({ check, result }: { check: ResultAnnotatedCheck; result: OfficeResult }) {
+  const state = checkState(check)
+  const Icon = state === 'stale' ? Clock3 : checkStatusIcons[state]
+  const stateText = state === 'stale' ? '待补充验证' : checkStatusLabels[state]
+  return <li data-status={state}>
+    <Icon size={15} strokeWidth={2} aria-hidden="true" />
+    <span className="result-workspace-check-label">{check.label}</span>
+    <em>{stateText}</em>
+    {state === 'stale' && <small>{resultStaleCheckDetail(result, check)}</small>}
+  </li>
+}
+
+function RiskRow({ risk }: { risk: ResultRisk }) {
+  return <li className="result-workspace-risk" data-level={risk.level} data-status={risk.status}>
+    <div className="result-workspace-risk-head">
+      <span className="result-workspace-risk-level" data-level={risk.level} title={`风险等级：${riskLevelLabels[risk.level]}`}>
+        {riskLevelLabels[risk.level]}
+      </span>
+      <h4 className="result-workspace-risk-title">{risk.title}</h4>
+      <span className="result-workspace-risk-state" data-status={risk.status}>{riskStatusLabels[risk.status]}</span>
+    </div>
+    {(risk.owner || risk.note) && <p className="result-workspace-risk-body">
+      {risk.owner && <span className="result-workspace-risk-owner"><UserRound size={12} strokeWidth={2} aria-hidden="true" />{risk.owner}</span>}
+      {risk.owner && risk.note && <span className="result-workspace-risk-sep" aria-hidden="true"> · </span>}
+      {risk.note}
+    </p>}
+  </li>
+}
+
+/**
+ * Review language: one verdict band (counts + a count-derived ratio bar), ordered check rows where
+ * passed items recede and pending/failed/stale keep full weight, then the risk register.
+ * A passed check bound to an older artifact version is never counted as passed: it stays stale.
+ * Closed risks stay in the same list (weakened, not hidden) so the SSR text is always readable.
+ */
+export function ResultReviewLog({ result }: { result: OfficeResult }) {
+  const checks = resultBoardChecks(result)
+  const summary = resultCheckSummary(checks)
+  const ratio = [
+    { status: 'passed' as const, count: summary.passed },
+    { status: 'pending' as const, count: summary.pending },
+    { status: 'failed' as const, count: summary.failed },
+    { status: 'stale' as const, count: summary.stale },
+  ]
+  const summaryParts = [
+    summary.passed ? `${summary.passed} 项标记通过` : '',
+    summary.pending ? `${summary.pending} 项待处理` : '',
+    summary.failed ? `${summary.failed} 项未通过` : '',
+    summary.stale ? `${summary.stale} 项待补充验证` : '',
+  ].filter(Boolean)
+  return <div className="result-workspace-review-log">
+    {checks.length > 0 && <div className="result-workspace-check-band">
+      <p className="result-workspace-check-summary">{`共 ${summary.total} 项检查：${summaryParts.join(' · ')}`}</p>
+      <div className="result-workspace-check-ratio" aria-hidden="true">
+        {ratio.filter(part => part.count > 0).map(part =>
+          <span key={part.status} className="result-workspace-check-ratio-seg" data-status={part.status} style={{ flexGrow: part.count }} />)}
+      </div>
+    </div>}
+    {summary.stale > 0 && <p className="result-workspace-check-hint">待补充验证项的原验证对象与当前交付版本不一致，不能按通过计。</p>}
+    {checks.length > 0 && <ul className="result-workspace-checks">
+      {checks.map(check => <CheckRow key={JSON.stringify([check.id, check.artifactId, check.versionId])}
+        check={check} result={result} />)}
+    </ul>}
+    {result.risks.length > 0 && <div className="result-workspace-risks">
+      <h4 className="result-workspace-subhead">
+        <ShieldAlert size={14} strokeWidth={2} aria-hidden="true" />风险记录<span>{result.risks.length}</span>
+      </h4>
+      <ul className="result-workspace-risk-list">
+        {result.risks.map(risk => <RiskRow key={risk.id} risk={risk} />)}
+      </ul>
+    </div>}
+    {checks.length === 0 && result.risks.length === 0
+      && <p className="result-workspace-hint">本轮未提供检查项与风险记录。</p>}
+  </div>
 }
 ```
 
-### `apps\web\src\components\ResultDeliveryShell.tsx`
+### `apps/web/src/components/ResultVersionTimeline.tsx`
+
+```tsx
+import type { OfficeResult, ResultVersion } from '@pawoffice/protocol/office-ui'
+import './ResultVersionTimeline.css'
+
+const versionStatusLabels: Record<ResultVersion['status'], string> = {
+  draft: '草稿', released: '已发布', 'rolled-back': '已回滚',
+}
+
+/**
+ * Time language: one vertical node per result revision. The node shape carries the state
+ * (released solid / draft hollow / rolled-back red) and the state text always repeats it.
+ * The current delivery picker stays a separate top-level control; this is only the record.
+ */
+export function ResultVersionTimeline({ result }: { result: OfficeResult }) {
+  if (!result.versions.length) return null
+  return <ol className="result-workspace-versions" data-count={result.versions.length} aria-label="成果版本记录">
+    {result.versions.map(version => {
+      const meta = [version.author, version.at].filter(Boolean).join(' · ')
+      return <li className="result-workspace-version" data-status={version.status} key={version.id}>
+        <span className="result-workspace-version-tag" title={`版本 ${version.version}`}>{version.version}</span>
+        <span className="result-workspace-version-main">
+          {version.note && <p>{version.note}</p>}
+          {meta && <span className="result-workspace-version-meta">{meta}</span>}
+        </span>
+        <span className="result-workspace-version-state" data-status={version.status}>
+          {versionStatusLabels[version.status]}
+        </span>
+      </li>
+    })}
+  </ol>
+}
+```
+
+### `apps/web/src/components/ResultChanges.tsx`
+
+```tsx
+import { useEffect, useId, useState } from 'react'
+import { ChevronRight, FileCode2 } from 'lucide-react'
+import type { ResultChangesSection } from '@pawoffice/protocol/office-ui'
+import { parseUnifiedDiff } from '../results/diff.ts'
+import { ResultDiffTable } from './ResultDiffTable.tsx'
+import './ResultChanges.css'
+
+type ChangedFile = ResultChangesSection['files'][number]
+const statusLabels = { added: '新增', modified: '修改', deleted: '删除', renamed: '重命名' } as const
+const statusOrder = ['added', 'modified', 'deleted', 'renamed'] as const
+
+function LineCounts({ file }: { file: Pick<ChangedFile, 'added' | 'deleted' | 'binary'> }) {
+  return <span className="result-change-counts">{file.binary ? <span>二进制</span> : <>
+    <span className="is-added">+{file.added}</span><span className="is-deleted">-{file.deleted}</span>
+  </>}</span>
+}
+
+/** Honest fallbacks first: a binary, oversized or stat-only file never gets an invented text diff. */
+function DiffBody({ file }: { file: ChangedFile }) {
+  const parsed = parseUnifiedDiff(file.binary ? '' : file.diff)
+  const hasLines = parsed.lines.some(line => ['context', 'added', 'deleted'].includes(line.kind))
+  const empty = file.binary ? '二进制文件不支持逐行对比。'
+    : file.oversized ? '文件较大，后端未提供可预览的差异。'
+      : file.diff.trim() ? '未提供可解析的 unified diff 内容。' : '后端仅提供了变更统计，尚未提供逐行差异。'
+  if (!hasLines) return <p className="result-diff-empty">{empty}</p>
+  return <>
+    {(file.diffTruncated || parsed.truncated) && <p className="result-diff-notice">当前显示部分差异，新增与删除统计为整个文件的行数。</p>}
+    <ResultDiffTable lines={parsed.lines} label={`${file.path} 行差异`} />
+  </>
+}
+
+/**
+ * Diff language: a compact file list where every row toggles an inline real unified diff.
+ * No top-layer popover and no hover preview — the file row is the disclosure control
+ * (`aria-expanded`, Enter/Space native on the button, Esc collapses the current diff).
+ */
+export function ResultChanges({ section, active = true }: { section: ResultChangesSection; active?: boolean }) {
+  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set())
+  const baseId = useId()
+  useEffect(() => { if (!active) setOpen(new Set()) }, [active])
+  const toggle = (index: number) => setOpen(previous => {
+    const next = new Set(previous)
+    if (next.has(index)) next.delete(index)
+    else next.add(index)
+    return next
+  })
+  const collapse = (index: number) => setOpen(previous => {
+    if (!previous.has(index)) return previous
+    const next = new Set(previous)
+    next.delete(index)
+    return next
+  })
+  const totals = section.files.reduce((sum, file) => ({
+    added: sum.added + file.added, deleted: sum.deleted + file.deleted, binary: false,
+  }), { added: 0, deleted: 0, binary: false })
+  const statusCounts = statusOrder.map(status => ({
+    status, count: section.files.filter(file => file.status === status).length,
+  })).filter(entry => entry.count > 0)
+  return <section className="result-changes" data-kind="changes" aria-label="文件变更清单">
+    <header className="result-changes-head">
+      <span className="result-changes-icon" aria-hidden="true"><FileCode2 size={22} strokeWidth={1.6} /></span>
+      <div className="result-changes-head-main">
+        <div className="result-changes-title">
+          <h4>已编辑 {section.files.length} 个文件</h4>
+          <LineCounts file={totals} />
+        </div>
+        <p className="result-changes-states">
+          {statusCounts.map(entry => <span key={entry.status} data-status={entry.status}>
+            {statusLabels[entry.status]}文件 {entry.count}
+          </span>)}
+        </p>
+      </div>
+      <p className="result-changes-hint">点击文件行展开逐行差异（Esc 收起）</p>
+    </header>
+    <ul className="result-changes-list">
+      {section.files.map((file, index) => {
+        const expanded = open.has(index)
+        const panelId = `${baseId}-diff-${index}`
+        const label = statusLabels[file.status]
+        const rowLabel = `${expanded ? '收起' : '展开'} ${file.path} 的逐行差异，${label}，新增 ${file.added} 行，删除 ${file.deleted} 行${file.binary ? '，二进制文件' : ''}`
+        return <li key={`${file.status}-${file.path}-${index}`}>
+          <button type="button" className="result-change-row" data-status={file.status}
+            aria-expanded={expanded} aria-controls={expanded ? panelId : undefined} aria-label={rowLabel}
+            onClick={() => toggle(index)}
+            onKeyDown={event => {
+              if (event.key !== 'Escape' || !expanded) return
+              event.preventDefault()
+              event.stopPropagation()
+              collapse(index)
+            }}>
+            <span className="result-change-status" data-status={file.status}>{label}</span>
+            <span className="result-change-path">
+              <code>{file.path}</code>
+              {file.previousPath && <small>原路径：{file.previousPath}</small>}
+            </span>
+            {file.oversized && <span className="result-change-large">较大文件</span>}
+            <LineCounts file={file} />
+            <ChevronRight className="result-change-chevron" size={14} strokeWidth={2.2} aria-hidden="true" />
+          </button>
+          {expanded && <div className="result-change-diff" id={panelId} role="region"
+            aria-label={`${file.path} 的逐行差异`}
+            onKeyDown={event => {
+              if (event.key !== 'Escape') return
+              event.preventDefault()
+              event.stopPropagation()
+              collapse(index)
+              const row = event.currentTarget.previousElementSibling
+              if (row instanceof HTMLElement) row.focus()
+            }}>
+            {file.previousPath && <p className="result-change-previous">原路径：{file.previousPath}</p>}
+            <DiffBody file={file} />
+          </div>}
+        </li>
+      })}
+    </ul>
+  </section>
+}
+```
+
+### `apps/web/src/components/ResultDeliveryShell.tsx`
 
 ```tsx
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -977,7 +1361,81 @@ export function ResultDeliveryShell({ board, result, children, initialDeliveryId
 }
 ```
 
-### `apps\web\src\results\board.ts`
+### `apps/web/src/components/WhiteboardReader.tsx`
+
+```tsx
+import { useEffect, useMemo, useRef } from 'react'
+import { Download, X } from 'lucide-react'
+import { whiteboardTaskBoard, whiteboardTaskBoardSchema } from '@pawoffice/scene-office/whiteboard'
+import type { WhiteboardProgress } from '@pawoffice/scene-office/whiteboard'
+import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
+import { officeResultSchema } from '@pawoffice/protocol/office-ui'
+import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
+import { ResultWorkspace } from './ResultWorkspace.tsx'
+import { resultFileBase } from '../results/format.ts'
+import './WhiteboardReader.css'
+
+/**
+ * The single result-reading container. It keeps the existing `<dialog>` open/close, Escape behaviour,
+ * focus restoration and raw-data export while hosting the one-page reader. The dev-only acceptance
+ * preview mounts the same component, so screenshots never show a simplified mock.
+ */
+export function ResultReaderDialog({ board, result, boardId = 'result-reader', initialDeliveryId, onClose, exportable = true }: {
+  board: WhiteboardTaskBoardData; result: OfficeResult; boardId?: string; initialDeliveryId?: string
+  onClose: () => void; exportable?: boolean
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  const content = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const element = dialog.current!
+    const trigger = document.activeElement
+    element.showModal()
+    return () => {
+      element.close()
+      requestAnimationFrame(() => {
+        if (trigger instanceof HTMLElement && trigger.isConnected && !document.querySelector('dialog[open]')) trigger.focus()
+      })
+    }
+  }, [])
+  const download = () => {
+    if (!exportable) return
+    const url = URL.createObjectURL(new Blob([stringifyDocumentObject(board, 2)], { type: 'application/json;charset=utf-8' }))
+    const link = document.createElement('a')
+    link.href = url; link.download = resultFileBase({ ...result, title: board.title || result.title }) + '-whiteboard.json'; link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+  return <dialog className="whiteboard-reader is-result" ref={dialog} aria-labelledby="whiteboard-reader-title" onCancel={onClose}
+    onClick={event => {
+      if (event.target !== event.currentTarget) return
+      const rect = event.currentTarget.getBoundingClientRect()
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose()
+    }}>
+    <header>
+      <div className="whiteboard-reader-heading"><h2 id="whiteboard-reader-title">{initialDeliveryId ? '历史交付' : '本轮成果'}</h2></div>
+      <div className="whiteboard-reader-actions">
+        <button type="button" aria-label="导出全部轮次原始数据" title="导出全部轮次原始数据" disabled={!exportable} onClick={download}><Download size={18} /></button>
+        <button type="button" aria-label="关闭当前成果" title="关闭" onClick={onClose}><X size={20} /></button>
+      </div>
+    </header>
+    <article className="whiteboard-reader-content is-result" ref={content} aria-label="当前成果内容">
+      {board ? <ResultWorkspace key={boardId} board={board} result={result} initialDeliveryId={initialDeliveryId} />
+        : <p className="result-workspace-empty">当前没有可读取的任务信息。</p>}
+    </article>
+  </dialog>
+}
+
+export function WhiteboardReader({ state, boardId, onClose, initialDeliveryId }: {
+  state: Record<string, unknown>; boardId: string; progress: WhiteboardProgress; onClose: () => void
+  initialDeliveryId?: string
+}) {
+  const serialized = JSON.stringify(state)
+  const board = useMemo(() => whiteboardTaskBoard(JSON.parse(serialized)) ?? whiteboardTaskBoardSchema.parse({}), [serialized])
+  const result = useMemo(() => officeResultSchema.parse(board.result), [board])
+  return <ResultReaderDialog board={board} result={result} boardId={boardId} initialDeliveryId={initialDeliveryId} onClose={onClose} />
+}
+```
+
+### `apps/web/src/results/board.ts`
 
 ```ts
 import type { OfficeResult, ResultArtifact, ResultCheck, ResultDocumentsSection, ResultSection } from '@pawoffice/protocol/office-ui'
@@ -1066,7 +1524,7 @@ export function resultArtifactVersionLabel(artifact: ResultArtifact) {
 }
 ```
 
-### `tests\resultBoard.test.mjs`
+### `tests/resultBoard.test.mjs`
 
 ```js
 import assert from 'node:assert/strict'
@@ -1620,9 +2078,160 @@ test('the summary copy and report exports stay available for the single-page rea
 })
 ```
 
+### `tests/resultTypeVisual.test.mjs`
+
+```js
+import assert from 'node:assert/strict'
+import { after, before, test } from 'node:test'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { createTestServer } from './helpers/vite.mjs'
+
+let server, Workspace, fixtures, presentation
+before(async () => {
+  server = await createTestServer()
+  ;({ ResultWorkspace: Workspace } = await server.ssrLoadModule('/apps/web/src/components/ResultWorkspace.tsx'))
+  fixtures = await server.ssrLoadModule('/apps/web/src/dev/resultBoardFixtures.ts')
+  presentation = await server.ssrLoadModule('/apps/web/src/results/presentation.ts')
+})
+after(() => server?.close())
+
+const render = (board, result) => renderToStaticMarkup(createElement(Workspace, { board, result }))
+const countOf = (html, text) => html.split(text).length - 1
+
+/* ------------------------------------------------------------------------------------------------
+ * Data-type visual system — one dedicated form per semantic type (round after the single-page layout)
+ * ---------------------------------------------------------------------------------------------- */
+
+test('reading focus switches with field composition without new protocol fields', () => {
+  const delivery = render(fixtures.sampleBoard, fixtures.sampleResult)
+  assert(delivery.includes('data-reading-mode="delivery"'))
+  assert(delivery.includes('本轮交付'))
+  assert(delivery.includes('result-workspace-delivery'))
+
+  const fact = render(fixtures.typeFactBoard, fixtures.typeFactResult)
+  assert(fact.includes('data-reading-mode="fact"'))
+  assert(!fact.includes('本轮交付'), 'fact results never render a deliverable block')
+  assert(!fact.includes('result-workspace-delivery'))
+  assert(fact.includes('说明与结论'))
+  assert(fact.includes(fixtures.typeFactResult.summary))
+
+  // Both modes keep the no-tabs promise.
+  for (const html of [delivery, fact]) {
+    assert(!html.includes('role="tablist"'))
+    assert(!html.includes('role="tab"'))
+    assert(!html.includes('aria-selected'))
+  }
+})
+
+test('six metric kinds keep distinct semantics instead of one numeric template', () => {
+  const html = render(fixtures.typeMetricsBoard, fixtures.typeMetricsResult)
+  for (const kind of ['value', 'comparison', 'status', 'target', 'text']) {
+    assert(html.includes(`data-kind="${kind}"`), kind)
+  }
+  assert(!html.includes('data-kind="auto"'), 'auto is resolved, never shown as a raw kind')
+  // Comparison gets the two-point bars; status is a lamp + words; target gets a target line.
+  assert.equal(countOf(html, 'class="result-metric-bars"'), 2, 'comparison + auto-with-previous both get bars')
+  assert(html.includes('result-metric-status-dot'))
+  assert(html.includes('result-metric-status-text'))
+  assert(html.includes('result-metric-target-line'))
+  assert(html.includes('result-metric-caption'))
+  assert.equal(countOf(html, 'class="result-metric"'), 6)
+  assert(html.includes('data-emphasis="primary"'))
+  // No invented numbers: only values supplied by the fixture.
+  assert(html.includes('首轮 120 次') || html.includes('首轮 2.9%'))
+})
+
+test('four artifact kinds have their own delivery form and honest fallbacks', () => {
+  const html = render(fixtures.typeArtifactsBoard, fixtures.typeArtifactsResult)
+  for (const kind of ['document', 'image', 'link', 'data']) {
+    assert(html.includes(`data-kind="${kind}"`), kind)
+  }
+  // Document rows, image media slots, link domains and data formats are different structures.
+  assert(html.includes('result-deliverable-media'))
+  assert.equal(countOf(html, 'class="result-deliverable-thumb"'), 1, 'only the legal http(s) image renders an <img>')
+  assert(html.includes('result-deliverable-domain'))
+  assert(html.includes('example.com'))
+  assert(html.includes('result-deliverable-format'))
+  assert(html.includes('JSON'))
+  // Empty URL fallbacks stay honest.
+  assert(html.includes('未提供可用链接'))
+  assert(html.includes('暂无图片可预览'))
+})
+
+test('documents with the exact artifact identity share the preview entry instead of duplicating cards', () => {
+  const html = render(fixtures.typeDeliveryBoard, fixtures.typeDeliveryResult)
+  assert.equal(countOf(html, 'class="result-deliverable"'), 3)
+  assert.equal(countOf(html, 'result-workspace-doc-open'), 3)
+  assert(html.includes('data-kind="documents"'))
+  assert(html.includes('本次更新'))
+  assert(html.includes('本次新增'))
+  assert(!html.includes('关联文件不在本轮交付中'))
+})
+
+test('checks and risks use a review ledger: tally, ratio segments, stale evidence and severity register', () => {
+  const html = render(fixtures.typeReviewBoard, fixtures.typeReviewResult)
+  assert(html.includes('result-workspace-check-band'))
+  assert(html.includes('共 4 项检查：1 项标记通过 · 1 项待处理 · 1 项未通过 · 1 项待补充验证'))
+  assert.equal(countOf(html, 'class="result-workspace-check-ratio-seg"'), 4)
+  for (const status of ['passed', 'pending', 'failed', 'stale']) {
+    assert(html.includes(`data-status="${status}"`), status)
+  }
+  assert(html.includes('待补充验证'))
+  assert(html.includes('原验证版本 type-review-doc-v1，当前版本 v2.0'))
+  assert(html.includes('风险记录'))
+  assert.equal(countOf(html, 'class="result-workspace-risk"'), 3)
+  for (const level of ['high', 'medium', 'low']) assert(html.includes(`data-level="${level}"`), level)
+  for (const status of ['open', 'mitigating', 'closed']) assert(html.includes(`data-status="${status}"`), status)
+})
+
+test('version records are a timeline with three contract states', () => {
+  const html = render(fixtures.typeVersionsBoard, fixtures.typeVersionsResult)
+  assert.equal(countOf(html, 'class="result-workspace-version"'), 3)
+  for (const status of ['draft', 'released', 'rolled-back']) {
+    assert(html.includes(`data-status="${status}"`), status)
+  }
+  for (const label of ['草稿', '已发布', '已回滚']) assert(html.includes(label), label)
+  assert(html.includes('result-workspace-versions'))
+})
+
+test('code changes are a diff list with inline expansion and no fake diffs', () => {
+  const html = render(fixtures.typeChangesBoard, fixtures.typeChangesResult)
+  assert.equal(countOf(html, 'class="result-change-row"'), 24)
+  assert(html.includes('已编辑 24 个文件'))
+  assert(!html.includes('result-diff-popover'), 'inline expansion replaced the top-layer popover')
+  assert(html.includes('aria-expanded="false"'), 'diff stays collapsed on first render')
+  assert(html.includes('二进制'))
+  assert(html.includes('较大文件'))
+  assert(html.includes('原路径：'))
+})
+
+test('api, environments, files and tests each keep their own report shape', () => {
+  const html = render(fixtures.typeSectionsBoard, fixtures.typeSectionsResult)
+  assert(html.includes('data-kind="api"'))
+  assert(html.includes('data-kind="environments"'))
+  assert(html.includes('data-kind="files"'))
+  assert(html.includes('data-kind="tests"'))
+  assert(html.includes('result-workspace-method'))
+  assert(html.includes('result-workspace-env'))
+  assert(html.includes('result-workspace-file'))
+  assert(html.includes('result-workspace-stat'))
+  // Source order of sections is preserved.
+  const kinds = fixtures.typeSectionsResult.sections.map(section => section.kind)
+  let previous = -1
+  for (const kind of kinds) {
+    const index = html.indexOf(`data-kind="${kind}"`)
+    assert(index > previous, `${kind} keeps source order`)
+    previous = index
+  }
+  // Presentation contract still drives status labels only.
+  assert.equal(presentation.resultPresentation(fixtures.typeSectionsBoard, fixtures.typeSectionsResult).key, 'ready')
+})
+```
+
 ## 3. 用户真实样例（逐字节复制）
 
-### `apps/web/src/dev/fixtures/result-ready-round3.json`（isolated result，ready 状态；无 whiteboard.status/deliveries）
+### `result-ready-round3.json`（isolated result，ready 状态）
 
 ```json
 {
@@ -1873,7 +2482,7 @@ test('the summary copy and report exports stay available for the single-page rea
 }
 ```
 
-### `apps/web/src/dev/fixtures/whiteboard-ready-round3.json`（含 3 个历史交付 deliveries）
+### `whiteboard-ready-round3.json`（含 3 个历史交付）
 
 ```json
 {
@@ -2426,40 +3035,33 @@ test('the summary copy and report exports stay available for the single-page rea
 }
 ```
 
-## 4. 样式 token 摘要（视觉一致性核对用）
+## 4. 视觉语言 token 摘要
 
-- 主色板：墨色 `#26332b`、正文 `#4f5d53`、辅助 `#64736a`、分隔线 `#e8ece7`、柔和绿 `#3f6b53`；风险/失败仅在语义需要时使用克制的琥珀 `#8a6b2f` / 砖红 `#a25948`。
-- 圆角：主阅读容器 16px（对话框）、文件条目无卡片（0）、缩略图/方法标记 4–8px；不新增大面积阴影。
-- 字号：标题 30px、结论 26px、区块标题 20px、结构化区块标题 18px、正文 15–15.5px/1.75、辅助 11.5–12.5px、核心数字 32/36px（tabular-nums）。
-- 布局：阅读列 940px（内容 852px）；1787×864 下阅读器 1120×824；断点 900/860/760/520px；移动端无横向溢出、触控目标 36–40px。
-- 未引入新字体、新图标库（仅既有 lucide-react）、第二套品牌色。
+- 色板：墨绿灰 `#26332b` / 正文 `#4f5d53` / 辅助 `#64736a`；强调柔和灰绿 `#3f6b53`；风险仅语义时用琥珀 `#8a6b2f`、砖红 `#a25948`。
+- 字号：标题 30 / 结论 26 / 区块标题 20 / 结构化标题 18 / 正文 15–15.5 / 辅助 11.5–12.5 / 核心数字 32–36。
+- 圆角：阅读容器 16；文件行无卡片；chip 4–999；无大面积阴影。
+- 布局：阅读列 940（内容 852）；1787×864 阅读器 1120×824；断点 900/860/760/520；无横向溢出。
+- 依赖：无新增（图标仍为既有 lucide-react）。
 
 # 附：变更清单与「协议零改动」证明（git 自动生成）
 
-# 变更清单与「协议零改动」证明（自动生成）
-
 - 分支：`feat/result-board-design`
-- 最新提交：`4ce09c8 feat(result-board): polish report composition after visual review`
-- 基线提交（改动前）：`b69f24f`
-- 改动性质：仅前端表现层（`apps/web/**` + 前端测试 + dev-only 验收夹具 + 审核文档）
-
-## 1. 禁止改动范围核验（A01）
+- 最新提交：`893e493 docs(result-board): add ChatGPT review package (prompt, upload list, merged evidence)`
+- 基线：`b69f24f`
 
 命令：`git diff --stat b69f24f..HEAD -- packages server integration package.json package-lock.json`
-
-输出：
 
 ```text
 (空 —— 协议层/服务端/集成契约/依赖无任何改动)
 ```
 
-## 2. 提交改动统计
+改动统计：
 
 ```text
  apps/web/dev/result-board.html                     |   15 +
  apps/web/src/components/MermaidDiagram.css         |    2 +-
  apps/web/src/components/ResultArtifactList.css     |  140 ++
- apps/web/src/components/ResultArtifactList.tsx     |   99 ++
+ apps/web/src/components/ResultArtifactList.tsx     |   99 +
  apps/web/src/components/ResultArtifactPreview.css  |   11 +-
  apps/web/src/components/ResultBlocks.css           |   37 +-
  apps/web/src/components/ResultChanges.css          |    8 +-
@@ -2467,29 +3069,34 @@ test('the summary copy and report exports stay available for the single-page rea
  apps/web/src/components/ResultDeliveryShell.css    |   30 +-
  apps/web/src/components/ResultDeliveryShell.tsx    |   19 +-
  apps/web/src/components/ResultFilePreview.css      |    2 +-
- apps/web/src/components/ResultMetrics.css          |  252 +++
- apps/web/src/components/ResultMetrics.tsx          |  122 ++
+ apps/web/src/components/ResultMetrics.css          |  252 ++
+ apps/web/src/components/ResultMetrics.tsx          |  122 +
  apps/web/src/components/ResultSectionCard.tsx      |   49 +-
- apps/web/src/components/ResultWorkspace.css        | 1671 +++++++-------------
- apps/web/src/components/ResultWorkspace.tsx        |  505 +++---
+ apps/web/src/components/ResultWorkspace.css        | 1671 +++++--------
+ apps/web/src/components/ResultWorkspace.tsx        |  505 ++--
  apps/web/src/components/WhiteboardDetail.css       |    2 +-
  apps/web/src/components/WhiteboardReader.css       |    4 +-
  apps/web/src/components/WhiteboardReader.tsx       |   37 +-
- apps/web/src/dev/fixtures/result-ready-round3.json |  246 +++
- .../src/dev/fixtures/whiteboard-ready-round3.json  |  548 +++++++
- apps/web/src/dev/resultBoardFixtures.ts            |  623 ++++++++
+ apps/web/src/dev/fixtures/result-ready-round3.json |  246 ++
+ .../src/dev/fixtures/whiteboard-ready-round3.json  |  548 +++++
+ apps/web/src/dev/resultBoardFixtures.ts            |  623 +++++
  apps/web/src/dev/resultBoardPreview.css            |   50 +
  apps/web/src/dev/resultBoardPreview.tsx            |   14 +
- apps/web/src/dev/resultBoardPreviewApp.tsx         |  100 ++
+ apps/web/src/dev/resultBoardPreviewApp.tsx         |  100 +
  apps/web/src/results/board.ts                      |   84 +
  apps/web/src/results/format.ts                     |    5 +-
- .../result-board/01-affected-files-and-reuse.md    |  291 ++++
+ .../result-board/01-affected-files-and-reuse.md    |  291 +++
  .../result-board/02-acceptance-self-check.md       |   74 +
  docs/design/result-board/03-test-report.md         |  168 ++
- docs/design/result-board/04-data-matrix.md         |  117 ++
+ docs/design/result-board/04-data-matrix.md         |  117 +
  docs/design/result-board/05-open-issues.md         |   58 +
  docs/design/result-board/06-screenshot-index.md    |   57 +
  docs/design/result-board/README.md                 |   76 +
+ ...256\241\346\240\270\346\235\220\346\226\231.md" | 1620 ++++++++++++
+ ...270\216\347\234\237\346\240\267\344\276\213.md" | 2591 ++++++++++++++++++++
+ ...217\230\346\233\264\350\257\201\346\230\216.md" |  153 ++
+ ...240\270\346\217\220\347\244\272\350\257\215.md" |   72 +
+ ...270\212\344\274\240\346\270\205\345\215\225.md" |   67 +
  .../result-board/screenshots/01-home-1787x864.png  |  Bin 0 -> 747887 bytes
  .../02-result-first-screen-1787x864.png            |  Bin 0 -> 106812 bytes
  .../result-board/screenshots/03-result-full.png    |  Bin 0 -> 198715 bytes
@@ -2499,93 +3106,12 @@ test('the summary copy and report exports stay available for the single-page rea
  .../result-board/screenshots/07-mobile-390x844.png |  Bin 0 -> 68865 bytes
  .../screenshots/08-history-version-compare.png     |  Bin 0 -> 49778 bytes
  .../screenshots/09-history-delivery.png            |  Bin 0 -> 90050 bytes
- docs/design/result-board/screenshots/manifest.json |  285 ++++
- scripts/result-board/capture.mjs                   |  564 +++++++
- tests/resultBoard.test.mjs                         |  549 +++++++
+ docs/design/result-board/screenshots/manifest.json |  285 +++
+ scripts/result-board/capture.mjs                   |  564 +++++
+ tests/resultBoard.test.mjs                         |  549 +++++
  tests/resultPresentation.test.mjs                  |   16 +-
  tests/resultReader.test.mjs                        |   21 +-
  tests/resultWorkspace.test.mjs                     |   53 +-
  tests/whiteboardDetails.test.mjs                   |   10 +-
- 50 files changed, 5553 insertions(+), 1469 deletions(-)
+ 55 files changed, 10056 insertions(+), 1469 deletions(-)
 ```
-
-## 3. 完整文件清单
-
-```text
-apps/web/dev/result-board.html
-apps/web/src/components/MermaidDiagram.css
-apps/web/src/components/ResultArtifactList.css
-apps/web/src/components/ResultArtifactList.tsx
-apps/web/src/components/ResultArtifactPreview.css
-apps/web/src/components/ResultBlocks.css
-apps/web/src/components/ResultChanges.css
-apps/web/src/components/ResultChanges.tsx
-apps/web/src/components/ResultDeliveryShell.css
-apps/web/src/components/ResultDeliveryShell.tsx
-apps/web/src/components/ResultFilePreview.css
-apps/web/src/components/ResultMetrics.css
-apps/web/src/components/ResultMetrics.tsx
-apps/web/src/components/ResultSectionCard.tsx
-apps/web/src/components/ResultWorkspace.css
-apps/web/src/components/ResultWorkspace.tsx
-apps/web/src/components/WhiteboardDetail.css
-apps/web/src/components/WhiteboardReader.css
-apps/web/src/components/WhiteboardReader.tsx
-apps/web/src/dev/fixtures/result-ready-round3.json
-apps/web/src/dev/fixtures/whiteboard-ready-round3.json
-apps/web/src/dev/resultBoardFixtures.ts
-apps/web/src/dev/resultBoardPreview.css
-apps/web/src/dev/resultBoardPreview.tsx
-apps/web/src/dev/resultBoardPreviewApp.tsx
-apps/web/src/results/board.ts
-apps/web/src/results/format.ts
-docs/design/result-board/01-affected-files-and-reuse.md
-docs/design/result-board/02-acceptance-self-check.md
-docs/design/result-board/03-test-report.md
-docs/design/result-board/04-data-matrix.md
-docs/design/result-board/05-open-issues.md
-docs/design/result-board/06-screenshot-index.md
-docs/design/result-board/README.md
-docs/design/result-board/screenshots/01-home-1787x864.png
-docs/design/result-board/screenshots/02-result-first-screen-1787x864.png
-docs/design/result-board/screenshots/03-result-full.png
-docs/design/result-board/screenshots/04-markdown-reading.png
-docs/design/result-board/screenshots/05-changes-diff.png
-docs/design/result-board/screenshots/06-stale-check.png
-docs/design/result-board/screenshots/07-mobile-390x844.png
-docs/design/result-board/screenshots/08-history-version-compare.png
-docs/design/result-board/screenshots/09-history-delivery.png
-docs/design/result-board/screenshots/manifest.json
-scripts/result-board/capture.mjs
-tests/resultBoard.test.mjs
-tests/resultPresentation.test.mjs
-tests/resultReader.test.mjs
-tests/resultWorkspace.test.mjs
-tests/whiteboardDetails.test.mjs
-```
-
-## 4. 工作区状态（未提交内容仅为改动前既有的未跟踪材料，本次未触碰）
-
-```text
-?? docs/design/chatgpt-result-board-handoff/
-?? docs/design/result-board/chatgpt-review/
-?? public/assets/office/ambient/cat-motion-v2.webp
-```
-
-## 5. 复验命令
-
-```bash
-git checkout feat/result-board-design
-node --test tests/resultBoard.test.mjs tests/resultWorkspace.test.mjs tests/resultReader.test.mjs \\
-  tests/resultPresentation.test.mjs tests/whiteboardDetails.test.mjs \\
-  tests/resultHistory.test.mjs tests/resultSectionRouting.test.mjs
-npx tsc -p tsconfig.app.json --noEmit --tsBuildInfoFile .tmp/app.tsbuildinfo
-npx eslint apps/web/src tests scripts
-npm run build
-node scripts/result-board/capture.mjs
-```
-
-## 6. 依赖核验
-
-- `package.json` / `package-lock.json` 相对基线无改动（见第 1 节输出为空）。
-- 未新增 npm 依赖；验收夹具/截图脚本仅使用既有 devDependency（`@playwright/test`、`vite`）。

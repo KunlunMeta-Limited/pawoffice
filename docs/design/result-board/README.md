@@ -22,8 +22,9 @@
 | `03-test-report.md` | 实际执行的命令、真实输出、阻塞原因与权限说明 | 主实现与测试完成后 |
 | `04-data-matrix.md` | 6 metric / 4 artifact / 8 section / 12 block / 10 presentation state 覆盖矩阵 | 第一阶段建模板，验收前更新为最终版 |
 | `05-open-issues.md` | 未完成清单、原因、安全回退形式（禁止请求改协议） | 验收前 |
-| `06-screenshot-index.md` | 规范 §15 要求的 7 张截图索引：路径、证明的验收项、数据来源 | 截图产出后 |
-| `screenshots/` | 截图产物与 `manifest.json`（数据来源） | `fixtures-harness` 负责，本目录不写入 |
+| `06-screenshot-index.md` | 截图索引：既有 9 张验收图 + 本轮 8 张数据类型视觉样张（路径、验收项、数据来源） | 截图产出后 |
+| `07-data-type-visual-system.md` | **本轮设计先行文档**：数据类型（6 metric/4 artifact/8 section/12 block）→ 当前实现 → 新视觉形态 → 交互方式 → 验收截图；含两种阅读重心与五类核心内容规格 | 本轮实施前 |
+| `screenshots/` | 截图产物与 `manifest.json`（17 张：既有 9 + type-01…08） | 验收夹具脚本产出 |
 
 编号不连续（无 `00`）是有意保留：`02`–`06` 对应规范 §14/§15 的验收与提交材料顺序，`01` 为前置源码调查。
 

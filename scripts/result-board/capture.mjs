@@ -5,7 +5,8 @@
  *
  * - Starts the Vite dev server from `apps/web` with the bundled Vite CLI (no new dependencies).
  * - Opens the dev-only preview page `apps/web/dev/result-board.html` (not a production build input).
- * - Captures the seven screenshots required by the acceptance spec into
+ * - Captures the nine existing acceptance screenshots plus the eight data-type samples required by
+ *   `docs/design/result-board/07-data-type-visual-system.md` §5 into
  *   `docs/design/result-board/screenshots/` and writes `manifest.json` with provenance.
  * - Idempotent: previous PNG/manifest files in the output directory are replaced.
  * - Fails loudly on browser console errors or missing UI states; never fabricates a screenshot.
@@ -34,6 +35,11 @@ const dataSources = {
   'frontend-fixture': '前端验收 fixture（非真实数据）',
   home: 'PawOffice 首页（未改动，证明首页零回归）',
 }
+/** One fixture per data type; screenshots `type-01` … `type-08` come from these. */
+const typeFixtureNames = [
+  'type-metrics', 'type-delivery', 'type-artifacts', 'type-review',
+  'type-versions', 'type-changes', 'type-fact', 'type-sections',
+]
 /** Every dev fixture must render without console errors; these markers prove the branch-specific data is on screen. */
 const fixtureSmokeExpectations = {
   sample: ['登录模块交付成果', /需要关注\s*\d+\s*项/],
@@ -42,7 +48,16 @@ const fixtureSmokeExpectations = {
   layouts: ['自定义布局验收', '连续文档', '并排短内容', '网格内容', '轻卡片内容'],
   limits: ['极限数据密度验收', '24 个文件变更', '12 个附件', '8 张画廊', '8 份文档', '24 个区块'],
   states: ['成果 · '],
+  'type-metrics': ['指标类型视觉验收', '待发布', '已达标', '仅覆盖登录模块', /首轮\s*2\.9%/],
+  'type-delivery': ['文档交付与同源文档区', '需求说明', '接口文档', '验收记录', '文档说明（未关联文件）'],
+  'type-artifacts': ['图像 / 外链 / 数据与画廊混合', '登录页截图', '待补外链', '回归用例数据', '待补截图', '页面画廊'],
+  'type-review': ['验证结论与风险登记', '主流程冒烟', '异常路径回归', '性能基线复核', '需求范围检查', '短信验证码频率限制待复核', '旧版本文档已归档'],
+  'type-versions': ['成果版本时间线', '草稿', '已发布', '已回滚'],
+  'type-changes': ['代码变更与行内 diff', '已编辑 24 个文件', 'docs/login-flow.png', '较大文件'],
+  'type-fact': ['说明型成果阅读验收', '说明与结论', '背景与范围', '决策记录'],
+  'type-sections': ['接口 / 环境 / 附件 / 质量报告', '接口清单', '运行环境', '附件清单', '质量报告'],
 }
+const fixtureNames = ['sample', 'history', 'matrix', 'layouts', 'limits', ...typeFixtureNames]
 const presentationStateLabels = {
   draft: '草稿', ready: '已交付', verified: '已验证', rejected: '未通过', conflict: '验证待核对',
   producing: '正在产出', blocked: '产出受阻', failed: '尚无成果', missing: '尚未交付', empty: '暂无成果',
@@ -287,6 +302,349 @@ async function revealText(page, pattern, label) {
   return text
 }
 
+/* -------------------------------------------------------------------------------------------------
+ * Data-type visual samples — `type-01` … `type-08`
+ *
+ * Every shot scrolls its target block to the top of the reader's scroll viewport first, then asserts
+ * the expected data is actually on screen before saving. A missing block or missing data fails the
+ * run instead of producing a plausible-looking but wrong screenshot.
+ * ----------------------------------------------------------------------------------------------- */
+
+async function countOf(page, selector) {
+  return page.evaluate(selector => document.querySelectorAll(selector).length, selector)
+}
+
+async function scrollBlockToTop(page, selectors, label) {
+  const outcome = await page.evaluate(selectorList => {
+    const dialog = document.querySelector('dialog[open]')
+    if (!dialog) return { ok: false, reason: '成果阅读器未打开' }
+    const scroller = dialog.querySelector('.whiteboard-reader-content') ?? dialog
+    let target = null
+    let matched = ''
+    for (const selector of selectorList) {
+      target = dialog.querySelector(selector)
+      if (target) { matched = selector; break }
+    }
+    if (!target) return { ok: false, reason: `未找到目标区块：${selectorList.join(' | ')}` }
+    const scrollerRect = scroller.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    const maxScroll = Math.max(0, Math.round(scroller.scrollHeight - scroller.clientHeight))
+    const targetContentTop = Math.round(scroller.scrollTop + targetRect.top - scrollerRect.top)
+    const wanted = targetContentTop - 8
+    let scrollTop = Math.max(0, wanted)
+    let alignment = 'top'
+    // When the target sits too close to the end it can never reach the viewport top. Align its
+    // bottom instead (or the content bottom) so the whole block stays readable without clipping
+    // the header of a short result.
+    if (wanted > maxScroll) {
+      alignment = 'bottom'
+      scrollTop = Math.max(0, Math.min(maxScroll, targetContentTop + Math.round(targetRect.height) - scroller.clientHeight + 16))
+    }
+    scroller.style.setProperty('scroll-behavior', 'auto', 'important')
+    scroller.scrollTop = scrollTop
+    const after = target.getBoundingClientRect()
+    return {
+      ok: true, matched, alignment, scrollTop: Math.round(scroller.scrollTop),
+      visible: after.bottom > scrollerRect.top + 8 && after.top < scrollerRect.bottom - 8,
+    }
+  }, selectors)
+  if (!outcome.ok) throw new Error(`[${label}] ${outcome.reason}`)
+  if (!outcome.visible) throw new Error(`[${label}] 目标区块未进入视口（scrollTop=${outcome.scrollTop}）`)
+  await page.waitForTimeout(250)
+  log(`[${label}] 已滚动到 ${outcome.matched}（${outcome.alignment === 'top' ? '顶部对齐' : '短内容底部对齐'}，scrollTop=${outcome.scrollTop}）`)
+  return outcome
+}
+
+async function scrollToReaderTop(page, label) {
+  const scrollTop = await page.evaluate(() => {
+    const dialog = document.querySelector('dialog[open]')
+    const scroller = dialog?.querySelector('.whiteboard-reader-content')
+    if (!scroller) return null
+    scroller.style.setProperty('scroll-behavior', 'auto', 'important')
+    scroller.scrollTop = 0
+    return scroller.scrollTop
+  })
+  if (scrollTop === null) throw new Error(`[${label}] 未找到阅读器滚动容器`)
+  await page.waitForTimeout(250)
+  log(`[${label}] 已滚动到阅读器顶部（scrollTop=0）`)
+}
+
+async function nudgeScroll(page, delta, label) {
+  const scrollTop = await page.evaluate(deltaPx => {
+    const dialog = document.querySelector('dialog[open]')
+    const scroller = dialog?.querySelector('.whiteboard-reader-content')
+    if (!scroller) return null
+    scroller.style.setProperty('scroll-behavior', 'auto', 'important')
+    const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+    scroller.scrollTop = Math.max(0, Math.min(maxScroll, scroller.scrollTop + deltaPx))
+    return Math.round(scroller.scrollTop)
+  }, delta)
+  if (scrollTop === null) throw new Error(`[${label}] 未找到阅读器滚动容器`)
+  await page.waitForTimeout(200)
+  log(`[${label}] 额外下移 ${delta}px（scrollTop=${scrollTop}）`)
+}
+
+async function expectCount(page, selector, expected, label) {
+  const actual = await countOf(page, selector)
+  if (actual !== expected) throw new Error(`[${label}] ${selector} 数量应为 ${expected}，实际 ${actual}`)
+}
+
+/**
+ * The text must be rendered AND inside the captured viewport, otherwise the screenshot misses it.
+ * `scope` keeps ambiguous words (二进制 / 待补充验证 …) inside the intended container instead of
+ * matching the first occurrence in the abstract.
+ */
+async function expectTextInViewport(page, text, label, scope) {
+  const root = scope ? page.locator(scope) : page
+  const locator = root.getByText(text, { exact: false })
+  await locator.first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+    throw new Error(`[${label}] 未找到文本：${text}`)
+  })
+  const { height } = page.viewportSize()
+  const count = await locator.count()
+  const boxes = []
+  for (let index = 0; index < Math.min(count, 30); index += 1) {
+    const box = await locator.nth(index).boundingBox().catch(() => null)
+    if (!box) continue
+    boxes.push(box)
+    if (box.y >= 0 && box.y + Math.min(box.height, 1) <= height) return locator.nth(index)
+  }
+  throw new Error(`[${label}] 文本“${text}”不在截图视口内：${JSON.stringify(boxes.slice(0, 3))}`)
+}
+
+async function expectTextExists(page, text, label) {
+  await page.getByText(text, { exact: false }).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+    throw new Error(`[${label}] 未找到文本：${text}`)
+  })
+}
+
+function normalizedText(value) {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+/** Assert a visible container contains all needles; the container itself must be inside the capture. */
+async function expectContainerText(page, container, needles, label) {
+  const locator = (typeof container === 'string' ? page.locator(container) : container).first()
+  await locator.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+    throw new Error(`[${label}] 未找到容器：${typeof container === 'string' ? container : '(locator)'}`)
+  })
+  const { height } = page.viewportSize()
+  const box = await locator.boundingBox()
+  if (!box || box.y < 0 || box.y + Math.min(box.height, 1) > height) {
+    throw new Error(`[${label}] 容器不在截图视口内：${JSON.stringify(box)}`)
+  }
+  const text = normalizedText(await locator.innerText().catch(() => ''))
+  for (const needle of needles) {
+    if (!text.includes(needle)) throw new Error(`[${label}] 容器缺少文本“${needle}”，实际：${text.slice(0, 200)}`)
+  }
+  return locator
+}
+
+/** One entry per data type: fixture, output file, scroll target, and on-screen data assertions. */
+const typeShots = [
+  {
+    fixture: 'type-metrics', file: 'type-01-metrics-kinds.png',
+    scroll: ['.result-workspace-metric-band'],
+    scrollTarget: '.result-workspace-metric-band（短内容底部对齐，保留成果标题与全部 6 项指标）',
+    coverage: '数据类型：6 种 metric kind（value/comparison/status/target/text/auto→comparison）+ emphasis=primary，card 密度 3 列。',
+    async verify(page, label) {
+      await expectCount(page, '.result-metric', 6, label)
+      const kinds = await page.evaluate(() => [...document.querySelectorAll('.result-metric')].map(element => element.getAttribute('data-kind')))
+      for (const kind of ['value', 'comparison', 'status', 'target', 'text']) {
+        if (!kinds.includes(kind)) throw new Error(`[${label}] 缺少 metric kind：${kind}（实际 ${kinds.join(', ')}）`)
+      }
+      if (kinds.includes('auto')) throw new Error(`[${label}] auto 未被解析，仍渲染为 auto`)
+      const band = '.result-workspace-metric-band'
+      for (const text of ['指标类型（6 种 kind）', '待发布', '已达标', '仅覆盖登录模块', '首轮 2.9%', '+0.9pp', '目标 95%']) {
+        await expectTextInViewport(page, text, label, band)
+      }
+    },
+  },
+  {
+    fixture: 'type-delivery', file: 'type-02-delivery-document.png',
+    scroll: ['.result-workspace-delivery'],
+    coverage: '数据类型：document artifacts ×3（Markdown content + versionId/version）+ documents section 精确同源 3 项 + 1 项未关联文档。',
+    async verify(page, label) {
+      await expectCount(page, '.result-deliverable', 3, label)
+      await expectCount(page, '.result-workspace-doc-open', 3, label)
+      for (const text of ['3 份交付文件', '需求说明', '接口文档', '验收记录']) {
+        await expectTextInViewport(page, text, label, '.result-workspace-delivery')
+      }
+      for (const text of ['文档说明（未关联文件）', '交付文档（与上方同源）']) {
+        await expectTextInViewport(page, text, label, '.result-workspace-detail')
+      }
+    },
+  },
+  {
+    fixture: 'type-artifacts', file: 'type-03-artifacts-mixed.png',
+    scroll: ['.result-workspace-delivery'],
+    coverage: '数据类型：document / image（有效 URL + 空 URL）/ link（有效 URL + 空 URL）/ data（JSON content）+ gallery 3 项（含空 image 占位）。',
+    async verify(page, label) {
+      await expectCount(page, '.result-deliverable', 6, label)
+      await expectCount(page, '.result-deliverable-media[data-placeholder="true"]', 1, label)
+      await expectCount(page, '.result-deliverable-thumb', 1, label)
+      await expectCount(page, '.result-workspace-gallery-item', 3, label)
+      // Deterministic media: the one legal image must actually decode (same-origin asset), the empty
+      // URL keeps the dashed placeholder, and both gallery images must be loaded before the capture.
+      await page.waitForFunction(() => {
+        const dialog = document.querySelector('dialog[open]')
+        if (!dialog) return false
+        const loaded = image => image.complete && image.naturalWidth > 0
+        const thumbs = [...dialog.querySelectorAll('.result-deliverable-media img')]
+        const gallery = [...dialog.querySelectorAll('.result-workspace-gallery-item img')]
+        const placeholders = dialog.querySelectorAll('.result-deliverable-media[data-placeholder="true"]').length
+        return placeholders === 1 && thumbs.length === 1 && loaded(thumbs[0])
+          && gallery.length === 2 && gallery.every(loaded)
+      }, null, { timeout: 15000 }).catch(() => {
+        throw new Error(`[${label}] 图片未达到确定性状态（占位/缩略图/画廊解码失败）`)
+      })
+      for (const text of ['待补截图', '暂无图片可预览', '未提供可用链接', '回归用例数据']) {
+        await expectTextInViewport(page, text, label, '.result-workspace-delivery')
+      }
+      await expectTextInViewport(page, '页面画廊（含空图占位）', label, '.result-workspace-detail')
+    },
+  },
+  {
+    fixture: 'type-review', file: 'type-04-review-checks-risks.png',
+    scroll: ['.result-workspace-review'],
+    coverage: '数据类型：checks 4 项（passed / pending / failed / stale 绑定旧 versionId）+ risks 3 项（high·open / medium·mitigating / low·closed）。',
+    async verify(page, label) {
+      const review = '.result-workspace-review'
+      await expectCount(page, '.result-workspace-checks li', 4, label)
+      await expectCount(page, '.result-workspace-checks li[data-status="stale"]', 1, label)
+      await expectCount(page, '.result-workspace-risk', 3, label)
+      const riskStates = await page.evaluate(() => [...document.querySelectorAll('.result-workspace-risk')]
+        .map(element => `${element.getAttribute('data-level')}/${element.getAttribute('data-status')}`))
+      for (const state of ['high/open', 'medium/mitigating', 'low/closed']) {
+        if (!riskStates.includes(state)) throw new Error(`[${label}] 缺少风险组合 ${state}（实际 ${riskStates.join(', ')}）`)
+      }
+      // The stale check must keep its own message inside the stale row, not borrow the abstract wording.
+      await expectContainerText(page, page.locator('.result-workspace-checks li[data-status="stale"]'),
+        ['待补充验证', '原验证版本 type-review-doc-v1，当前版本 v2.0'], label)
+      // Closed risks may sit in a native expandable group; open it so all three states are visible.
+      const closedGroup = page.locator('.result-workspace-risk-closed summary')
+      if (await closedGroup.count()) {
+        await closedGroup.first().click()
+        await page.waitForTimeout(200)
+      }
+      for (const text of ['共 4 项检查', '短信验证码频率限制待复核', '性能基线尚未覆盖冷启动', '旧版本文档已归档']) {
+        await expectTextInViewport(page, text, label, review)
+      }
+      await expectContainerText(page, page.locator('.result-workspace-risk[data-level="low"]'),
+        ['旧版本文档已归档', '已关闭'], label)
+    },
+  },
+  {
+    fixture: 'type-versions', file: 'type-05-versions-timeline.png',
+    scroll: ['.result-workspace-record-versions', '.result-workspace-versions', '.result-version-timeline', '.result-workspace-version'],
+    coverage: '数据类型：versions 3 项（draft / released / rolled-back）纵向时间线。',
+    async verify(page, label) {
+      await expectCount(page, '.result-workspace-version', 3, label)
+      const states = await page.evaluate(() => [...document.querySelectorAll('.result-workspace-version')].map(element => element.getAttribute('data-status')))
+      for (const status of ['draft', 'released', 'rolled-back']) {
+        if (!states.includes(status)) throw new Error(`[${label}] 缺少版本状态：${status}（实际 ${states.join(', ')}）`)
+      }
+      for (const text of ['草稿', '已发布', '已回滚', '成果版本时间线（三种状态）']) {
+        await expectTextInViewport(page, text, label)
+      }
+    },
+  },
+  {
+    fixture: 'type-changes', file: 'type-06-changes-inline-diff.png',
+    scroll: ['.result-workspace-detail .result-changes', '.result-changes', '.result-workspace-detail [data-kind="changes"]'],
+    action: '点击第一条文件行展开行内 unified diff',
+    coverage: '数据类型：changes 24 个文件（added / modified / deleted / renamed / binary / oversized），第一条就地展开真实 unified diff。',
+    async verify(page, label) {
+      await expectCount(page, '.result-change-row', 24, label)
+      await expectTextInViewport(page, '已编辑 24 个文件', label, '.result-changes')
+      // Ambiguous words are asserted inside the exact file row, never against the page abstract.
+      await expectContainerText(page, page.locator('.result-change-row', { hasText: 'docs/login-flow.png' }),
+        ['二进制'], label)
+      await expectContainerText(page, page.locator('.result-change-row', { hasText: 'legacy-report.ts' }),
+        ['较大文件'], label)
+      await expectContainerText(page, page.locator('.result-change-row', { hasText: 'session.ts' }),
+        ['原路径：src/features/auth/storage.ts'], label)
+      await page.locator('.result-change-row').first().click()
+      const diffLine = page.locator('.result-changes').getByText('AUTO_SUBMIT_GUARD', { exact: false }).first()
+      await diffLine.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+        throw new Error(`[${label}] 点击第一条文件行后未展开 diff 内容`)
+      })
+      const box = await diffLine.boundingBox()
+      const { height } = page.viewportSize()
+      if (!box || box.y < 0 || box.y + box.height > height) throw new Error(`[${label}] 行内 diff 不在截图视口内：${JSON.stringify(box)}`)
+      const expanded = await countOf(page, '.result-change-row[aria-expanded="true"]')
+      if (!expanded) throw new Error(`[${label}] 第一条文件行未进入展开态（aria-expanded=true）`)
+    },
+  },
+  {
+    fixture: 'type-fact', file: 'type-07-fact-mode.png',
+    scroll: ['.result-workspace-detail'],
+    coverage: '数据类型：说明型成果（无 artifacts、无 changes）——summary / verdict + 2 个 custom text section + decisions + next + note。',
+    async verify(page, label) {
+      await expectCount(page, '.result-workspace-delivery', 0, label)
+      const mode = await page.evaluate(() => document.querySelector('.result-workspace')?.dataset.readingMode ?? '')
+      if (mode !== 'fact') throw new Error(`[${label}] 阅读模式应为 fact，实际“${mode}”`)
+      await expectCount(page, '.result-workspace-card[data-kind="custom"]', 2, label)
+      await expectCount(page, '.result-workspace-decision', 2, label)
+      for (const text of ['说明与结论', '背景与范围', '结论与依据']) {
+        await expectTextInViewport(page, text, label, '.result-workspace-detail')
+      }
+      await expectTextExists(page, '本轮只提供结论与事实说明', label)
+      await expectTextExists(page, '决策记录', label)
+      await expectTextExists(page, '下一步', label)
+      await expectTextExists(page, '前端验收 fixture，非真实业务数据。', label)
+    },
+  },
+  {
+    fixture: 'type-sections', file: 'type-08-sections-machinery.png',
+    scroll: ['.result-workspace-detail'],
+    scrollTarget: '.result-workspace-detail（api / environments / files 主体与 tests 标题同屏；tests 正文在 DOM 中断言）',
+    coverage: '数据类型：api 3 行 / environments 4 种状态 / files 4 项 / tests（指标 + 进度 + 检查）区块机制。',
+    async verify(page, label) {
+      for (const kind of ['api', 'environments', 'files', 'tests']) {
+        await expectCount(page, `.result-workspace-card[data-kind="${kind}"]`, 1, label)
+      }
+      await expectCount(page, '.result-workspace-file', 4, label)
+      await expectCount(page, '.result-workspace-env', 4, label)
+      await expectCount(page, '.result-workspace-card[data-kind="tests"] .result-workspace-checks li', 3, label)
+      // The four blocks are stacked, so the last one starts near the fold; its header must still be
+      // captured while its body is verified in the DOM to keep the coverage claim honest.
+      for (const text of ['接口清单', '/api/auth/login', '运行环境', '本地开发', '附件清单', '登录页截图.png', '质量报告']) {
+        await expectTextInViewport(page, text, label)
+      }
+      for (const text of ['回归测试进度', '主流程冒烟', '预发布', '旧版灰度', '灰度节点']) {
+        await expectTextExists(page, text, label)
+      }
+    },
+  },
+]
+
+async function captureTypeScreens(browser, context) {
+  const page = await context.newPage()
+  watchErrors(page, 'type-sample')
+  // Deterministic media: any remaining external asset fails fast instead of racing the onError
+  // fallback; the type-artifacts image URLs are same-origin runtime assets.
+  await page.route('**://example.com/**', route => route.abort())
+  for (const shot of typeShots) {
+    const label = shot.file.replace(/\.png$/, '')
+    await openPreview(page, `fixture=${shot.fixture}`)
+    if (shot.top) await scrollToReaderTop(page, label)
+    else await scrollBlockToTop(page, shot.scroll, label)
+    if (shot.extraScroll) await nudgeScroll(page, shot.extraScroll, label)
+    await shot.verify(page, label)
+    await settle(page)
+    await savePng(shot.file, await page.screenshot({ animations: 'disabled' }), {
+      url: `${previewPath}?fixture=${shot.fixture}${shot.action ? `（${shot.action}）` : ''}`,
+      viewport: `${desktopViewport.width}×${desktopViewport.height}`,
+      dataSource: dataSources['frontend-fixture'], fixture: shot.fixture,
+      coverage: shot.coverage,
+      scrollTarget: shot.scrollTarget ?? (shot.scroll?.join(' 或 ') ?? '阅读器顶部'),
+    })
+  }
+  await page.close()
+}
+
+
 /** Render every dev fixture and presentation state once; data-specific markers must be on screen. */
 async function smokeFixtures(browser) {
   const context = await browser.newContext({ viewport: desktopViewport, deviceScaleFactor: 1, locale: 'zh-CN', timezoneId: 'Asia/Shanghai' })
@@ -307,7 +665,7 @@ async function smokeFixtures(browser) {
     results.push({ query, ok: browserErrors.length === before, textLength })
     await page.close()
   }
-  for (const name of ['sample', 'history', 'matrix', 'layouts', 'limits']) await run(`fixture=${name}`, fixtureSmokeExpectations[name])
+  for (const name of fixtureNames) await run(`fixture=${name}`, fixtureSmokeExpectations[name])
   for (const [key, label] of Object.entries(presentationStateLabels)) await run(`state=${key}`, [`成果 · ${label}`])
   await context.close()
   log(`fixture 冒烟校验：${results.filter(item => item.ok).length}/${results.length} 无 console 错误`)
@@ -511,16 +869,24 @@ async function main() {
   await waitForServer(baseUrl)
   log('Vite dev 已就绪')
 
-  let browser, smoke
+  let browser, smoke, captureError
   try {
     browser = await launchBrowser()
     smoke = await smokeFixtures(browser)
     const desktopContext = await browser.newContext({ viewport: desktopViewport, deviceScaleFactor: 1, locale: 'zh-CN', timezoneId: 'Asia/Shanghai' })
-    await captureHome(browser, desktopContext)
-    await captureSampleFlow(browser, desktopContext)
-    await captureHistoryFlow(browser, desktopContext)
-    await desktopContext.close()
+    try {
+      await captureHome(browser, desktopContext)
+      await captureSampleFlow(browser, desktopContext)
+      await captureHistoryFlow(browser, desktopContext)
+      await captureTypeScreens(browser, desktopContext)
+    } finally {
+      await desktopContext.close()
+    }
     await captureMobile(browser)
+  } catch (error) {
+    // A mid-run failure must still produce a manifest for the screenshots that did succeed.
+    captureError = error
+    log(`截图流程中断（已保存 ${captured.length} 张），将照常写出 manifest：${error instanceof Error ? error.message : String(error)}`)
   } finally {
     if (browser) await browser.close()
     await stopServer()
@@ -541,15 +907,18 @@ async function main() {
     branch,
     previewPage: previewPath,
     homePage: homePath,
-    note: 'DEV-ONLY 验收截图。数据来源逐张标注：真实样例为 sample JSON 的逐字节复制，其余为前端验收 fixture。',
+    dataTypeSpec: 'docs/design/result-board/07-data-type-visual-system.md §5',
+    note: 'DEV-ONLY 验收截图。数据来源逐张标注：真实样例为 sample JSON 的逐字节复制，其余为前端验收 fixture。type-01…type-08 为数据类型专用视觉样例，每张记录覆盖的数据类型。',
     dataSources,
     realSamples,
     fixtureSmoke: smoke ?? [],
     consoleErrors: browserErrors,
+    interrupted: captureError ? String(captureError instanceof Error ? captureError.message : captureError) : null,
     screenshots: [...captured].sort((a, b) => a.file.localeCompare(b.file)),
   }
   await writeFile(path.join(outputDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
   log(`已写入 ${path.relative(root, path.join(outputDir, 'manifest.json'))}`)
+  if (captureError) throw captureError
   const failedSmoke = (smoke ?? []).filter(item => !item.ok)
   if (failedSmoke.length) throw new Error(`fixture 冒烟校验出现 console 错误：${failedSmoke.map(item => item.query).join(', ')}`)
   if (browserErrors.length) throw new Error(`页面控制台出现 ${browserErrors.length} 条错误：\n${browserErrors.join('\n')}`)

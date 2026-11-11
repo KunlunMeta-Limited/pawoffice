@@ -1,8 +1,7 @@
-# PawOffice 成果阅读页重构 · 审核材料 A（规范 + 自查 + 测试 + 数据矩阵）
+# PawOffice 成果阅读页重构 · 审核材料 A（规范 + 设计 + 自查 + 测试 + 数据矩阵 + 截图索引）
 
-> 审核对象：feat/result-board-design 分支（commit 4ce09c8），只做前端表现层重构，协议层冻结。
-> 本文件包含：验收规范全文、审核材料 README、01 改动文件与复用能力、02 A01–A28 自查、03 测试报告、04 数据矩阵、05 未完成清单、06 截图索引、截图 manifest。
-> 图片见同批上传的 9 张 PNG（01–09）。
+> 审核对象：feat/result-board-design（commit 以 git log 为准），只做前端表现层重构，协议层冻结。本轮新增「数据类型专用视觉渲染体系」（见 07 文档）。
+> 材料：规范全文、审核 README、01 改动与复用、02 A01–A28 自查、03 测试报告、04 数据矩阵、05 未完成、06 截图索引、07 数据类型视觉体系设计、截图 manifest（17 张）。
 
 ---
 
@@ -467,8 +466,9 @@ DSH 必须用用户提供的 `result-ready-round3.json` 做第一份视觉基准
 | `03-test-report.md` | 实际执行的命令、真实输出、阻塞原因与权限说明 | 主实现与测试完成后 |
 | `04-data-matrix.md` | 6 metric / 4 artifact / 8 section / 12 block / 10 presentation state 覆盖矩阵 | 第一阶段建模板，验收前更新为最终版 |
 | `05-open-issues.md` | 未完成清单、原因、安全回退形式（禁止请求改协议） | 验收前 |
-| `06-screenshot-index.md` | 规范 §15 要求的 7 张截图索引：路径、证明的验收项、数据来源 | 截图产出后 |
-| `screenshots/` | 截图产物与 `manifest.json`（数据来源） | `fixtures-harness` 负责，本目录不写入 |
+| `06-screenshot-index.md` | 截图索引：既有 9 张验收图 + 本轮 8 张数据类型视觉样张（路径、验收项、数据来源） | 截图产出后 |
+| `07-data-type-visual-system.md` | **本轮设计先行文档**：数据类型（6 metric/4 artifact/8 section/12 block）→ 当前实现 → 新视觉形态 → 交互方式 → 验收截图；含两种阅读重心与五类核心内容规格 | 本轮实施前 |
+| `screenshots/` | 截图产物与 `manifest.json`（17 张：既有 9 + type-01…08） | 验收夹具脚本产出 |
 
 编号不连续（无 `00`）是有意保留：`02`–`06` 对应规范 §14/§15 的验收与提交材料顺序，`01` 为前置源码调查。
 
@@ -521,10 +521,240 @@ npx eslint apps/web/src tests
 未产出的截图、未验证的交互，一律不写“通过”。真实样例与前端 fixture 在 `04-data-matrix.md` 中分列标注。
 
 
+---
+
+# 三、07 数据类型视觉体系设计（本轮设计先行文档）
+
+# 成果阅读页 · 数据类型专用视觉渲染体系设计（V2）
+
+> 交付性质：本轮第一交付物（设计先行）。实施完成后再补「验收截图」列的实际路径与最终状态。
+> 依据：`PawOffice_成果阅读页_前端渲染设计与验收规范_V1.0.md`（下称规范）+ 现有数据契约。
+> 范围：仅前端表现层；不新增协议字段/接口/依赖；不改服务端与集成；不恢复 Tab；不改 Section 源顺序、状态语义、历史交付与安全回退。
 
 ---
 
-# 附件：01-affected-files-and-reuse.md
+## 0. 本轮要解决的问题
+
+上一轮只完成了「三 Tab → 单页」和信息重组，虽然去掉了卡片墙，但本质仍是**同一套行/块样式套在不同数据上**：指标是数字、交付是文件行、检查是清单、版本是列表，彼此缺少「这是另一种数据」的辨识度。本轮目标是把**数据语义**翻译成**专用视觉语言**：
+
+1. 6 种 metric、4 种 artifact、8 种 section、12 种 custom block 各自拥有与语义匹配的形态，而不是共用一个「标签 + 内容」模板。
+2. 同一阅读器根据**已有字段组合**切换「交付型 / 说明型」两种阅读重心（纯前端派生，不新增字段）。
+3. 优先重构五类核心内容：文件交付、指标、检查与风险、版本、代码变更。
+4. 视觉继续沿用 PawOffice 的暖中性灰白 + 浅鼠尾草绿、细描边、柔和圆角与既有字体/图标，不引入第二套品牌、深色 IDE 或金融仪表盘风。
+5. 保留已通过的：协议冻结、状态语义（ready≠verified、completed≠verified）、历史交付切换、无 Tab、Section 源顺序、安全回退（不可信 HTML/SVG、空 URL、不可预览格式、二进制 diff）。
+
+---
+
+## 1. 设计原则
+
+| 原则 | 说明 |
+| --- | --- |
+| P1 语义决定形态 | 先问「这是什么数据、用户要拿它做什么」，再决定组件；同一字段集合不共享同一模板。 |
+| P2 两种阅读重心 | 有交付物 → 以「拿到什么、能否直接读」为主；无交付物 → 以「结论与事实正文」为主。由字段组合派生，不写回数据。 |
+| P3 五类专用语言 | 文件交付=文件语言；指标=数字语言；检查/风险=审查语言；版本=时间语言；代码变更=diff 语言。 |
+| P4 统一但不单调 | 共用同一套 token（色板/字号/圆角/间距/动效），差异来自结构、密度、状态与交互，而非换主题。 |
+| P5 交互匹配内容 | 文档→阅读器；diff→就地展开；版本→时间线；长清单→就地展开/折叠；状态→文字+语义色，绝不只靠颜色。 |
+
+---
+
+## 2. 两种阅读重心（纯前端派生）
+
+派生函数（不新增协议字段）：`resultReadingMode(result)`。
+
+| 判定输入 | 条件 | 结果 |
+| --- | --- | --- |
+| 有交付物 | `artifacts.length > 0` 或 `changedFileCount > 0` 或存在 `sections.kind ∈ {documents, files, changes, api, environments, gallery}` | `delivery` |
+| 仅事实说明 | 以上都不满足，但存在 `summary` / `sections`（custom/文本）/ `decisions` / `next` / `note` | `fact` |
+| 两者都有 | 同时满足 | 按 `delivery` 布局，但正文 section 仍保留文章节奏 |
+
+布局差异：
+
+| 区域 | `delivery` | `fact` |
+| --- | --- | --- |
+| 首屏主内容 | 结论后立刻出现「本轮交付」文件带 | 结论后直接进入正文（sections 源顺序），不出现「本轮交付」 |
+| 指标位置 | 交付 → 审查 → 指标 → 详细内容 | 正文 → 指标 → 审查（如有） |
+| 文案 | 「3 份交付文件 · 6 个文件变更」 | 正文标题使用文档语气（如「说明与结论」），不显示交付计数 |
+| 空态 | 无交付时提示「本轮没有文件交付…」 | 不出现交付区域，避免误导性空框 |
+
+> 说明：模式只影响区块顺序与文案，不改变任何数据；Section 之间的相对顺序在任何模式下都保持源数组顺序。
+
+---
+
+## 3. 数据类型 → 当前实现 → 新视觉形态 → 交互方式 → 验收截图
+
+### 3.1 Metrics（6 种 `kind`）
+
+| kind | 关键字段 | 当前实现 | 新视觉形态 | 交互 | 验收截图 |
+| --- | --- | --- | --- | --- | --- |
+| `value` | label/value/unit | 大数字 + 单位 + 标签 | **数字主视觉**：32–36px tabular 数字 + 小号单位，标签在下，无容器 | 静态；`title` 提供完整字段 | `type-01-metrics-kinds.png` |
+| `comparison` | previous/change/trend/tone | 数字 + 小字「首轮 X」 | **双点对比**：当前值最大，前值/变化次级；数值可解析时叠加「前值/当前」双条形；趋势箭头颜色取 `tone`（up≠好） | 静态；悬停显示「首轮 X → 当前 Y」 | `type-01` |
+| `status` | value/tone | 图标 + 大数字样式 | **状态灯 + 文字**：语义圆点/图标 + 状态文字，不用数字字号；tone 仅做语义色 | 静态 | `type-01` |
+| `target` | value/target/targetStatus/progress | 数字 + 细进度条 | **目标刻度表**：当前值 + 目标 chip + 细刻度条（`progress` 有值才画；`target` 可解析为百分比时画目标刻线，否则只显示「目标 95%」文字，不推算） | 静态 | `type-01` |
+| `text` | label/value | 小字号数字版 | **事实句**：18px 短句为主，标签做前缀小字；不加单位/百分号 | 静态 | `type-01` |
+| `auto` | 实际字段 | 按 `previous` 回退为 comparison/value | 沿用既有 `resultMetricKind` 规则解析后渲染，不显示 `auto` 原始形态 | 静态 | `type-01` |
+
+密度（保持既有 1/2/3/4/5–6/7–12 规则）：1 舒展单列；2–3 列；4 两列 2×2；5–6 三列；7–12 紧凑数据行，但每行仍保留 kind 语言（状态点 / 变化 chip / 迷你刻度 / 文本）。`emphasis=primary` 只放大与提高对比，不排序。
+
+### 3.2 Artifacts（4 种 `kind`）
+
+| kind | 关键字段 | 当前实现 | 新视觉形态 | 交互 | 验收截图 |
+| --- | --- | --- | --- | --- | --- |
+| `document` | title/description/version/content/mimeType | 统一文件行（图标 + 标题 + 动作） | **文档行**：文档字形 + 标题（15.5px）+ 版本 chip + 时间/状态 + 描述；主操作「阅读」 | 打开既有 `ResultArtifactPreview`（版本切换/对比/下载/校验） | `type-02-delivery-document.png` |
+| `image` | url/content/version | 行内 40px 缩略图 | **图像卡位**：56px 比例缩略图（无图用统一占位，不造图），标题与版本在下；`查看大图` | 打开大图预览；无可用图时回退文件行 | `type-03-artifacts-mixed.png` |
+| `link` | url/description | 常规行 + 外链按钮 | **外链行**：解析出的域名 chip（如 `example.com`）+ 标题 + 描述 + 外跳箭头；仅合法 http(s) 可打开 | 新窗口打开；空 URL 显示禁用文案，不造假跳转 | `type-03` |
+| `data` | content/mimeType/version | 常规行（图标为表格） | **数据资源行**：表格字形 + 内容格式 chip（由既有 `mimeType` 派生：JSON/CSV/表格/文本）+ 标题；不臆造统计图 | 打开既有预览（表格/文本识别）；不可预览时下载/原文 | `type-03` |
+
+### 3.3 Sections（8 种 `kind`）
+
+| kind | 新视觉形态 | 交互 | 验收截图 |
+| --- | --- | --- | --- |
+| `gallery` | 自适应图片网格：缩略图 + 标题/元数据 + 状态；空图占位 | 有图可点开大图 | `type-03` |
+| `documents` | **版本文件行**：文档字形 + 标题 + 版本 chip + 时间 + 完成状态；与 artifacts 精确同源时点开同一预览入口，不重复整份文件卡 | 打开共享预览入口 | `type-02` |
+| `tests` | **质量报告**：顶部 2–4 个测试指标（数字 + 语义色）+ 进度条 + 逐行检查记录 | 无额外动作；状态文字可读 | `type-04-review.png` |
+| `api` | 接口表：方法短标记（GET/POST/…）+ 等宽 endpoint + 状态 + 时间 | 不伪造「试请求」按钮 | `type-08-sections-machinery.png` |
+| `environments` | 环境列表：状态灯 + 名称 + 版本 chip + 时间 + 状态文字；failed 轻警示 | 静态 | `type-08` |
+| `files` | 附件列表：类型字形 + 文件名 + 类别 + 大小 + 有效链接 | 仅合法 URL 可下载/打开 | `type-08` |
+| `changes` | **变更清单**：状态徽标 + 等宽路径 + 增删行数；见 3.5 | 行内就地展开真实 diff | `type-06-changes-inline-diff.png` |
+| `custom` | 12 种 block 组合（见 3.4），尊重 layout 但不跨 section 排序 | 视 block 而定 | `type-07-custom-blocks.png` |
+
+### 3.4 Custom blocks（12 种）
+
+| block | 新视觉形态 | 交互 |
+| --- | --- | --- |
+| `heading` | h2/h3/h4 文档级字阶与上下间距 | — |
+| `text` | 15–16px Markdown 正文，1.75 行高，表格/代码可读 | 表格横向滚动 |
+| `keyValue` | 双列属性表：标签淡、值突出，tone 色仅用于值 | — |
+| `stats` | 统计数字带（数字 + 单位 + 标签），非卡片 | — |
+| `table` | 真表格：表头、行分隔、数字右对齐、方法/代码等宽 | 横向滚动；仅合法链接可点 |
+| `list` | 状态列表：通过/待处理/未通过小图标 + 文本，不做卡片 | — |
+| `progress` | 标签 + 数值 + 细进度条 | — |
+| `chart` | bar/line/pie 专用 SVG；真实 series 值可读 | 无请求动作 |
+| `image` | 原比例图片 + 说明；空 URL 统一占位 | 现有大图能力 |
+| `diagram` | Mermaid 渲染；失败显示源文本，不执行脚本 | 复制源文本 |
+| `callout` | 低饱和底 + 细边 + 小图标；info/success/warning/danger 克制区分 | — |
+| `divider` | 细分隔线/留白 | — |
+
+### 3.5 五类核心内容的组件规格
+
+#### A. 文件交付（delivery language）
+- 行高 64–76px；标题 15.5px、描述 12.5px、元信息 11.5–12px；版本用 chip，动作右对齐（阅读/查看大图/打开链接；复制/下载为次级）。
+- 文件类型差异见 3.2；`change`（新增/更新/移除/沿用）为轻量徽标。
+- 无交付物时**不渲染交付区**；文档区只有事实文本时走 `fact` 模式。
+- 键盘：行内动作可 Tab、Enter 打开；预览/Escape/焦点恢复沿用既有实现。
+
+#### B. 指标（number language）
+- 6 种 kind 各有专属结构（见 3.1）；数字 tabular-nums；单位不换行拆行。
+- 密度 1/2/3/4/5–6/7–12；7–12 行走紧凑数据行，但保留状态点/变化 chip/迷你刻度。
+- `tone`、`trend`、`targetStatus` 只影响语义色与图标，不改变数值与顺序。
+
+#### C. 检查与风险（review language）
+- 顶部**验证结论带**：`通过 / 待处理 / 未通过 / 待补充验证` 四类计数 + 比例条（由计数派生）；禁止出现「3 项通过」这类把失效项算通过的口径。
+- 检查行：状态图标 + 条目 + 状态文字；`passed` 降级为次要小字；`pending/failed/stale` 保留完整可读并高亮。
+- 失效版本：显示「待补充验证」+「原验证版本 prd-v1，当前版本 v2.0」，不加绿通过态。
+- 风险登记：等级（高/中/低）+ 状态（待处理/处理中/已关闭）+ 负责人 + 说明；已关闭项弱化并可归入可展开分组。
+
+#### D. 版本（time language）
+- 纵向时间线：节点（released 实心绿 / draft 空心 / rolled-back 红）+ 版本标识 chip + 说明 + 作者/时间 + 状态文字。
+- 与「历史交付选择器」区分：后者仍是顶部下拉（既有能力），版本时间线只表达成果版本记录。
+
+#### E. 代码变更（diff language）
+- 头部：`已编辑 N 个文件` + 总增删行 + 按状态计数（新增/修改/删除/重命名）。
+- 文件行：状态徽标 + 等宽路径（重命名显示旧路径）+ 增删行数 + 二进制/较大标记。
+- 交互：**行内就地展开**真实 unified diff（按钮 `aria-expanded`，键盘可操作，Esc 收起）；二进制/超限不造假文本 diff。
+
+### 3.6 说明型成果（fact mode）规格
+
+- 结论（summary）作为文章导语；`verdict` 作为验收批注。
+- 不出现「本轮交付」区域；正文 sections 按源顺序以文章节奏呈现（正文宽 760–860px）。
+- 指标作为一条数字带（如果有）；检查/风险作为审查附录；决策/任务/下一步按记录呈现。
+- 示例：只有 `summary + custom/text sections + decisions + next + note` 的成果。
+
+---
+
+## 4. 共用视觉语言
+
+| Token | 取值 |
+| --- | --- |
+| 背景/面板 | 页面暖灰白；内容白底，无纸张纹理、无大面积高饱和底色 |
+| 主文字 | `#26332b`（墨绿灰） |
+| 正文 | `#4f5d53` |
+| 辅助 | `#64736a`（对比度 ≥ 4.5） |
+| 强调 | 柔和灰绿 `#3f6b53`；不使用金棕/霓虹/第二套主题 |
+| 风险/失败 | 仅在语义需要时出现：琥珀 `#8a6b2f`、砖红 `#a25948`，克制使用 |
+| 字号 | 标题 30；结论 26；区块标题 20；结构化标题 18；正文 15–15.5/1.75；辅助 11.5–12.5；核心数字 32/36 |
+| 圆角 | 主阅读容器 16；文件行/表 0–10；chip/徽标 4–999；无大面积阴影 |
+| 图标 | 既有 lucide-react，16–20px 为主 |
+| 动效 | 展开/悬停 120–200ms；尊重 reduced-motion |
+| 无障碍 | 状态文字化、非纯色；触控目标 ≥36–40px；键盘可达；弹层 Escape/焦点恢复 |
+
+---
+
+## 5. 验收样例（真实浏览器截图，≥6 种不同语义）— 已产出
+
+截图目录：`docs/design/result-board/screenshots/`；全部为真实浏览器（Playwright + Chromium）1787×864 渲染，数据来源见 `screenshots/manifest.json`。既有 9 张验收截图同批保留（其中 03 完整长图更新为 1121×2588）。
+
+| # | 截图（actual path） | 覆盖类型 | 生成方式 |
+| --- | --- | --- | --- |
+| 1 | `screenshots/type-01-metrics-kinds.png` | 6 种 metric kind（value/comparison/status/target/text/auto）+ emphasis | `?fixture=type-metrics` |
+| 2 | `screenshots/type-02-delivery-document.png` | document artifact ×3 + documents section 精确同源 + 未关联项 | `?fixture=type-delivery` |
+| 3 | `screenshots/type-03-artifacts-mixed.png` | document/image(有效+空)/link(有效+空)/data + gallery | `?fixture=type-artifacts` |
+| 4 | `screenshots/type-04-review-checks-risks.png` | checks（passed/pending/failed/stale）+ risks（高/中/低 × 待处理/处理中/已关闭） | `?fixture=type-review` |
+| 5 | `screenshots/type-05-versions-timeline.png` | versions（draft/released/rolled-back）纵向时间线 | `?fixture=type-versions` |
+| 6 | `screenshots/type-06-changes-inline-diff.png` | changes 24 文件（新增/修改/删除/重命名/二进制/较大）+ 首行行内 diff | `?fixture=type-changes` |
+| 7 | `screenshots/type-07-fact-mode.png` | 说明型成果（无 artifacts/changes）正文阅读 | `?fixture=type-fact` |
+| 8 | `screenshots/type-08-sections-machinery.png` | api/environments/files/tests 四类区块机制 | `?fixture=type-sections` |
+
+### 5.1 实施结果（与设计稿的对应）
+
+- 阅读重心：`results/readingMode.ts` 纯前端派生 `delivery | fact`；根节点输出 `data-reading-mode`，fact 模式不渲染「本轮交付」、正文前置并显示「说明与结论」，delivery 模式保持交付优先。**未新增任何协议字段**。
+- 指标：`ResultMetrics` 6 种 kind 各自结构（数字主视觉 / 双点对比+可选双条 / 状态灯+文字 / 目标 chip+刻线+进度 / 事实句 / auto 解析）；1/2/3/4/5–6/7–12 密度保留。
+- 文件交付：`ResultArtifactList` 4 种 artifact 专用行（document 文档行、image 56px 缩略图或占位、link 域名 chip、data mimeType 派生格式 chip）；行高压缩到 74–77px（规范 64–76 区间附近）；图片加载失败回退为统一虚线占位。
+- 检查与风险：`ResultReviewLog` 四类计数结论带 + 比例条（计数派生，无新数字）、passed 降级、failed/stale 高亮并给出「原验证版本 → 当前版本」；`风险记录` 等级/状态/负责人/说明，closed 弱化。
+- 版本：`ResultVersionTimeline` 纵向时间线（released 实心绿 / draft 空心 / rolled-back 红），与历史交付下拉区分。
+- 代码变更：`ResultChanges` 保留 24 行文件清单与真实 diff，交互从浮层改为**行内就地展开**（`aria-expanded`，Enter/Space 展开、Esc 收起），binary/oversized 不造假。
+- 8 类 section / 12 种 block 的既有实现保留；`documents/files/gallery` 重做为交付语言的版本行/附件行/图片网格。
+
+### 5.2 与设计稿的偏差（均已评估，不影响验收）
+
+1. `link` 类型统一走外链新窗口（即使有 versionId 也不进预览 dialog），避免把外链当作本地文件；`document/image/data` 的版本预览/对比完全沿用既有能力。
+2. `data` 的格式 chip 只由既有 `mimeType` 派生（JSON/CSV/表格/文本/未知），不猜扩展名或业务含义。
+3. 已关闭风险采用「同列表弱化」而非折叠分组——若折叠会隐藏验收需要的 closed 状态证据（A18 要求三种风险状态可见）。
+4. 指标对比双条仅在 value/previous 均可安全解析为数字时出现；散文式前值回退纯文本（不臆造）。
+5. 图片缩略图在合法 URL 但加载失败时回退为占位（不显示破图）；`thumb` 仍只在合法 http(s) url 时进入 DOM。
+6. 12 种 custom block 的视觉语言沿用上一轮实现（本轮优先五类核心内容），未新增依赖或图表库。
+
+---
+
+## 6. 本轮验收标准（替代「去掉 Tab / 功能通过 / 无卡片墙」）
+
+对每一类数据（6 metric、4 artifact、8 section、12 block + 检查/风险、版本、代码变更、两种阅读模式）逐项判断：
+
+1. **语义匹配**：形态是否由数据语义决定（例：comparison 有对比关系、target 有目标参照、status 不是数字、diff 是 diff）。
+2. **信息层级**：主值/标题/辅助信息有明确层级，能一眼区分。
+3. **视觉辨识度**：与其它类型并列时能否被认出是另一种数据，而非同一模板换字。
+4. **交互适配**：阅读/展开/跳转/版本切换等方式与内容匹配，无假按钮。
+5. **安全与回退**：空值/不可预览/不可信内容/二进制/超限有诚实回退。
+6. **不变量**：协议零改动、无 Tab、Section 源顺序、状态语义、历史交付、无新依赖、与 PawOffice 风格一致。
+7. **证据**：≥6 张真实浏览器类型样例 + 既有 9 张验收截图 + 测试/构建结果。
+
+---
+
+## 7. 实施拆分（本轮）
+
+| 工作项 | 内容 | 负责 |
+| --- | --- | --- |
+| 设计文档 | 本文档 | Lead |
+| 指标视觉体系 | `ResultMetrics` 6 kind 专用形态 + 密度 | 前端实现 |
+| 交付视觉体系 | `ResultArtifactList` 4 kind 专用形态 + documents/files/gallery | 前端实现 |
+| 审查/版本/变更体系 | `ResultReviewLog`、`ResultVersionTimeline`、`ResultChanges` 行内 diff | 前端实现 |
+| 阅读重心 | `resultReadingMode` + `ResultWorkspace` 组合 | Lead |
+| 类型样例夹具与截图 | type-* fixtures + 预览页 + 截图脚本 | 验收夹具实现 |
+| 回归与证据 | 测试/构建/截图/材料更新 | Lead + 审核材料 |
+
+
+---
+
+# 四、01–06 审核材料
 
 # 01 改动前源码调查：受影响前端文件清单 + 现有复用能力表
 
@@ -818,11 +1048,6 @@ OfficeCanvas.tsx:22       <WhiteboardReader … state={controller.whiteboard.sta
 
 约束未变：协议、服务端、集成、依赖零改动；复用的既有能力（`ResultDeliveryShell` 历史切换、`ResultArtifactPreview` 预览/版本对比、`ResultChanges` diff、`ResultBlocks` 原语、`presentation/checks/sections` 判定）均未重写。
 
-
----
-
-# 附件：02-acceptance-self-check.md
-
 # 02 A01–A28 验收自查表
 
 > 判定依据：规范 §14；执行证据来自 `03-test-report.md`（命令与真实输出）、`04-data-matrix.md`（类型覆盖）与
@@ -866,14 +1091,14 @@ OfficeCanvas.tsx:22       <WhiteboardReader … state={controller.whiteboard.sta
 
 | 编号 | 等级 | 通过条件 | 证据 | 结论 |
 | --- | --- | --- | --- | --- |
-| A11 | P1 | 6 类 metric 各有可读且语义准确表现 | `tests/resultBoard.test.mjs` 覆盖 `auto→comparison/value`、comparison、value、status、target、text；卡/紧凑两种密度与 `emphasis` 不排序；dense 行补全 target/comparison 语义；真实样例三条不复算 | **通过**（无独立类型截图，见 05） |
-| A12 | P1 | 4 类 artifact 可读可用；URL/内容为空有正确回退 | `tests/resultBoard.test.mjs`「four artifact kinds…」覆盖 document/image/link/data；**空 artifact 回退已修复**：`versionId` 存在但无 `content`/合法 http(s) URL 时不再给预览主操作，image 显示禁用文案 `暂无图片可预览`、document 显示 `暂无正文或文件地址`（`aria-disabled="true"`）；空外链不生成假跳转；空图片不伪造 `<img>`；真实样例仅 document，其余由 `matrix`/`limits` fixture 覆盖 | **通过** |
-| A13 | P1 | 8 类 section 全覆盖 | `tests/resultBoard.test.mjs` 断言 gallery/documents/tests/api/environments/files/changes/custom 与源顺序；`limits` 夹具覆盖 8 类上限数量 | **通过**（类型矩阵无独立截图，见 05） |
-| A14 | P1 | 12 类 block 全覆盖或安全信息回退 | `tests/resultBoard.test.mjs` 断言 12 种 `data-block-type`；未知类型由 `FallbackBlock` 回退（`ResultBlocks.tsx` 未改）；Mermaid SSR 保留源文本 | **通过**（同上） |
+| A11 | P1 | 6 类 metric 各有可读且语义准确表现 | **本轮改为 6 种 kind 各自专用形态**：value 数字主视觉 / comparison 当前值+前值+变化+可选双条 / status 状态灯+文字（不借数字字号）/ target 目标 chip+进度+可解析时的目标刻线 / text 事实句 / auto 按既有规则解析；1/2/3/4/5–6/7–12 密度保留，emphasis 只放大不排序。测试：`tests/resultTypeVisual.test.mjs`（kind 结构、bars、status dot、target line）、`tests/resultBoard.test.mjs`（密度/锚点）；截图 `type-01-metrics-kinds.png` |
+| A12 | P1 | 4 类 artifact 可读可用；URL/内容为空有正确回退 | **本轮 4 种 artifact 有不同交付形态**：document 文档行 / image 56px 媒体位（合法 URL 才渲染 `<img>`，加载失败回退虚线占位）/ link 域名 chip + 外跳 / data 由既有 mimeType 派生格式 chip；空 URL/空图/空外链禁用文案与 `aria-disabled` 保留。测试：`tests/resultTypeVisual.test.mjs`「four artifact kinds…」+ `tests/resultBoard.test.mjs`；截图 `type-03-artifacts-mixed.png` |
+| A13 | P1 | 8 类 section 全覆盖 | 8 类 section 全部有专用形态：gallery 图片网格 / documents 版本文件行（精确同源进同一预览）/ tests 质量报告 / api 接口表 / environments 环境列表 / files 附件行 / changes 变更清单（行内 diff）/ custom 原语组合；源顺序由 `tests/resultTypeVisual.test.mjs` 与 `tests/resultBoard.test.mjs` 断言；截图 `type-08-sections-machinery.png`、`type-06-changes-inline-diff.png` |
+| A14 | P1 | 12 类 block 全覆盖或安全信息回退 | 12 种 block 由既有 `ResultBlocks` 渲染（heading/text/keyValue/stats/table/list/progress/chart/image/diagram/callout/divider），本轮未改其安全回退；`tests/resultBoard.test.mjs` 断言 12 种 `data-block-type`、未知类型 `FallbackBlock`、Mermaid 源文本保留；截图 `type-07-fact-mode.png`（text 正文）与 `type-08`（区块机制） |
 | A15 | P1 | stack/columns/grid/cards 在区块内部有效、窄屏不破坏阅读 | `tests/resultBoard.test.mjs`「four custom layouts…」+ matrix 8 section 顺序；CSS 复用 `ResultBlocks.css` 既有四种 layout | **通过** |
 | A16 | P1 | 匹配 artifactId+versionId 的文档共享预览入口；不按标题猜关联 | `tests/resultBoard.test.mjs`：真实样例 3 个 `.result-workspace-doc-open`；matrix 2 个；错误版本/同名未绑定共 0 个且显示“关联文件不在本轮交付中”；截图 04 | **通过** |
 | A17 | P1 | `versionId` 决定版本身份；对比、hash 校验继续有效；失败不伪装成功 | 既有 `tests/resultHistory.test.mjs`（sha256 校验失败、版本对比边界）；`ResultArtifactPreview` 未改；截图 08（版本下拉 + 与当前版本比较） | **通过** |
-| A18 | P1 | 风险等级/处置状态、任务 4 态、版本 3 态、检查 3 态文案正确 | `tests/resultBoard.test.mjs`「risks, tasks, versions and check states…」断言 high/closed、todo/doing/blocked/done、draft/released/rolled-back、passed/pending/failed/stale | **通过** |
+| A18 | P1 | 风险等级/处置状态、任务 4 态、版本 3 态、检查 3 态文案正确 | **本轮改为审查语言与版本时间线**：checks 结论带 + 四类计数比例条、passed 降级、failed/stale 高亮并给出版本差异；风险登记（高/中/低 × 待处理/处理中/已关闭）；版本纵向时间线（草稿空心/已发布实心绿/已回滚红）。测试：`tests/resultTypeVisual.test.mjs`（checks/risks/versions）、`tests/resultBoard.test.mjs`（文案与 data-*）；截图 `type-04-review-checks-risks.png`、`type-05-versions-timeline.png` |
 | A19 | P1 | 现有白板/历史样例验证；失败局部显示且不拿当前版本冒充历史 | 真实 `whiteboard-ready-round3.json` 夹具：`tests/resultBoard.test.mjs` 历史切换（delivery-2 提示/返回当前成果/历史正文）、缺失目标只显示局部 alert；截图 09；`tests/resultHistory.test.mjs` 校验失败隔离 | **通过** |
 | A20 | P1 | metrics12、artifacts8、sections8、blocks24、checks12、tasks12 等不溢出不丢项 | `tests/resultBoard.test.mjs`「extreme counts…」：12 指标紧凑行、8 artifacts、8 sections、8 gallery、12 files、24 changes、24 blocks、12 checks、12 tasks、8 versions/risks/decisions/next | **通过**（无极限密度截图，见 05） |
 | A21 | P1 | summary-only、artifact-only、空结果、部分字段为空均无死白块/虚假占位 | `tests/resultBoard.test.mjs`「empty, summary-only and artifact-only…」「a result with only a note…」「ten presentation states」 | **通过** |
@@ -884,12 +1109,28 @@ OfficeCanvas.tsx:22       <WhiteboardReader … state={controller.whiteboard.sta
 | 编号 | 等级 | 通过条件 | 证据 | 结论 |
 | --- | --- | --- | --- | --- |
 | A23 | P2 | 字体/颜色/圆角/阴影/图标统一沿用 PawOffice，不出现新品牌 | 新组件沿用 `--result-*` token（`ResultWorkspace.css:2-11` 等）；未引入新依赖/字体/第二套主题；仅成果域 CSS 变化；截图 02/03 | **部分**：代码层面未创新品牌；视觉统一性需审核方按截图判定（本代理无法读图） |
-| A24 | P2 | 首屏 title+summary 最醒目、文件入口清楚、验证缺口可见、其余降权 | 组合式重构后实测（Playwright 几何）：1787×864 首屏内依次出现标题(y≈96–135)、成果状态(147–171)、结论(211–248)、验收意见(264–287)、需要关注 3 项(301–321) 与**全部 3 份交付文件**(418–630，行高 70–71px)，阅读器 1120×824；`需要关注 3 项` 与 `3 份交付文件` 有测试断言；截图 02 | **通过（结构/几何自动化证据）**；视觉评分仍由审核方判定 |
-| A25 | P2 | 不出现 5–8 张等权重卡片；长内容可控可读 | 本轮组合式重构：交付改为无卡片文件带（无巨型类型图标，16px 内联 Glyph，行高 70px）；指标改为**无边框数字带**（数字在上、标签在下，1/2/3/4/6 网格与 7–12 紧凑行由测试断言）；`documents` 与 `artifacts` 精确同源时改为**单行文档索引**（同一预览入口，不再重复整份文件列表）；检查项中 `passed` 降级、`failed/stale` 高亮；决策/任务/版本改为**三栏紧凑记录**；整页高度从 3334px 降到 2220px（-33%），首屏即可读完三份交付 | **通过（结构/几何自动化证据）**；视觉评分仍由审核方判定 |
+| A24 | P2 | 首屏 title+summary 最醒目、文件入口清楚、验证缺口可见、其余降权 | 实测（Playwright 几何 + 本轮视觉复核）：1787×864 首屏内依次出现标题(96–135)、成果状态(147–171)、结论(211–248)、验收意见(264–287)、需要关注 3 项(301–321) 与 **3 份交付文件**(约 418–640，行高 74–77px)，验证结论带在首屏底部可见；`需要关注 3 项`/`3 份交付文件` 有测试断言；截图 02 | **通过（结构/几何/视觉复核证据）**；最终视觉评分仍由审核方判定 |
+| A25 | P2 | 不出现 5–8 张等权重卡片；长内容可控可读 | 本轮建立数据类型专用视觉体系：交付文件带（74–77px 行、无卡片）、无边框指标带（6 kind 专属形态、1/2/3/4/5–6/7–12 密度）、审查结论带+四段比例条、版本时间线、行内 diff、说明型/交付型两种阅读模式；沿用首页暖灰白+浅鼠尾草绿，无新品牌/无新依赖；截图 type-01…type-08 + 03 | **通过（类型形态/结构/视觉复核证据）**；最终视觉评分仍由审核方判定 |
 | A26 | P2 | 1280/1440/1787/390 适配；无预期外全页横向滚动 | `scripts/result-board/capture.mjs` 在桌面与手机视口对每个 fixture 断言 `scrollWidth - clientWidth <= 0`（无横向溢出）；截图 1787×864 与 390×844 存在；移动端点击区域断言 38/36/40px（Lead 的 Playwright 核查）。**注：为自动化脚本断言，非人工视觉评分** | **通过（自动化证据）** |
 | A27 | P2 | 键盘可触达、状态非纯色、文本可读、浮层焦点/关闭正确 | Lead 用 Playwright 实测：Tab 焦点可达「阅读」、Enter 打开预览、Escape 关闭且焦点返回触发按钮、无重复 id、状态均有文字标签、正文对比度脚本检查 0 项 < 4.5；测试同时断言状态文案（非纯色）与 `<dialog>` 关闭/焦点恢复实现保留 | **通过（自动化证据）** |
-| A28 | P2 | 指定尺寸提交“首页未改 + 成果首屏 + 完整页 + 文件预览 + 检查异常”证据 | 最终重截完成：`manifest.json`（generatedAt `2026-11-11T12:45:00Z`）记录 9 张截图（01 首页、02 首屏 1787×864、03 完整长图、04 文档正文、05 diff、06 检查异常、07 手机、08 版本对比、09 历史交付），`fixtureSmoke` 15 项全部 ok、`consoleErrors: []`；截图 02 记录阅读器 1120×824、手机记录点击区域 38/36/40px | **通过**（材料齐备；视觉评分由审核方完成） |
+| A28 | P2 | 指定尺寸提交“首页未改 + 成果首屏 + 完整页 + 文件预览 + 检查异常”证据 | 最终重截：`manifest.json` 记录 **17 张**（既有 9 张 + `type-01…type-08`），`interrupted: null`、`consoleErrors: []`、`fixtureSmoke 23/23`；03 完整长图 1121×2588；type-* 覆盖 6 metric kind / 4 artifact kind / checks+risks / versions / changes+inline diff / fact mode / section machinery；截图 01–09 与 type-01–type-08 | **通过**（材料齐备；视觉评分由审核方完成） |
 
+
+## 本轮补充（第三轮：数据类型专用视觉体系）
+
+> 设计文档：`07-data-type-visual-system.md`（映射表：数据类型 → 当前实现 → 新视觉形态 → 交互方式 → 验收截图）。
+
+| 验收点（本轮新增） | 实现 | 证据 |
+| --- | --- | --- |
+| 6 种 metric 各有专属形态（不是同一模板换字） | `ResultMetrics`：数字主视觉 / 双点对比+可选双条 / 状态灯+文字 / 目标 chip+刻线+进度 / 事实句 / auto 解析 | `tests/resultTypeVisual.test.mjs`；`type-01-metrics-kinds.png` |
+| 4 种 artifact 各有交付语言 | `ResultArtifactList`：文档行 / 56px 媒体位 / 域名 chip / 格式 chip；空值诚实回退 | `tests/resultTypeVisual.test.mjs`；`type-02`、`type-03` |
+| 检查与风险 = 审查语言 | `ResultReviewLog`：四类计数结论带+比例条、stale 版本差异、passed 降级、风险登记（等级/状态/负责人） | `tests/resultTypeVisual.test.mjs`；`type-04` |
+| 版本 = 时间语言 | `ResultVersionTimeline`：纵向节点（draft 空心 / released 实心 / rolled-back 红）+ 版本 chip + 作者/时间 + 状态 | `tests/resultTypeVisual.test.mjs`；`type-05` |
+| 代码变更 = diff 语言 | `ResultChanges`：文件状态/增删行/路径；点击**行内就地展开**真实 unified diff（`aria-expanded`、Esc 收起），二进制/超限不造假 | `tests/resultTypeVisual.test.mjs` + Playwright 交互实测；`type-06` |
+| 两种阅读重心 | `results/readingMode.ts` 由字段组合派生 `delivery/fact`；`data-reading-mode`；fact 模式不渲染交付区、正文前置并显示「说明与结论」 | `tests/resultTypeVisual.test.mjs`；`type-07`、`sample` 02/03 |
+| 既有不变量保持 | 协议零改动、无 Tab、Section 源顺序、历史交付、安全回退、无新依赖 | A01/A03/A09/A19/A22 既有证据 + `git diff` 证明 |
+
+已知偏差（均已在 07 §5.2 说明）：link 统一外链新窗口；data 格式只由 mimeType 派生；closed 风险采用同列表弱化而非折叠；comparison 双条仅在可安全解析数字时出现；图片/画廊加载失败回退占位。
 ## 结论
 
 - **门槛一（A01–A10）：全部通过**，可进入视觉评审。
@@ -898,11 +1139,6 @@ OfficeCanvas.tsx:22       <WhiteboardReader … state={controller.whiteboard.sta
 - **门槛四（A23–A28）：A26/A27 通过（自动化脚本/Playwright 证据）、A28 通过（最终 9 张截图 + manifest）；
   A23–A25 为“部分”**，原因是视觉主观判定需审核方完成（本代理无法读图），已在 05 列出补充方式，不虚报为通过。
 
-
-
----
-
-# 附件：03-test-report.md
 
 # 03 测试报告（实际执行记录）
 
@@ -1072,11 +1308,21 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 | 截图 | `node scripts/result-board/capture.mjs` | 9 张重新产出，`fixtureSmoke` 15/15 ok，`consoleErrors: []`；03 完整长图 1121×2220 |
 | 交互回归（Playwright 实测） | 打开预览 / Escape 关闭且焦点回到「阅读」/ 复制摘要写入剪贴板 / 下载报告 `登录模块交付成果.md` / diff 13 行 / 文档索引打开同一预览入口 | 全部通过，无 console 错误 |
 | 对比度 | 脚本遍历 4 个 fixture 的可见文本，检查 CSS 颜色与等效背景对比度 | 0 项低于 4.5 |
+## 7. 第三轮（数据类型专用视觉体系）执行记录
 
+> 设计：`07-data-type-visual-system.md`。本轮只改前端表现层（新增/重写类型组件与 dev-only 夹具），协议/服务端/依赖未变。
 
----
+| 检查 | 命令 | 结果 |
+| --- | --- | --- |
+| 新增类型视觉测试 | `node tests/resultTypeVisual.test.mjs` | **8/8 pass，exit 0**（阅读模式、6 metric、4 artifact、documents 同源、review/risks、versions、inline changes、sections 机制） |
+| 既有 + 新增结果测试 | `node --test tests/resultTypeVisual.test.mjs tests/resultBoard.test.mjs tests/resultWorkspace.test.mjs tests/resultReader.test.mjs tests/resultPresentation.test.mjs tests/whiteboardDetails.test.mjs tests/resultHistory.test.mjs tests/resultSectionRouting.test.mjs` | **88/88 pass，exit 0** |
+| 类型检查 | `npx tsc -p tsconfig.app.json --noEmit --tsBuildInfoFile .tmp/final.tsbuildinfo` | exit 0 |
+| Lint | `npx eslint apps/web/src tests scripts` | exit 0 |
+| 构建 | `npm run build` | **exit 0**（`✓ built in 920ms`） |
+| 类型截图 | `node scripts/result-board/capture.mjs` | **17 张**（既有 9 + type-01…08），`consoleErrors: []`、`fixtureSmoke 23/23`、`interrupted: null`；连续重跑幂等 |
+| 浏览器交互（Playwright 实测） | 点击 changes 首行 → inline diff、`aria-expanded=true`；Esc 收起并回焦；图片加载失败 → 虚线占位（无破图）；gallery 失败项占位 | 通过，无 console error |
 
-# 附件：04-data-matrix.md
+已知限制（与 05 一致）：link 统一外链新窗口；data 格式只由 `mimeType` 派生；closed 风险同列表弱化；12 种 custom block 视觉沿用既有实现（本轮优先五类核心内容）；视觉主观评分仍由审核方按截图判定。
 
 # 04 数据覆盖矩阵（最终版）
 
@@ -1196,11 +1442,20 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
   以及 §6 中的检查失效/风险/任务/版本/历史/note；“部分/否”的类型全部由前端 fixture 覆盖并已明示。
 - 没有为覆盖类型新增任何协议字段、接口或依赖。
 
+## 视觉样例对照（本轮新增）
 
+| 数据类型 | 视觉样例截图 | 组件/结构 | 备注 |
+| --- | --- | --- | --- |
+| 6 metric kind（auto/comparison/value/status/target/text） | `screenshots/type-01-metrics-kinds.png` | `ResultMetrics` | auto 由既有规则解析，不出现 auto 原形 |
+| document artifact + documents section | `screenshots/type-02-delivery-document.png` | `ResultArtifactList` + `ResultSectionCard(documents)` | 精确同源进同一预览入口 |
+| image/link/data artifact + gallery | `screenshots/type-03-artifacts-mixed.png` | `ResultArtifactList` + `ResultSectionCard(gallery)` | 有效/空 URL 两种回退 |
+| checks + risks | `screenshots/type-04-review-checks-risks.png` | `ResultReviewLog` | passed 降级、failed/stale 高亮、stale 版本差异 |
+| versions | `screenshots/type-05-versions-timeline.png` | `ResultVersionTimeline` | 三种状态节点 |
+| changes（24 文件 + inline diff） | `screenshots/type-06-changes-inline-diff.png` | `ResultChanges` | 二进制/较大文件不造假 |
+| 说明型成果（无交付物） | `screenshots/type-07-fact-mode.png` | `ResultWorkspace` + `readingMode` | 无「本轮交付」、正文前置 |
+| api/environments/files/tests | `screenshots/type-08-sections-machinery.png` | `ResultSectionCard` | 源顺序不变 |
 
----
-
-# 附件：05-open-issues.md
+> 上述 type-* 均为前端验收 fixture（非真实业务数据），数据来源在 `screenshots/manifest.json` 逐张标注；真实样例的 9 张验收截图仍为视觉基准。
 
 # 05 未完成清单与安全回退
 
@@ -1261,21 +1516,28 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 可复制源文本；chart 无数据 → “暂无数据”；空图片 URL → 统一占位；外链失败 → 局部错误提示；历史读取失败 →
 局部错误 + 重试，不影响当前成果；不可信 HTML/SVG/脚本 → 忽略/转义，不执行。
 
+## 5. 第三轮（数据类型视觉体系）已知限制
 
+| 项目 | 现状 | 安全回退/说明 |
+| --- | --- | --- |
+| link artifact 预览 | 统一外链新窗口，即使有 `versionId` 也不进本地预览 dialog | 避免把外链当本地文件；合法 http(s) 才可打开，空 URL 禁用 |
+| data artifact 格式化 | 格式 chip 仅由 `mimeType` 派生（JSON/CSV/表格/文本/未知） | 不猜扩展名/业务含义；预览走既有表格/文本识别 |
+| 已关闭风险 | 同列表弱化（opacity），不折叠 | 保证 A18 三种状态可见；若需折叠可再调整 |
+| comparison 双条 | 仅 value/previous 可安全解析为数字时出现，散文式前值回退文本 | 不推断/不伪造第三个数字 |
+| 图片/画廊 | 合法 URL 但加载失败时回退统一虚线占位 | 不显示破图；仍保留查看/打开动作 |
+| 12 种 custom block | 沿用既有视觉实现（本轮优先五类核心内容：文件交付/指标/检查与风险/版本/代码变更） | 无新依赖；chart/diagram/table 等既有回退不变 |
+| 视觉主观判定 | 已用图像能力逐张复核，但最终评分仍由审核方/产品判断 | 见 06 截图索引与 manifest |
 
----
-
-# 附件：06-screenshot-index.md
 
 # 06 截图索引（最终版，以最终 manifest 为准）
 
 > 截图目录：`docs/design/result-board/screenshots/`（由 `fixtures-harness` 产出，本任务不写入该目录）。
-> 元数据来源：`screenshots/manifest.json`，`generatedAt`（以 manifest 为准，2026-11-11 最终重截），`branch = feat/result-board-design`，
-> `consoleErrors: []`，`fixtureSmoke` 15 项全部 `ok: true`（sample/history/matrix/layouts/limits + 10 展示态）。
+> 元数据来源：`screenshots/manifest.json`（最终重截：17 张，`interrupted: null`），`branch = feat/result-board-design`，
+> `consoleErrors: []`，`fixtureSmoke` 23 项全部 `ok: true`（5 个既有 fixture + 8 个 type fixture + 10 展示态）。
 > 数据来源两类：**用户真实样例**（handoff `sample/*.json` 逐字节复制）与**前端 fixture**（dev-only，非真实业务数据）。
 >
-> 说明：本代理无法读取图片（模型不支持图像输入），下表核对**文件存在、尺寸/视口、manifest 数据来源与验收项映射**；
-> 视觉评分与“看起来是否达标”由审核方按规范 §16 判定。所有截图均为最终重截版（含 A12 修复、changes 全部行、指标语义、以及本轮“报告式组合”重构：文件带 70px 行 / 无边框指标带 / 通过项降级 / 记录三栏 / 文档索引单行）。
+> 说明：本轮已由 Lead 用图像能力逐张视觉复核（首屏、完整长图、8 张类型样例、手机、diff、历史对比），核对内容包括类型辨识度与断行/对齐；
+> 所有截图均为最终重截版（数据类视觉体系：6 metric kind / 4 artifact kind / 审查带 / 版本时间线 / 行内 diff / 两种阅读模式 / 文件带 74–77px 行 / 无边框指标带）。
 
 ## 1. 规范 §15.3 要求的 7 张（全部产出）
 
@@ -1283,7 +1545,7 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | PawOffice 首页（证明未改） | `screenshots/01-home-1787x864.png` | 1787×864 | PawOffice 首页（未改动） | A02、A28：2D 场景/顶部统计/左右侧栏/聊天区/入口不变 | 已产出 |
 | S2 | 成果详情首屏 | `screenshots/02-result-first-screen-1787x864.png` | 1787×864（manifest 记录阅读器 1120×824） | 真实样例 `result-ready-round3.json`（`fixture=sample`，state ready） | A03、A05、A06、A08、A24、A28：无 Tab、title+summary 最醒目、ready 不显示已验证、首屏可见 `需要关注 3 项` 与首个交付 | 已产出 |
-| S3 | 成果详情完整长图 | `screenshots/03-result-full.png` | 1787×864 视口，完整长图 1121×2220（正文约 2156px） | 真实样例 `result-ready-round3.json` | A09、A10、A11、A13、A18、A25：changes→documents 顺序、metrics 数字、风险/任务/版本、免责声明 | 已产出 |
+| S3 | 成果详情完整长图 | `screenshots/03-result-full.png` | 1787×864 视口，完整长图 1121×2588（正文约 2524px） | 真实样例 `result-ready-round3.json` | A09、A10、A11、A13、A18、A25：changes→documents 顺序、metrics 数字、风险/任务/版本、免责声明 | 已产出 |
 | S4 | 展开需求说明正文 | `screenshots/04-markdown-reading.png` | 1787×864 | 真实样例 `result-ready-round3.json`（点击「登录模块需求说明」打开文档预览） | A04、A08、A16：3 份 Markdown 原文可读、标题/版本/格式未伪造、documents 关联同一预览入口 | 已产出 |
 | S5 | 展开 changes diff | `screenshots/05-changes-diff.png` | 1787×864 | 真实样例 `result-ready-round3.json`（展开 `LoginForm.tsx` diff） | A04、A09、A13、A22：6 文件变更全部可见、真实 unified diff、binary 不造假 | 已产出 |
 | S6 | 旧版本检查待补充状态 | `screenshots/06-stale-check.png` | 1787×864 | 真实样例 `result-ready-round3.json`（滚动到「需求范围检查」） | A07、A18：prd-v1 检查在 prd-v2 下显示待补充验证；摘要 2 通过/1 待处理/1 待补充 | 已产出 |
@@ -1309,18 +1571,31 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 - 数据来源 URL：真实样例为 `/dev/result-board.html?fixture=sample|history`（使用生产同款
   `ResultReaderDialog`/`ResultWorkspace`/`ResultDeliveryShell`/`ResultArtifactPreview`），首页为 `/?conference=0`。
 
-## 4. 类型矩阵/极限状态截图
+## 4. 数据类型视觉样例（本轮新增 8 张，均为真实浏览器 1787×864）
+
+| # | 截图 | 覆盖的数据类型 | 对应验收点 | 数据来源 |
+| --- | --- | --- | --- | --- |
+| T1 | `type-01-metrics-kinds.png` | 6 种 metric kind + emphasis + 3 列密度 | A11：每种 kind 有专属形态（数字/双点对比/状态灯/目标刻度/事实句） | 前端 fixture |
+| T2 | `type-02-delivery-document.png` | document artifact ×3 + documents 同源索引 + 未关联项 | A08/A16：文档可读、精确同源指向同一预览入口、不重复整卡 | 前端 fixture |
+| T3 | `type-03-artifacts-mixed.png` | document / image（有效+空）/ link（有效+空）/ data + gallery | A12：4 种 artifact 有不同形态；空 URL/空图/空外链诚实回退 | 前端 fixture |
+| T4 | `type-04-review-checks-risks.png` | checks（passed/pending/failed/stale）+ risks（高/中/低 × 三种状态） | A07/A18：结论带 + 比例条、stale 版本说明、风险登记 | 前端 fixture |
+| T5 | `type-05-versions-timeline.png` | versions（draft/released/rolled-back） | A18：版本三态与时间线语言 | 前端 fixture |
+| T6 | `type-06-changes-inline-diff.png` | changes 24 文件（新增/修改/删除/重命名/二进制/较大） | A04/A13/A22：真实 diff、行内展开、二进制不造假 | 前端 fixture |
+| T7 | `type-07-fact-mode.png` | 说明型成果（无 artifacts/changes） | 本轮验收点 2：阅读重心切换（不再出现交付区） | 前端 fixture |
+| T8 | `type-08-sections-machinery.png` | api / environments / files / tests 四类区块 | A13：section 类型专用形态与顺序 | 前端 fixture |
+
+### 4.1 类型矩阵与极限状态（渲染冒烟，未单独截图）
 
 | 项目 | 现状 | 说明 |
 | --- | --- | --- |
-| 6 metric / 8 section / 12 block（`?fixture=matrix`） | 已通过 `fixtureSmoke` 渲染冒烟，未单独截图 | 测试覆盖见 `tests/resultBoard.test.mjs`；如需类型矩阵图可直接打开 dev 预览页截取 |
-| 四种 layout（`?fixture=layouts`） | `fixtureSmoke` ok，未单独截图 | 同上 |
-| 极限数量（`?fixture=limits`） | `fixtureSmoke` ok，未单独截图 | 同上 |
-| 10 展示态（`?state=*`） | `fixtureSmoke` 全部 ok，未单独截图 | 同上 |
+| 6 metric / 8 section / 12 block（`?fixture=matrix`） | `fixtureSmoke` ok（`tests/resultBoard.test.mjs` 断言） | 类型样例见 T1–T8；需要时可直接打开 dev 预览页截图 |
+| 四种 custom layout（`?fixture=layouts`） | `fixtureSmoke` ok | 同上 |
+| 极限数量（`?fixture=limits`） | `fixtureSmoke` ok | 同上 |
+| 10 展示态（`?state=*`） | `fixtureSmoke` 全部 ok | 同上 |
 
 ## 5. 截图未覆盖的交互（需人工/录屏补充）
 
-`<dialog>` 打开/关闭、Escape、焦点恢复、diff 悬停/固定、剪贴板复制、Blob 下载、文件版本下拉切换等，
+`<dialog>` 打开/关闭、Escape、焦点恢复、diff 行内展开/收起（已有 Playwright 实测）、剪贴板复制、Blob 下载、文件版本下拉切换等，
 无法由静态截图完整证明。代码路径保留（`WhiteboardReader`/`ResultDeliveryShell`/`ResultArtifactPreview`/
 `ResultChanges` 均未改变打开/关闭/复制/下载机制）；A27 的键盘/焦点/对比度由 Lead 的 Playwright 实测补充，
 本索引不重复声称。
@@ -1328,15 +1603,16 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 
 ---
 
-# 三、截图 manifest（数据来源与哈希）
+# 五、截图 manifest（17 张，数据来源与哈希）
 
 ```json
 {
-  "generatedAt": "2026-11-11T13:17:44.769Z",
+  "generatedAt": "2026-11-11T16:04:10.090Z",
   "branch": "feat/result-board-design",
   "previewPage": "/dev/result-board.html",
   "homePage": "/?conference=0",
-  "note": "DEV-ONLY 验收截图。数据来源逐张标注：真实样例为 sample JSON 的逐字节复制，其余为前端验收 fixture。",
+  "dataTypeSpec": "docs/design/result-board/07-data-type-visual-system.md §5",
+  "note": "DEV-ONLY 验收截图。数据来源逐张标注：真实样例为 sample JSON 的逐字节复制，其余为前端验收 fixture。type-01…type-08 为数据类型专用视觉样例，每张记录覆盖的数据类型。",
   "dataSources": {
     "real-sample": "用户真实样例 result-ready-round3.json（逐字节复制）",
     "real-sample-history": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
@@ -1359,27 +1635,67 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
     {
       "query": "fixture=sample",
       "ok": true,
-      "textLength": 1402
+      "textLength": 1477
     },
     {
       "query": "fixture=history",
       "ok": true,
-      "textLength": 1501
+      "textLength": 1576
     },
     {
       "query": "fixture=matrix",
       "ok": true,
-      "textLength": 3061
+      "textLength": 3142
     },
     {
       "query": "fixture=layouts",
       "ok": true,
-      "textLength": 577
+      "textLength": 589
     },
     {
       "query": "fixture=limits",
       "ok": true,
-      "textLength": 5325
+      "textLength": 5580
+    },
+    {
+      "query": "fixture=type-metrics",
+      "ok": true,
+      "textLength": 393
+    },
+    {
+      "query": "fixture=type-delivery",
+      "ok": true,
+      "textLength": 603
+    },
+    {
+      "query": "fixture=type-artifacts",
+      "ok": true,
+      "textLength": 507
+    },
+    {
+      "query": "fixture=type-review",
+      "ok": true,
+      "textLength": 680
+    },
+    {
+      "query": "fixture=type-versions",
+      "ok": true,
+      "textLength": 322
+    },
+    {
+      "query": "fixture=type-changes",
+      "ok": true,
+      "textLength": 1399
+    },
+    {
+      "query": "fixture=type-fact",
+      "ok": true,
+      "textLength": 562
+    },
+    {
+      "query": "fixture=type-sections",
+      "ok": true,
+      "textLength": 600
     },
     {
       "query": "state=draft",
@@ -1394,12 +1710,12 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
     {
       "query": "state=verified",
       "ok": true,
-      "textLength": 125
+      "textLength": 141
     },
     {
       "query": "state=rejected",
       "ok": true,
-      "textLength": 129
+      "textLength": 145
     },
     {
       "query": "state=conflict",
@@ -1433,6 +1749,7 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
     }
   ],
   "consoleErrors": [],
+  "interrupted": null,
   "screenshots": [
     {
       "file": "01-home-1787x864.png",
@@ -1443,9 +1760,9 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
         41.92,
         47.58
       ],
-      "sha256": "f1784ffe220c711ef5d56a89266737dfdf492fc32506a2ab8b5e99b5960a5b39",
-      "bytes": 747887,
-      "capturedAt": "2026-11-11T13:17:35.208Z",
+      "sha256": "8a8f6867f62d3b7fb986f2f15c63b1ada0391ea7749558b250d3edf85311551f",
+      "bytes": 748220,
+      "capturedAt": "2026-11-11T16:03:49.722Z",
       "url": "/?conference=0",
       "viewport": "1787×864",
       "dataSource": "PawOffice 首页（未改动，证明首页零回归）",
@@ -1456,13 +1773,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 1787,
       "height": 864,
       "pixelStdev": [
-        53.24,
-        50.99,
-        53.26
+        53.23,
+        50.96,
+        53.25
       ],
-      "sha256": "725c477dd20ea1d761693aac21f98ab5edf4862fbd1d789aef284f38d78b1559",
-      "bytes": 106812,
-      "capturedAt": "2026-11-11T13:17:36.193Z",
+      "sha256": "c59dd51e135c048e3c6f6332c98401a4756758c9b5bbcb82af158ddd15751127",
+      "bytes": 106788,
+      "capturedAt": "2026-11-11T16:03:50.659Z",
       "url": "/dev/result-board.html?fixture=sample",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
@@ -1476,17 +1793,17 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
     {
       "file": "03-result-full.png",
       "width": 1121,
-      "height": 2220,
+      "height": 2588,
       "pixelStdev": [
-        26.25,
-        24.44,
-        26.05
+        25.52,
+        23.62,
+        25.53
       ],
-      "sha256": "0aa378045a7120286d510bf8ad94b5f6624b19286fd34ce41fa1f46308533690",
-      "bytes": 198715,
-      "capturedAt": "2026-11-11T13:17:37.112Z",
+      "sha256": "da0a9c480ac1da8225bcba9b0a5cc5334823f2513cf997996bd6f42ce4e4f9de",
+      "bytes": 220585,
+      "capturedAt": "2026-11-11T16:03:51.553Z",
       "url": "/dev/result-board.html?fixture=sample",
-      "viewport": "1787×864（展开为完整长图，正文 2157px）",
+      "viewport": "1787×864（展开为完整长图，正文 2525px）",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
       "fixture": "sample",
       "state": "ready"
@@ -1500,9 +1817,9 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
         74.55,
         77.08
       ],
-      "sha256": "1d6a73decbdfa16b0c28507774dc854a63332da68439c4d3f8bafc1e13ec4d6e",
-      "bytes": 58874,
-      "capturedAt": "2026-11-11T13:17:38.371Z",
+      "sha256": "613d95345aed4e962fef2b439e9e436ece4d6af6c4fd5d97fb752bd962cd9d7a",
+      "bytes": 57742,
+      "capturedAt": "2026-11-11T16:03:52.713Z",
       "url": "/dev/result-board.html?fixture=sample（点击「登录模块需求说明」打开文档预览）",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
@@ -1514,13 +1831,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 1787,
       "height": 864,
       "pixelStdev": [
-        49.56,
-        47.86,
-        49.22
+        50.43,
+        48.65,
+        50.16
       ],
-      "sha256": "90137ff98ef17f850f680d87c73575c6a84f88abb4680b558ddc100f3c89b496",
-      "bytes": 56484,
-      "capturedAt": "2026-11-11T13:17:39.531Z",
+      "sha256": "39c1f1c3f70b8f1a2080a2b968f2c5ed6ce152ba24d215515df8a316f47bb4b5",
+      "bytes": 55849,
+      "capturedAt": "2026-11-11T16:03:53.730Z",
       "url": "/dev/result-board.html?fixture=sample（展开 LoginForm.tsx 的 diff）",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
@@ -1532,13 +1849,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 1787,
       "height": 864,
       "pixelStdev": [
-        51.66,
-        49.47,
-        51.46
+        51.52,
+        49.37,
+        51.35
       ],
-      "sha256": "4574f48bb9d0e2529431f070d328527c5dbfbd3d41c8134c054f9418b0aee505",
-      "bytes": 74529,
-      "capturedAt": "2026-11-11T13:17:40.857Z",
+      "sha256": "7dacac644a1fc079cd0b08c3ce2e7ca38a4fb8739210dc6c8eb772ac5d1f4443",
+      "bytes": 73034,
+      "capturedAt": "2026-11-11T16:03:54.977Z",
       "url": "/dev/result-board.html?fixture=sample（滚动到旧版本检查「需求范围检查」）",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
@@ -1550,13 +1867,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 390,
       "height": 844,
       "pixelStdev": [
-        40.62,
-        38.05,
-        40.64
+        40.43,
+        37.61,
+        40.33
       ],
-      "sha256": "82e3ddb42a3ebb410d875b4fd89bb5610caa131e0ecac3291d4d349839a70caa",
-      "bytes": 68865,
-      "capturedAt": "2026-11-11T13:17:44.628Z",
+      "sha256": "9f7d166f7c1aa70fd0ebaf9b489fe6511706f2333de9c42eb3211e3c06d97032",
+      "bytes": 69570,
+      "capturedAt": "2026-11-11T16:04:09.951Z",
       "url": "/dev/result-board.html?fixture=sample",
       "viewport": "390×844",
       "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
@@ -1564,7 +1881,7 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "state": "ready",
       "tapTargets": {
         "deliverableAction": 38,
-        "documentOpen": 36,
+        "documentOpen": 40,
         "readerAction": 40
       }
     },
@@ -1573,13 +1890,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 1787,
       "height": 864,
       "pixelStdev": [
-        77.7,
-        73.98,
+        77.71,
+        73.99,
         75.85
       ],
-      "sha256": "9be6fd1d89fc8c1e5387bbac19d884a21d3b8765b7369b053db580c49087eab1",
-      "bytes": 49778,
-      "capturedAt": "2026-11-11T13:17:42.577Z",
+      "sha256": "105e38aea68ff796528f5b8f2e8aa384e0661c0aabd70a917b426c6a09d6db37",
+      "bytes": 51031,
+      "capturedAt": "2026-11-11T16:03:56.541Z",
       "url": "/dev/result-board.html?fixture=history（打开「登录模块需求说明」→ 版本选择器切到 prd-v1 → 与当前版本比较）",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
@@ -1597,13 +1914,13 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
       "width": 1787,
       "height": 864,
       "pixelStdev": [
-        52.58,
-        50.27,
-        52.22
+        52.52,
+        50.17,
+        52.1
       ],
-      "sha256": "24951db4c0aa18a52037eb0edcdac47e8cf44e676e371af696f5a203d3686ee6",
-      "bytes": 90050,
-      "capturedAt": "2026-11-11T13:17:43.655Z",
+      "sha256": "3a8986e176e0c1e85c1c13d1e2ed6cb133eebac030989359ac8e922560da966c",
+      "bytes": 90165,
+      "capturedAt": "2026-11-11T16:03:57.564Z",
       "url": "/dev/result-board.html?fixture=history&delivery=delivery-2（打开第 2 轮历史交付）",
       "viewport": "1787×864",
       "dataSource": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
@@ -1613,8 +1930,159 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
         "历史提示：历史交付 · 第 2 轮 · 首次文档交付 2026-10-28 11:00:00 · 文档固定为当时版本。 返回当前成果",
         "历史交付选择器：交付历史 当前成果 第 3 轮 · 更新需求与验收 第 2 轮 · 首次文档交付 第 1 轮 · 确认目标"
       ]
+    },
+    {
+      "file": "type-01-metrics-kinds.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        54.02,
+        51.55,
+        53.7
+      ],
+      "sha256": "469fbf0c1755c769303a2409dd8fe546ed0682eddc21a449337b5db6b15cf310",
+      "bytes": 104118,
+      "capturedAt": "2026-11-11T16:03:59.142Z",
+      "url": "/dev/result-board.html?fixture=type-metrics",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-metrics",
+      "coverage": "数据类型：6 种 metric kind（value/comparison/status/target/text/auto→comparison）+ emphasis=primary，card 密度 3 列。",
+      "scrollTarget": ".result-workspace-metric-band（短内容底部对齐，保留成果标题与全部 6 项指标）"
+    },
+    {
+      "file": "type-02-delivery-document.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        51.51,
+        49.3,
+        51.34
+      ],
+      "sha256": "1d08cc6df7538e5959d620df68e85dd6560ab193dcb6eda1346083aa77828bbf",
+      "bytes": 74812,
+      "capturedAt": "2026-11-11T16:04:00.565Z",
+      "url": "/dev/result-board.html?fixture=type-delivery",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-delivery",
+      "coverage": "数据类型：document artifacts ×3（Markdown content + versionId/version）+ documents section 精确同源 3 项 + 1 项未关联文档。",
+      "scrollTarget": ".result-workspace-delivery"
+    },
+    {
+      "file": "type-03-artifacts-mixed.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        53.65,
+        51.82,
+        53.62
+      ],
+      "sha256": "d6209911ab40bc8c8f9a80d8ab35fff8e9ece4cbd6a6f9cea6b869f638324424",
+      "bytes": 112200,
+      "capturedAt": "2026-11-11T16:04:01.965Z",
+      "url": "/dev/result-board.html?fixture=type-artifacts",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-artifacts",
+      "coverage": "数据类型：document / image（有效 URL + 空 URL）/ link（有效 URL + 空 URL）/ data（JSON content）+ gallery 3 项（含空 image 占位）。",
+      "scrollTarget": ".result-workspace-delivery"
+    },
+    {
+      "file": "type-04-review-checks-risks.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        51.14,
+        49.05,
+        51
+      ],
+      "sha256": "e87955f565e42c277a4a6ab27c6ee1327d62c0efee2250acfc11e34f58061d56",
+      "bytes": 68130,
+      "capturedAt": "2026-11-11T16:04:03.362Z",
+      "url": "/dev/result-board.html?fixture=type-review",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-review",
+      "coverage": "数据类型：checks 4 项（passed / pending / failed / stale 绑定旧 versionId）+ risks 3 项（high·open / medium·mitigating / low·closed）。",
+      "scrollTarget": ".result-workspace-review"
+    },
+    {
+      "file": "type-05-versions-timeline.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        53.2,
+        50.92,
+        53
+      ],
+      "sha256": "4e10e2e6152b6c03069b3f8b9f56acd2d1bc516eab9ceed1c116685db6153ca3",
+      "bytes": 86148,
+      "capturedAt": "2026-11-11T16:04:04.749Z",
+      "url": "/dev/result-board.html?fixture=type-versions",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-versions",
+      "coverage": "数据类型：versions 3 项（draft / released / rolled-back）纵向时间线。",
+      "scrollTarget": ".result-workspace-record-versions 或 .result-workspace-versions 或 .result-version-timeline 或 .result-workspace-version"
+    },
+    {
+      "file": "type-06-changes-inline-diff.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        49.01,
+        47.8,
+        48.86
+      ],
+      "sha256": "bbdafd1d55e34fc2afe3414b15ebf002ae27284c80efcc86878d657df83f59c7",
+      "bytes": 50698,
+      "capturedAt": "2026-11-11T16:04:06.208Z",
+      "url": "/dev/result-board.html?fixture=type-changes（点击第一条文件行展开行内 unified diff）",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-changes",
+      "coverage": "数据类型：changes 24 个文件（added / modified / deleted / renamed / binary / oversized），第一条就地展开真实 unified diff。",
+      "scrollTarget": ".result-workspace-detail .result-changes 或 .result-changes 或 .result-workspace-detail [data-kind=\"changes\"]"
+    },
+    {
+      "file": "type-07-fact-mode.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        51.92,
+        49.74,
+        51.79
+      ],
+      "sha256": "c003068720a3e00c58cb3448ca1eb29d69e32a958aba4f08177e036a5eb36e1e",
+      "bytes": 66486,
+      "capturedAt": "2026-11-11T16:04:07.609Z",
+      "url": "/dev/result-board.html?fixture=type-fact",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-fact",
+      "coverage": "数据类型：说明型成果（无 artifacts、无 changes）——summary / verdict + 2 个 custom text section + decisions + next + note。",
+      "scrollTarget": ".result-workspace-detail"
+    },
+    {
+      "file": "type-08-sections-machinery.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        51.3,
+        49.23,
+        51.24
+      ],
+      "sha256": "36917d5896f1f8e49d65b0bcc4838d3053c782b2f8f18ab72b6978cc88831cc6",
+      "bytes": 58964,
+      "capturedAt": "2026-11-11T16:04:09.045Z",
+      "url": "/dev/result-board.html?fixture=type-sections",
+      "viewport": "1787×864",
+      "dataSource": "前端验收 fixture（非真实数据）",
+      "fixture": "type-sections",
+      "coverage": "数据类型：api 3 行 / environments 4 种状态 / files 4 项 / tests（指标 + 进度 + 检查）区块机制。",
+      "scrollTarget": ".result-workspace-detail（api / environments / files 主体与 tests 标题同屏；tests 正文在 DOM 中断言）"
     }
   ]
 }
-
 ```

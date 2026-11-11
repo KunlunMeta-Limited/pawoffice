@@ -41,14 +41,14 @@
 
 | 编号 | 等级 | 通过条件 | 证据 | 结论 |
 | --- | --- | --- | --- | --- |
-| A11 | P1 | 6 类 metric 各有可读且语义准确表现 | `tests/resultBoard.test.mjs` 覆盖 `auto→comparison/value`、comparison、value、status、target、text；卡/紧凑两种密度与 `emphasis` 不排序；dense 行补全 target/comparison 语义；真实样例三条不复算 | **通过**（无独立类型截图，见 05） |
-| A12 | P1 | 4 类 artifact 可读可用；URL/内容为空有正确回退 | `tests/resultBoard.test.mjs`「four artifact kinds…」覆盖 document/image/link/data；**空 artifact 回退已修复**：`versionId` 存在但无 `content`/合法 http(s) URL 时不再给预览主操作，image 显示禁用文案 `暂无图片可预览`、document 显示 `暂无正文或文件地址`（`aria-disabled="true"`）；空外链不生成假跳转；空图片不伪造 `<img>`；真实样例仅 document，其余由 `matrix`/`limits` fixture 覆盖 | **通过** |
-| A13 | P1 | 8 类 section 全覆盖 | `tests/resultBoard.test.mjs` 断言 gallery/documents/tests/api/environments/files/changes/custom 与源顺序；`limits` 夹具覆盖 8 类上限数量 | **通过**（类型矩阵无独立截图，见 05） |
-| A14 | P1 | 12 类 block 全覆盖或安全信息回退 | `tests/resultBoard.test.mjs` 断言 12 种 `data-block-type`；未知类型由 `FallbackBlock` 回退（`ResultBlocks.tsx` 未改）；Mermaid SSR 保留源文本 | **通过**（同上） |
+| A11 | P1 | 6 类 metric 各有可读且语义准确表现 | **本轮改为 6 种 kind 各自专用形态**：value 数字主视觉 / comparison 当前值+前值+变化+可选双条 / status 状态灯+文字（不借数字字号）/ target 目标 chip+进度+可解析时的目标刻线 / text 事实句 / auto 按既有规则解析；1/2/3/4/5–6/7–12 密度保留，emphasis 只放大不排序。测试：`tests/resultTypeVisual.test.mjs`（kind 结构、bars、status dot、target line）、`tests/resultBoard.test.mjs`（密度/锚点）；截图 `type-01-metrics-kinds.png` |
+| A12 | P1 | 4 类 artifact 可读可用；URL/内容为空有正确回退 | **本轮 4 种 artifact 有不同交付形态**：document 文档行 / image 56px 媒体位（合法 URL 才渲染 `<img>`，加载失败回退虚线占位）/ link 域名 chip + 外跳 / data 由既有 mimeType 派生格式 chip；空 URL/空图/空外链禁用文案与 `aria-disabled` 保留。测试：`tests/resultTypeVisual.test.mjs`「four artifact kinds…」+ `tests/resultBoard.test.mjs`；截图 `type-03-artifacts-mixed.png` |
+| A13 | P1 | 8 类 section 全覆盖 | 8 类 section 全部有专用形态：gallery 图片网格 / documents 版本文件行（精确同源进同一预览）/ tests 质量报告 / api 接口表 / environments 环境列表 / files 附件行 / changes 变更清单（行内 diff）/ custom 原语组合；源顺序由 `tests/resultTypeVisual.test.mjs` 与 `tests/resultBoard.test.mjs` 断言；截图 `type-08-sections-machinery.png`、`type-06-changes-inline-diff.png` |
+| A14 | P1 | 12 类 block 全覆盖或安全信息回退 | 12 种 block 由既有 `ResultBlocks` 渲染（heading/text/keyValue/stats/table/list/progress/chart/image/diagram/callout/divider），本轮未改其安全回退；`tests/resultBoard.test.mjs` 断言 12 种 `data-block-type`、未知类型 `FallbackBlock`、Mermaid 源文本保留；截图 `type-07-fact-mode.png`（text 正文）与 `type-08`（区块机制） |
 | A15 | P1 | stack/columns/grid/cards 在区块内部有效、窄屏不破坏阅读 | `tests/resultBoard.test.mjs`「four custom layouts…」+ matrix 8 section 顺序；CSS 复用 `ResultBlocks.css` 既有四种 layout | **通过** |
 | A16 | P1 | 匹配 artifactId+versionId 的文档共享预览入口；不按标题猜关联 | `tests/resultBoard.test.mjs`：真实样例 3 个 `.result-workspace-doc-open`；matrix 2 个；错误版本/同名未绑定共 0 个且显示“关联文件不在本轮交付中”；截图 04 | **通过** |
 | A17 | P1 | `versionId` 决定版本身份；对比、hash 校验继续有效；失败不伪装成功 | 既有 `tests/resultHistory.test.mjs`（sha256 校验失败、版本对比边界）；`ResultArtifactPreview` 未改；截图 08（版本下拉 + 与当前版本比较） | **通过** |
-| A18 | P1 | 风险等级/处置状态、任务 4 态、版本 3 态、检查 3 态文案正确 | `tests/resultBoard.test.mjs`「risks, tasks, versions and check states…」断言 high/closed、todo/doing/blocked/done、draft/released/rolled-back、passed/pending/failed/stale | **通过** |
+| A18 | P1 | 风险等级/处置状态、任务 4 态、版本 3 态、检查 3 态文案正确 | **本轮改为审查语言与版本时间线**：checks 结论带 + 四类计数比例条、passed 降级、failed/stale 高亮并给出版本差异；风险登记（高/中/低 × 待处理/处理中/已关闭）；版本纵向时间线（草稿空心/已发布实心绿/已回滚红）。测试：`tests/resultTypeVisual.test.mjs`（checks/risks/versions）、`tests/resultBoard.test.mjs`（文案与 data-*）；截图 `type-04-review-checks-risks.png`、`type-05-versions-timeline.png` |
 | A19 | P1 | 现有白板/历史样例验证；失败局部显示且不拿当前版本冒充历史 | 真实 `whiteboard-ready-round3.json` 夹具：`tests/resultBoard.test.mjs` 历史切换（delivery-2 提示/返回当前成果/历史正文）、缺失目标只显示局部 alert；截图 09；`tests/resultHistory.test.mjs` 校验失败隔离 | **通过** |
 | A20 | P1 | metrics12、artifacts8、sections8、blocks24、checks12、tasks12 等不溢出不丢项 | `tests/resultBoard.test.mjs`「extreme counts…」：12 指标紧凑行、8 artifacts、8 sections、8 gallery、12 files、24 changes、24 blocks、12 checks、12 tasks、8 versions/risks/decisions/next | **通过**（无极限密度截图，见 05） |
 | A21 | P1 | summary-only、artifact-only、空结果、部分字段为空均无死白块/虚假占位 | `tests/resultBoard.test.mjs`「empty, summary-only and artifact-only…」「a result with only a note…」「ten presentation states」 | **通过** |
@@ -59,12 +59,28 @@
 | 编号 | 等级 | 通过条件 | 证据 | 结论 |
 | --- | --- | --- | --- | --- |
 | A23 | P2 | 字体/颜色/圆角/阴影/图标统一沿用 PawOffice，不出现新品牌 | 新组件沿用 `--result-*` token（`ResultWorkspace.css:2-11` 等）；未引入新依赖/字体/第二套主题；仅成果域 CSS 变化；截图 02/03 | **部分**：代码层面未创新品牌；视觉统一性需审核方按截图判定（本代理无法读图） |
-| A24 | P2 | 首屏 title+summary 最醒目、文件入口清楚、验证缺口可见、其余降权 | 组合式重构后实测（Playwright 几何）：1787×864 首屏内依次出现标题(y≈96–135)、成果状态(147–171)、结论(211–248)、验收意见(264–287)、需要关注 3 项(301–321) 与**全部 3 份交付文件**(418–630，行高 70–71px)，阅读器 1120×824；`需要关注 3 项` 与 `3 份交付文件` 有测试断言；截图 02 | **通过（结构/几何自动化证据）**；视觉评分仍由审核方判定 |
-| A25 | P2 | 不出现 5–8 张等权重卡片；长内容可控可读 | 本轮组合式重构：交付改为无卡片文件带（无巨型类型图标，16px 内联 Glyph，行高 70px）；指标改为**无边框数字带**（数字在上、标签在下，1/2/3/4/6 网格与 7–12 紧凑行由测试断言）；`documents` 与 `artifacts` 精确同源时改为**单行文档索引**（同一预览入口，不再重复整份文件列表）；检查项中 `passed` 降级、`failed/stale` 高亮；决策/任务/版本改为**三栏紧凑记录**；整页高度从 3334px 降到 2220px（-33%），首屏即可读完三份交付 | **通过（结构/几何自动化证据）**；视觉评分仍由审核方判定 |
+| A24 | P2 | 首屏 title+summary 最醒目、文件入口清楚、验证缺口可见、其余降权 | 实测（Playwright 几何 + 本轮视觉复核）：1787×864 首屏内依次出现标题(96–135)、成果状态(147–171)、结论(211–248)、验收意见(264–287)、需要关注 3 项(301–321) 与 **3 份交付文件**(约 418–640，行高 74–77px)，验证结论带在首屏底部可见；`需要关注 3 项`/`3 份交付文件` 有测试断言；截图 02 | **通过（结构/几何/视觉复核证据）**；最终视觉评分仍由审核方判定 |
+| A25 | P2 | 不出现 5–8 张等权重卡片；长内容可控可读 | 本轮建立数据类型专用视觉体系：交付文件带（74–77px 行、无卡片）、无边框指标带（6 kind 专属形态、1/2/3/4/5–6/7–12 密度）、审查结论带+四段比例条、版本时间线、行内 diff、说明型/交付型两种阅读模式；沿用首页暖灰白+浅鼠尾草绿，无新品牌/无新依赖；截图 type-01…type-08 + 03 | **通过（类型形态/结构/视觉复核证据）**；最终视觉评分仍由审核方判定 |
 | A26 | P2 | 1280/1440/1787/390 适配；无预期外全页横向滚动 | `scripts/result-board/capture.mjs` 在桌面与手机视口对每个 fixture 断言 `scrollWidth - clientWidth <= 0`（无横向溢出）；截图 1787×864 与 390×844 存在；移动端点击区域断言 38/36/40px（Lead 的 Playwright 核查）。**注：为自动化脚本断言，非人工视觉评分** | **通过（自动化证据）** |
 | A27 | P2 | 键盘可触达、状态非纯色、文本可读、浮层焦点/关闭正确 | Lead 用 Playwright 实测：Tab 焦点可达「阅读」、Enter 打开预览、Escape 关闭且焦点返回触发按钮、无重复 id、状态均有文字标签、正文对比度脚本检查 0 项 < 4.5；测试同时断言状态文案（非纯色）与 `<dialog>` 关闭/焦点恢复实现保留 | **通过（自动化证据）** |
-| A28 | P2 | 指定尺寸提交“首页未改 + 成果首屏 + 完整页 + 文件预览 + 检查异常”证据 | 最终重截完成：`manifest.json`（generatedAt `2026-11-11T12:45:00Z`）记录 9 张截图（01 首页、02 首屏 1787×864、03 完整长图、04 文档正文、05 diff、06 检查异常、07 手机、08 版本对比、09 历史交付），`fixtureSmoke` 15 项全部 ok、`consoleErrors: []`；截图 02 记录阅读器 1120×824、手机记录点击区域 38/36/40px | **通过**（材料齐备；视觉评分由审核方完成） |
+| A28 | P2 | 指定尺寸提交“首页未改 + 成果首屏 + 完整页 + 文件预览 + 检查异常”证据 | 最终重截：`manifest.json` 记录 **17 张**（既有 9 张 + `type-01…type-08`），`interrupted: null`、`consoleErrors: []`、`fixtureSmoke 23/23`；03 完整长图 1121×2588；type-* 覆盖 6 metric kind / 4 artifact kind / checks+risks / versions / changes+inline diff / fact mode / section machinery；截图 01–09 与 type-01–type-08 | **通过**（材料齐备；视觉评分由审核方完成） |
 
+
+## 本轮补充（第三轮：数据类型专用视觉体系）
+
+> 设计文档：`07-data-type-visual-system.md`（映射表：数据类型 → 当前实现 → 新视觉形态 → 交互方式 → 验收截图）。
+
+| 验收点（本轮新增） | 实现 | 证据 |
+| --- | --- | --- |
+| 6 种 metric 各有专属形态（不是同一模板换字） | `ResultMetrics`：数字主视觉 / 双点对比+可选双条 / 状态灯+文字 / 目标 chip+刻线+进度 / 事实句 / auto 解析 | `tests/resultTypeVisual.test.mjs`；`type-01-metrics-kinds.png` |
+| 4 种 artifact 各有交付语言 | `ResultArtifactList`：文档行 / 56px 媒体位 / 域名 chip / 格式 chip；空值诚实回退 | `tests/resultTypeVisual.test.mjs`；`type-02`、`type-03` |
+| 检查与风险 = 审查语言 | `ResultReviewLog`：四类计数结论带+比例条、stale 版本差异、passed 降级、风险登记（等级/状态/负责人） | `tests/resultTypeVisual.test.mjs`；`type-04` |
+| 版本 = 时间语言 | `ResultVersionTimeline`：纵向节点（draft 空心 / released 实心 / rolled-back 红）+ 版本 chip + 作者/时间 + 状态 | `tests/resultTypeVisual.test.mjs`；`type-05` |
+| 代码变更 = diff 语言 | `ResultChanges`：文件状态/增删行/路径；点击**行内就地展开**真实 unified diff（`aria-expanded`、Esc 收起），二进制/超限不造假 | `tests/resultTypeVisual.test.mjs` + Playwright 交互实测；`type-06` |
+| 两种阅读重心 | `results/readingMode.ts` 由字段组合派生 `delivery/fact`；`data-reading-mode`；fact 模式不渲染交付区、正文前置并显示「说明与结论」 | `tests/resultTypeVisual.test.mjs`；`type-07`、`sample` 02/03 |
+| 既有不变量保持 | 协议零改动、无 Tab、Section 源顺序、历史交付、安全回退、无新依赖 | A01/A03/A09/A19/A22 既有证据 + `git diff` 证明 |
+
+已知偏差（均已在 07 §5.2 说明）：link 统一外链新窗口；data 格式只由 mimeType 派生；closed 风险采用同列表弱化而非折叠；comparison 双条仅在可安全解析数字时出现；图片/画廊加载失败回退占位。
 ## 结论
 
 - **门槛一（A01–A10）：全部通过**，可进入视觉评审。

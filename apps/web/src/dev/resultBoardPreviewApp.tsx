@@ -2,6 +2,7 @@
  * DEV-ONLY result reading page preview application.
  *
  * URL: /dev/result-board.html?fixture=sample|history|matrix|layouts|limits
+ *      /dev/result-board.html?fixture=type-metrics|type-delivery|type-artifacts|type-review|type-versions|type-changes|type-fact|type-sections
  *      /dev/result-board.html?state=draft|ready|verified|rejected|conflict|producing|blocked|failed|missing|empty
  *      /dev/result-board.html?fixture=history&delivery=<deliveryId>
  *

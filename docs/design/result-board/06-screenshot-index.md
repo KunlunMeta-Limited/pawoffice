@@ -1,12 +1,12 @@
 # 06 截图索引（最终版，以最终 manifest 为准）
 
 > 截图目录：`docs/design/result-board/screenshots/`（由 `fixtures-harness` 产出，本任务不写入该目录）。
-> 元数据来源：`screenshots/manifest.json`，`generatedAt`（以 manifest 为准，2026-11-11 最终重截），`branch = feat/result-board-design`，
-> `consoleErrors: []`，`fixtureSmoke` 15 项全部 `ok: true`（sample/history/matrix/layouts/limits + 10 展示态）。
+> 元数据来源：`screenshots/manifest.json`（最终重截：17 张，`interrupted: null`），`branch = feat/result-board-design`，
+> `consoleErrors: []`，`fixtureSmoke` 23 项全部 `ok: true`（5 个既有 fixture + 8 个 type fixture + 10 展示态）。
 > 数据来源两类：**用户真实样例**（handoff `sample/*.json` 逐字节复制）与**前端 fixture**（dev-only，非真实业务数据）。
 >
-> 说明：本代理无法读取图片（模型不支持图像输入），下表核对**文件存在、尺寸/视口、manifest 数据来源与验收项映射**；
-> 视觉评分与“看起来是否达标”由审核方按规范 §16 判定。所有截图均为最终重截版（含 A12 修复、changes 全部行、指标语义、以及本轮“报告式组合”重构：文件带 70px 行 / 无边框指标带 / 通过项降级 / 记录三栏 / 文档索引单行）。
+> 说明：本轮已由 Lead 用图像能力逐张视觉复核（首屏、完整长图、8 张类型样例、手机、diff、历史对比），核对内容包括类型辨识度与断行/对齐；
+> 所有截图均为最终重截版（数据类视觉体系：6 metric kind / 4 artifact kind / 审查带 / 版本时间线 / 行内 diff / 两种阅读模式 / 文件带 74–77px 行 / 无边框指标带）。
 
 ## 1. 规范 §15.3 要求的 7 张（全部产出）
 
@@ -14,7 +14,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | PawOffice 首页（证明未改） | `screenshots/01-home-1787x864.png` | 1787×864 | PawOffice 首页（未改动） | A02、A28：2D 场景/顶部统计/左右侧栏/聊天区/入口不变 | 已产出 |
 | S2 | 成果详情首屏 | `screenshots/02-result-first-screen-1787x864.png` | 1787×864（manifest 记录阅读器 1120×824） | 真实样例 `result-ready-round3.json`（`fixture=sample`，state ready） | A03、A05、A06、A08、A24、A28：无 Tab、title+summary 最醒目、ready 不显示已验证、首屏可见 `需要关注 3 项` 与首个交付 | 已产出 |
-| S3 | 成果详情完整长图 | `screenshots/03-result-full.png` | 1787×864 视口，完整长图 1121×2220（正文约 2156px） | 真实样例 `result-ready-round3.json` | A09、A10、A11、A13、A18、A25：changes→documents 顺序、metrics 数字、风险/任务/版本、免责声明 | 已产出 |
+| S3 | 成果详情完整长图 | `screenshots/03-result-full.png` | 1787×864 视口，完整长图 1121×2588（正文约 2524px） | 真实样例 `result-ready-round3.json` | A09、A10、A11、A13、A18、A25：changes→documents 顺序、metrics 数字、风险/任务/版本、免责声明 | 已产出 |
 | S4 | 展开需求说明正文 | `screenshots/04-markdown-reading.png` | 1787×864 | 真实样例 `result-ready-round3.json`（点击「登录模块需求说明」打开文档预览） | A04、A08、A16：3 份 Markdown 原文可读、标题/版本/格式未伪造、documents 关联同一预览入口 | 已产出 |
 | S5 | 展开 changes diff | `screenshots/05-changes-diff.png` | 1787×864 | 真实样例 `result-ready-round3.json`（展开 `LoginForm.tsx` diff） | A04、A09、A13、A22：6 文件变更全部可见、真实 unified diff、binary 不造假 | 已产出 |
 | S6 | 旧版本检查待补充状态 | `screenshots/06-stale-check.png` | 1787×864 | 真实样例 `result-ready-round3.json`（滚动到「需求范围检查」） | A07、A18：prd-v1 检查在 prd-v2 下显示待补充验证；摘要 2 通过/1 待处理/1 待补充 | 已产出 |
@@ -40,18 +40,31 @@
 - 数据来源 URL：真实样例为 `/dev/result-board.html?fixture=sample|history`（使用生产同款
   `ResultReaderDialog`/`ResultWorkspace`/`ResultDeliveryShell`/`ResultArtifactPreview`），首页为 `/?conference=0`。
 
-## 4. 类型矩阵/极限状态截图
+## 4. 数据类型视觉样例（本轮新增 8 张，均为真实浏览器 1787×864）
+
+| # | 截图 | 覆盖的数据类型 | 对应验收点 | 数据来源 |
+| --- | --- | --- | --- | --- |
+| T1 | `type-01-metrics-kinds.png` | 6 种 metric kind + emphasis + 3 列密度 | A11：每种 kind 有专属形态（数字/双点对比/状态灯/目标刻度/事实句） | 前端 fixture |
+| T2 | `type-02-delivery-document.png` | document artifact ×3 + documents 同源索引 + 未关联项 | A08/A16：文档可读、精确同源指向同一预览入口、不重复整卡 | 前端 fixture |
+| T3 | `type-03-artifacts-mixed.png` | document / image（有效+空）/ link（有效+空）/ data + gallery | A12：4 种 artifact 有不同形态；空 URL/空图/空外链诚实回退 | 前端 fixture |
+| T4 | `type-04-review-checks-risks.png` | checks（passed/pending/failed/stale）+ risks（高/中/低 × 三种状态） | A07/A18：结论带 + 比例条、stale 版本说明、风险登记 | 前端 fixture |
+| T5 | `type-05-versions-timeline.png` | versions（draft/released/rolled-back） | A18：版本三态与时间线语言 | 前端 fixture |
+| T6 | `type-06-changes-inline-diff.png` | changes 24 文件（新增/修改/删除/重命名/二进制/较大） | A04/A13/A22：真实 diff、行内展开、二进制不造假 | 前端 fixture |
+| T7 | `type-07-fact-mode.png` | 说明型成果（无 artifacts/changes） | 本轮验收点 2：阅读重心切换（不再出现交付区） | 前端 fixture |
+| T8 | `type-08-sections-machinery.png` | api / environments / files / tests 四类区块 | A13：section 类型专用形态与顺序 | 前端 fixture |
+
+### 4.1 类型矩阵与极限状态（渲染冒烟，未单独截图）
 
 | 项目 | 现状 | 说明 |
 | --- | --- | --- |
-| 6 metric / 8 section / 12 block（`?fixture=matrix`） | 已通过 `fixtureSmoke` 渲染冒烟，未单独截图 | 测试覆盖见 `tests/resultBoard.test.mjs`；如需类型矩阵图可直接打开 dev 预览页截取 |
-| 四种 layout（`?fixture=layouts`） | `fixtureSmoke` ok，未单独截图 | 同上 |
-| 极限数量（`?fixture=limits`） | `fixtureSmoke` ok，未单独截图 | 同上 |
-| 10 展示态（`?state=*`） | `fixtureSmoke` 全部 ok，未单独截图 | 同上 |
+| 6 metric / 8 section / 12 block（`?fixture=matrix`） | `fixtureSmoke` ok（`tests/resultBoard.test.mjs` 断言） | 类型样例见 T1–T8；需要时可直接打开 dev 预览页截图 |
+| 四种 custom layout（`?fixture=layouts`） | `fixtureSmoke` ok | 同上 |
+| 极限数量（`?fixture=limits`） | `fixtureSmoke` ok | 同上 |
+| 10 展示态（`?state=*`） | `fixtureSmoke` 全部 ok | 同上 |
 
 ## 5. 截图未覆盖的交互（需人工/录屏补充）
 
-`<dialog>` 打开/关闭、Escape、焦点恢复、diff 悬停/固定、剪贴板复制、Blob 下载、文件版本下拉切换等，
+`<dialog>` 打开/关闭、Escape、焦点恢复、diff 行内展开/收起（已有 Playwright 实测）、剪贴板复制、Blob 下载、文件版本下拉切换等，
 无法由静态截图完整证明。代码路径保留（`WhiteboardReader`/`ResultDeliveryShell`/`ResultArtifactPreview`/
 `ResultChanges` 均未改变打开/关闭/复制/下载机制）；A27 的键盘/焦点/对比度由 Lead 的 Playwright 实测补充，
 本索引不重复声称。
