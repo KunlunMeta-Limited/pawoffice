@@ -1,0 +1,285 @@
+{
+  "generatedAt": "2026-11-11T13:17:44.769Z",
+  "branch": "feat/result-board-design",
+  "previewPage": "/dev/result-board.html",
+  "homePage": "/?conference=0",
+  "note": "DEV-ONLY 验收截图。数据来源逐张标注：真实样例为 sample JSON 的逐字节复制，其余为前端验收 fixture。",
+  "dataSources": {
+    "real-sample": "用户真实样例 result-ready-round3.json（逐字节复制）",
+    "real-sample-history": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
+    "frontend-fixture": "前端验收 fixture（非真实数据）",
+    "home": "PawOffice 首页（未改动，证明首页零回归）"
+  },
+  "realSamples": [
+    {
+      "source": "docs/design/chatgpt-result-board-handoff/sample/result-ready-round3.json",
+      "copy": "apps/web/src/dev/fixtures/result-ready-round3.json",
+      "sha256": "7C090985EE937F5073002F954B530D960B1375A5CFB33CB34254D20285EAA0FE"
+    },
+    {
+      "source": "docs/design/chatgpt-result-board-handoff/sample/whiteboard-ready-round3.json",
+      "copy": "apps/web/src/dev/fixtures/whiteboard-ready-round3.json",
+      "sha256": "9B1A6602ABB98A83DEA31C42616569C8EE69C8089A2FD7DFC8789F5BEF8D9958"
+    }
+  ],
+  "fixtureSmoke": [
+    {
+      "query": "fixture=sample",
+      "ok": true,
+      "textLength": 1402
+    },
+    {
+      "query": "fixture=history",
+      "ok": true,
+      "textLength": 1501
+    },
+    {
+      "query": "fixture=matrix",
+      "ok": true,
+      "textLength": 3061
+    },
+    {
+      "query": "fixture=layouts",
+      "ok": true,
+      "textLength": 577
+    },
+    {
+      "query": "fixture=limits",
+      "ok": true,
+      "textLength": 5325
+    },
+    {
+      "query": "state=draft",
+      "ok": true,
+      "textLength": 76
+    },
+    {
+      "query": "state=ready",
+      "ok": true,
+      "textLength": 77
+    },
+    {
+      "query": "state=verified",
+      "ok": true,
+      "textLength": 125
+    },
+    {
+      "query": "state=rejected",
+      "ok": true,
+      "textLength": 129
+    },
+    {
+      "query": "state=conflict",
+      "ok": true,
+      "textLength": 305
+    },
+    {
+      "query": "state=producing",
+      "ok": true,
+      "textLength": 96
+    },
+    {
+      "query": "state=blocked",
+      "ok": true,
+      "textLength": 100
+    },
+    {
+      "query": "state=failed",
+      "ok": true,
+      "textLength": 96
+    },
+    {
+      "query": "state=missing",
+      "ok": true,
+      "textLength": 93
+    },
+    {
+      "query": "state=empty",
+      "ok": true,
+      "textLength": 87
+    }
+  ],
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "file": "01-home-1787x864.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        40.68,
+        41.92,
+        47.58
+      ],
+      "sha256": "f1784ffe220c711ef5d56a89266737dfdf492fc32506a2ab8b5e99b5960a5b39",
+      "bytes": 747887,
+      "capturedAt": "2026-11-11T13:17:35.208Z",
+      "url": "/?conference=0",
+      "viewport": "1787×864",
+      "dataSource": "PawOffice 首页（未改动，证明首页零回归）",
+      "fixture": "home"
+    },
+    {
+      "file": "02-result-first-screen-1787x864.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        53.24,
+        50.99,
+        53.26
+      ],
+      "sha256": "725c477dd20ea1d761693aac21f98ab5edf4862fbd1d789aef284f38d78b1559",
+      "bytes": 106812,
+      "capturedAt": "2026-11-11T13:17:36.193Z",
+      "url": "/dev/result-board.html?fixture=sample",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready",
+      "checks": [
+        "标题/结论/成果状态/需要关注提示/首个交付文件均首屏可见",
+        "阅读器 1120×824"
+      ]
+    },
+    {
+      "file": "03-result-full.png",
+      "width": 1121,
+      "height": 2220,
+      "pixelStdev": [
+        26.25,
+        24.44,
+        26.05
+      ],
+      "sha256": "0aa378045a7120286d510bf8ad94b5f6624b19286fd34ce41fa1f46308533690",
+      "bytes": 198715,
+      "capturedAt": "2026-11-11T13:17:37.112Z",
+      "url": "/dev/result-board.html?fixture=sample",
+      "viewport": "1787×864（展开为完整长图，正文 2157px）",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready"
+    },
+    {
+      "file": "04-markdown-reading.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        78.63,
+        74.55,
+        77.08
+      ],
+      "sha256": "1d6a73decbdfa16b0c28507774dc854a63332da68439c4d3f8bafc1e13ec4d6e",
+      "bytes": 58874,
+      "capturedAt": "2026-11-11T13:17:38.371Z",
+      "url": "/dev/result-board.html?fixture=sample（点击「登录模块需求说明」打开文档预览）",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready"
+    },
+    {
+      "file": "05-changes-diff.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        49.56,
+        47.86,
+        49.22
+      ],
+      "sha256": "90137ff98ef17f850f680d87c73575c6a84f88abb4680b558ddc100f3c89b496",
+      "bytes": 56484,
+      "capturedAt": "2026-11-11T13:17:39.531Z",
+      "url": "/dev/result-board.html?fixture=sample（展开 LoginForm.tsx 的 diff）",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready"
+    },
+    {
+      "file": "06-stale-check.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        51.66,
+        49.47,
+        51.46
+      ],
+      "sha256": "4574f48bb9d0e2529431f070d328527c5dbfbd3d41c8134c054f9418b0aee505",
+      "bytes": 74529,
+      "capturedAt": "2026-11-11T13:17:40.857Z",
+      "url": "/dev/result-board.html?fixture=sample（滚动到旧版本检查「需求范围检查」）",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready"
+    },
+    {
+      "file": "07-mobile-390x844.png",
+      "width": 390,
+      "height": 844,
+      "pixelStdev": [
+        40.62,
+        38.05,
+        40.64
+      ],
+      "sha256": "82e3ddb42a3ebb410d875b4fd89bb5610caa131e0ecac3291d4d349839a70caa",
+      "bytes": 68865,
+      "capturedAt": "2026-11-11T13:17:44.628Z",
+      "url": "/dev/result-board.html?fixture=sample",
+      "viewport": "390×844",
+      "dataSource": "用户真实样例 result-ready-round3.json（逐字节复制）",
+      "fixture": "sample",
+      "state": "ready",
+      "tapTargets": {
+        "deliverableAction": 38,
+        "documentOpen": 36,
+        "readerAction": 40
+      }
+    },
+    {
+      "file": "08-history-version-compare.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        77.7,
+        73.98,
+        75.85
+      ],
+      "sha256": "9be6fd1d89fc8c1e5387bbac19d884a21d3b8765b7369b053db580c49087eab1",
+      "bytes": 49778,
+      "capturedAt": "2026-11-11T13:17:42.577Z",
+      "url": "/dev/result-board.html?fixture=history（打开「登录模块需求说明」→ 版本选择器切到 prd-v1 → 与当前版本比较）",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
+      "fixture": "history",
+      "steps": [
+        "打开当前成果的文档预览",
+        "文档版本选择器选择 prd-v1（第 2 轮历史交付）",
+        "点击“与当前版本比较”",
+        "等待真实 diff 渲染",
+        "历史交付选择器：交付历史 当前成果 第 3 轮 · 更新需求与验收 第 2 轮 · 首次文档交付 第 1 轮 · 确认目标"
+      ]
+    },
+    {
+      "file": "09-history-delivery.png",
+      "width": 1787,
+      "height": 864,
+      "pixelStdev": [
+        52.58,
+        50.27,
+        52.22
+      ],
+      "sha256": "24951db4c0aa18a52037eb0edcdac47e8cf44e676e371af696f5a203d3686ee6",
+      "bytes": 90050,
+      "capturedAt": "2026-11-11T13:17:43.655Z",
+      "url": "/dev/result-board.html?fixture=history&delivery=delivery-2（打开第 2 轮历史交付）",
+      "viewport": "1787×864",
+      "dataSource": "用户真实样例 whiteboard-ready-round3.json（逐字节复制，含历史交付）",
+      "fixture": "history",
+      "steps": [
+        "通过 existing initialDeliveryId 打开 delivery-2",
+        "历史提示：历史交付 · 第 2 轮 · 首次文档交付 2026-10-28 11:00:00 · 文档固定为当时版本。 返回当前成果",
+        "历史交付选择器：交付历史 当前成果 第 3 轮 · 更新需求与验收 第 2 轮 · 首次文档交付 第 1 轮 · 确认目标"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 .result-code-block, .result-data-preview { min-width: 0; max-width: 100%; margin: 12px 0; border: 1px solid #e1e8df; border-radius: 9px; background: #fff; overflow: clip; color: #364a3e; }
 .result-file-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 9px 12px; border-bottom: 1px solid #e6ece3; background: #f6f8f4; font: 11px/1.5 system-ui, sans-serif; }
-.result-file-tools > :first-child { margin-right: auto; color: #738175; font-weight: 500; }
+.result-file-tools > :first-child { margin-right: auto; color: #5f6d63; font-weight: 500; }
 .result-file-tools button, .result-csv-pages button, .result-json-tree button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border: 1px solid #dde6dc; border-radius: 5px; background: #fff; color: #536e5b; font: inherit; cursor: pointer; }
 .result-file-tools button[aria-pressed=true] { background: #e7f1e8; border-color: #b8cfbb; color: #345b40; }
 .result-code-block .result-code-source { margin: 0; padding: 14px 16px; overflow: auto; background: #fafbf9; color: #34483b; font: 12px/1.8 ui-monospace, Consolas, monospace; white-space: pre; tab-size: 2; }

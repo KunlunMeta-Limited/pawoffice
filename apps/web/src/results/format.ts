@@ -64,10 +64,13 @@ export function resultFileBase(result: OfficeResult) {
   return base || 'result'
 }
 
-function resolvedKind(metric: ResultMetric): ResolvedKind {
+/** auto = comparison only when the backend supplied a previous observation, otherwise a plain value. */
+export function resultMetricKind(metric: ResultMetric): ResolvedKind {
   if (metric.kind !== 'auto') return metric.kind
   return metric.previous ? 'comparison' : 'value'
 }
+
+const resolvedKind = resultMetricKind
 
 function metricValue(metric: ResultMetric) {
   if (!metric.unit) return metric.value

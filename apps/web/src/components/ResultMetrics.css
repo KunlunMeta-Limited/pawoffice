@@ -1,0 +1,252 @@
+/* Metric band: a typographic stat strip. Numbers, captions, whitespace — no tiles, no borders. */
+.result-metrics {
+  --metric-value-size: 32px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 44px;
+  align-items: start;
+}
+
+.result-metrics[data-count='1'] { grid-template-columns: minmax(0, 1fr); }
+.result-metrics[data-count='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.result-metrics[data-count='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.result-metrics[data-count='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.result-metrics[data-count='5'],
+.result-metrics[data-count='6'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.result-metrics[data-count='1'] .result-metric { max-width: 420px; }
+
+.result-metric { min-width: 0; }
+
+.result-metric-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  color: var(--rb-ink, #26332b);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-metric-value strong {
+  font-size: var(--metric-value-size);
+  font-weight: 560;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.result-metric-unit {
+  flex: none;
+  color: var(--rb-body, #4f5d53);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The legacy reader colours spans inside a metric value; keep this reader's readable unit. */
+.result-metric-value .result-metric-unit,
+.result-metric-state .result-metric-unit { color: var(--rb-body, #4f5d53); }
+
+/* The caption sits under the figure; emphasis only enlarges the figure, never reorders metrics. */
+.result-metric-label {
+  margin: 5px 0 0;
+  color: var(--rb-muted, #64736a);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.result-metric[data-emphasis='primary'] .result-metric-value strong { font-size: calc(var(--metric-value-size) + 4px); }
+.result-metric[data-emphasis='primary'] .result-metric-label { color: var(--rb-body, #4f5d53); font-weight: 560; }
+
+.result-metric-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  color: var(--rb-ink, #26332b);
+}
+
+.result-metric-state svg { flex: none; color: var(--rb-muted, #64736a); }
+.result-metric-state[data-tone='positive'] svg { color: #3f7a57; }
+.result-metric-state[data-tone='negative'] svg { color: #a25948; }
+.result-metric-state strong { font-size: 21px; font-weight: 560; line-height: 1.25; }
+.result-metric-state .result-metric-unit { font-size: 12px; }
+
+.result-metric-text {
+  margin: 0;
+  color: var(--rb-ink, #26332b);
+  font-size: 18px;
+  font-weight: 540;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.result-metric-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 10px;
+  margin: 6px 0 0;
+  color: var(--rb-muted, #64736a);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.result-metric-change { display: inline-flex; align-items: center; gap: 3px; color: var(--rb-body, #4f5d53); font-variant-numeric: tabular-nums; }
+.result-metric-change svg { flex: none; }
+/* Direction is not a judgement: the backend tone decides colour, so up ≠ automatically good. */
+.result-metric-change[data-tone='positive'] svg { color: #3f7a57; }
+.result-metric-change[data-tone='negative'] svg { color: #a25948; }
+.result-metric-change[data-tone='neutral'] svg { color: #7d8b81; }
+
+.result-metric-previous { color: var(--rb-muted, #64736a); font-variant-numeric: tabular-nums; }
+
+.result-metric-target { display: inline-flex; align-items: center; gap: 3px; font-weight: 500; }
+.result-metric-target[data-status='met'] { color: #38714f; }
+.result-metric-target[data-status='missed'] { color: #a25948; }
+.result-metric-target[data-status='at-risk'] { color: #7d6228; }
+
+.result-metric-track {
+  width: 100%;
+  max-width: 220px;
+  height: 3px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1ed;
+}
+
+.result-metric-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #7f9d8a;
+  transition: width 180ms ease;
+}
+
+.result-metric[data-tone='positive'] .result-metric-track i { background: #6f9b81; }
+.result-metric[data-tone='negative'] .result-metric-track i { background: #c08a78; }
+
+/* 7–12 metrics become compact data rows; source order and values are untouched. */
+.result-metrics[data-density='compact'] { display: block; }
+
+.result-metric-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-metric-row {
+  display: grid;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f3ef;
+}
+
+.result-metric-row-label {
+  color: var(--rb-muted, #64736a);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.result-metric-row-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+  color: var(--rb-ink, #26332b);
+  font-size: 15px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.result-metric-row-value svg { flex: none; align-self: center; color: var(--rb-muted, #64736a); }
+.result-metric-row[data-tone='positive'] .result-metric-row-value svg { color: #3f7a57; }
+.result-metric-row[data-tone='negative'] .result-metric-row-value svg { color: #a25948; }
+.result-metric-row .result-metric-unit { font-size: 11.5px; }
+
+.result-metric-row-note {
+  color: var(--rb-muted, #64736a);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.result-metric-row[data-emphasis='primary'] .result-metric-row-value { font-weight: 650; }
+
+@media (max-width: 980px) {
+  .result-metric-rows { grid-template-columns: minmax(0, 1fr); }
+  .result-metrics { gap: 22px 30px; }
+}
+
+@media (max-width: 760px) {
+  .result-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .result-metrics[data-count='1'] { grid-template-columns: minmax(0, 1fr); }
+  .result-metric-value strong { font-size: 28px; }
+  .result-metric[data-emphasis='primary'] .result-metric-value strong { font-size: 30px; }
+}
+
+@media (max-width: 520px) {
+  .result-metrics,
+  .result-metrics[data-count='2'],
+  .result-metrics[data-count='3'],
+  .result-metrics[data-count='4'],
+  .result-metrics[data-count='5'],
+  .result-metrics[data-count='6'] { grid-template-columns: minmax(0, 1fr); }
+  .result-metric-row { grid-template-columns: minmax(0, 1fr) max-content; }
+  .result-metric-row-note { grid-column: 1 / -1; text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-metric-track i { transition: none; }
+}
+
+/* ---------- neutralize the legacy compact-reader metric chrome ----------
+ * ResultReader.css still ships its card-style .result-metric rules (used by the legacy
+ * ResultReader view). The report-style metric band must stay borderless, so these
+ * higher-specificity overrides win regardless of stylesheet order. */
+.result-metrics .result-metric {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.result-metrics .result-metric[data-tone='positive'],
+.result-metrics .result-metric[data-tone='negative'] { background: none; }
+
+.result-metrics .result-metric[data-emphasis='primary'] {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.result-metrics .result-metric-value { margin: 0; line-height: 1.08; }
+.result-metrics .result-metric-value strong {
+  font-size: var(--metric-value-size);
+  font-weight: 560;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.result-metrics .result-metric[data-emphasis='primary'] .result-metric-value strong { font-size: calc(var(--metric-value-size) + 4px); }
+.result-metrics .result-metric-value .result-metric-unit,
+.result-metrics .result-metric-state .result-metric-unit { color: var(--rb-body, #4f5d53); font-size: 13px; }
+.result-metrics .result-metric-state { margin: 0; font-size: inherit; }
+.result-metrics .result-metric-state strong { font-weight: 560; }
+.result-metrics .result-metric-text { margin: 0; color: var(--rb-ink, #26332b); font-size: 18px; font-weight: 540; line-height: 1.45; }
+.result-metrics .result-metric-previous { color: var(--rb-muted, #64736a); font-size: 11.5px; }
+
+@media (max-width: 760px) {
+  .result-metrics .result-metric { padding: 0; border-radius: 0; }
+  .result-metrics .result-metric-value strong { font-size: 28px; }
+  .result-metrics .result-metric[data-emphasis='primary'] .result-metric-value strong { font-size: 30px; }
+}

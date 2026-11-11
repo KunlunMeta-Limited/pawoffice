@@ -1,6 +1,6 @@
 .whiteboard-reader { box-sizing: border-box; width: min(960px, calc(100vw - 48px)); max-height: calc(100dvh - 64px); margin: auto; padding: 0; overflow: hidden; border: 1px solid #dedfdd; border-radius: 16px; background: #fff; color: #343b36; box-shadow: 0 16px 56px #17221a24; }
-.whiteboard-reader.is-result { width: min(960px, calc(100vw - 48px)); overflow: clip; }
-dialog.whiteboard-reader.is-result { height: min(820px, calc(100dvh - 64px)); }
+.whiteboard-reader.is-result { width: min(1120px, calc(100vw - 48px)); max-height: calc(100dvh - 40px); overflow: clip; }
+dialog.whiteboard-reader.is-result { height: min(900px, calc(100dvh - 40px)); }
 .whiteboard-reader[open] { display: flex; flex-direction: column; }
 .whiteboard-reader::backdrop { background: #1b241e66; backdrop-filter: blur(3px); }
 .whiteboard-reader > header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 20px; border-bottom: 1px solid #eef0ec; }

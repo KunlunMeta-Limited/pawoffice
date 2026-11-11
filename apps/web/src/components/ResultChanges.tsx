@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { ChevronDown, FileCode2, Pin, X } from 'lucide-react'
+import { FileCode2, Pin, X } from 'lucide-react'
 import type { ResultChangesSection } from '@pawoffice/protocol/office-ui'
 import { parseUnifiedDiff } from '../results/diff.ts'
 import { ResultDiffTable } from './ResultDiffTable.tsx'
@@ -97,7 +97,6 @@ function DiffPreview({ preview, id, onClose, onPin, onEnter, onLeave }: {
 
 /** File summary plus a top-layer diff preview, shared by overview and deliverables. */
 export function ResultChanges({ section, active = true }: { section: ResultChangesSection; active?: boolean }) {
-  const [expanded, setExpanded] = useState(false)
   const [preview, setPreview] = useState<Preview | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const suppressFocus = useRef(false)
@@ -129,7 +128,6 @@ export function ResultChanges({ section, active = true }: { section: ResultChang
     timer.current = setTimeout(() => setPreview({ file, anchor, pinned: false }), 240)
   }
   const totals = section.files.reduce((sum, file) => ({ added: sum.added + file.added, deleted: sum.deleted + file.deleted, binary: false }), { added: 0, deleted: 0, binary: false })
-  const shown = expanded ? section.files : section.files.slice(0, 4)
   return <section className="result-changes" data-kind="changes" aria-label="文件变更清单">
     <header className="result-changes-head">
       <span className="result-changes-icon" aria-hidden="true"><FileCode2 size={23} strokeWidth={1.6} /></span>
@@ -140,7 +138,7 @@ export function ResultChanges({ section, active = true }: { section: ResultChang
         })}</p>
       </div>
     </header>
-    <ul className="result-changes-list">{shown.map(file => <li key={`${file.status}-${file.path}`}>
+    <ul className="result-changes-list">{section.files.map(file => <li key={`${file.status}-${file.path}`}>
       <button type="button" className="result-change-row" data-status={file.status}
         aria-label={`查看 ${file.path} 差异，${statusLabels[file.status]}，新增 ${file.added} 行，删除 ${file.deleted} 行`}
         aria-haspopup="dialog" aria-expanded={current?.file === file} aria-controls={current?.file === file ? popupId : undefined}
@@ -158,8 +156,6 @@ export function ResultChanges({ section, active = true }: { section: ResultChang
         <LineCounts file={file} />
       </button>
     </li>)}</ul>
-    {section.files.length > 4 && <button type="button" className="result-changes-toggle" aria-expanded={expanded}
-      onClick={() => { close(); setExpanded(value => !value) }}>{expanded ? '收起文件列表' : `全部 ${section.files.length} 个文件`}<ChevronDown size={15} aria-hidden="true" /></button>}
     {current && <DiffPreview preview={current} id={popupId} onClose={close} onPin={() => setPreview({ ...current, pinned: true })} onEnter={clearTimer} onLeave={leave} />}
   </section>
 }

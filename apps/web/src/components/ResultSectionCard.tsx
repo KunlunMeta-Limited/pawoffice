@@ -21,9 +21,6 @@ const environmentStatusLabels: Record<ResultEnvironmentsSection['items'][number]
 const galleryStatusTones: Record<ResultGallerySection['items'][number]['status'], ChipTone> = {
   done: 'done', active: 'active', pending: 'pending',
 }
-const documentStatusTones: Record<ResultDocumentsSection['items'][number]['status'], ChipTone> = {
-  done: 'done', active: 'progress', pending: 'pending',
-}
 const apiStatusTones: Record<ResultApiSection['rows'][number]['status'], ChipTone> = {
   done: 'done', active: 'active', pending: 'pending',
 }
@@ -59,17 +56,33 @@ function GalleryBody({ section }: { section: ResultGallerySection }) {
   </ul>
 }
 
-function DocumentsBody({ section }: { section: ResultDocumentsSection }) {
-  return <ul className="result-workspace-docs">
-    {section.items.map(item => <li key={item.id} className="result-workspace-doc">
-      <span className="result-workspace-doc-icon" aria-hidden="true"><FileText size={15} strokeWidth={1.9} /></span>
-      <span className="result-workspace-doc-main">
-        <span className="result-workspace-doc-title" title={item.title}>{item.title}</span><small>{item.artifactId ? '指定产物版本未提供' : '文档说明（未关联文件）'}</small>
-        {(item.version || item.at) && <span className="result-workspace-doc-meta">{[item.version, item.at].filter(Boolean).join(' · ')}</span>}
+/**
+ * Documents that are exactly the same artifact + version as one already listed in 本轮交付 are
+ * rendered as a compact index line: the click target is the same preview entry, so a second full
+ * file list would only repeat the shelf. Unique items and unmatched items stay visible as text.
+ */
+function DocumentsBody({ section, artifacts }: { section: ResultDocumentsSection; artifacts?: readonly ResultArtifact[] }) {
+  const preview = useContext(ArtifactPreviewContext)
+  return <p className="result-workspace-doc-index">
+    {section.items.map((item, index) => {
+      const matched = artifacts?.find(artifact => artifact.id === item.artifactId
+        && item.versionId !== '' && artifact.versionId === item.versionId)
+      const meta = [item.version, item.at].filter(Boolean).join(' · ')
+      const stateText = documentStatusLabels[item.status]
+      return <span className="result-workspace-doc-item" key={item.id}>
+        {index > 0 && <span className="result-workspace-doc-sep" aria-hidden="true">·</span>}
+        {matched && preview
+          ? <button type="button" className="result-workspace-doc-open" aria-haspopup="dialog"
+            data-status={item.status} title={[item.title, meta, stateText].filter(Boolean).join(' · ')}
+            onClick={event => preview.open(matched, event.currentTarget)}>
+            {item.title}<small>{item.version}</small>
+          </button>
+          : <span className="result-workspace-doc-plain" data-status={item.status} title={[item.title, meta, stateText].filter(Boolean).join(' · ')}>
+            {item.title}<small>{item.artifactId ? '关联文件不在本轮交付中' : '文档说明（未关联文件）'}</small>
+          </span>}
       </span>
-      <Chip tone={documentStatusTones[item.status]}>{documentStatusLabels[item.status]}</Chip>
-    </li>)}
-  </ul>
+    })}
+  </p>
 }
 
 function TestsBody({ section }: { section: ResultTestsSection }) {
@@ -153,10 +166,10 @@ function FilesBody({ section }: { section: ResultFilesSection }) {
   </ul>
 }
 
-function SectionBody({ section }: { section: ResultSection }) {
+function SectionBody({ section, artifacts }: { section: ResultSection; artifacts?: readonly ResultArtifact[] }) {
   switch (section.kind) {
     case 'gallery': return <GalleryBody section={section} />
-    case 'documents': return <DocumentsBody section={section} />
+    case 'documents': return <DocumentsBody section={section} artifacts={artifacts} />
     case 'tests': return <TestsBody section={section} />
     case 'api': return <ApiBody section={section} />
     case 'environments': return <EnvironmentsBody section={section} />
@@ -166,7 +179,9 @@ function SectionBody({ section }: { section: ResultSection }) {
   }
 }
 
-export function ResultSectionCard({ section, sourceArtifact }: { section: ResultSection; sourceArtifact?: ResultArtifact }) {
+export function ResultSectionCard({ section, sourceArtifact, artifacts }: {
+  section: ResultSection; sourceArtifact?: ResultArtifact; artifacts?: readonly ResultArtifact[]
+}) {
   const preview = useContext(ArtifactPreviewContext)
   const headingId = useId()
   const Icon = sectionIcons[section.kind]
@@ -178,6 +193,6 @@ export function ResultSectionCard({ section, sourceArtifact }: { section: Result
       {section.caption && !/^(查看全部|查看详情|上传文件)\s*[→↗]?$/.test(section.caption.trim()) && <small>{section.caption}</small>}
     </header>
     {sourceArtifact && <button className="result-section-source" type="button" onClick={event => preview?.open(sourceArtifact, event.currentTarget)} disabled={!preview}>来源：{sourceArtifact.title} · {sourceArtifact.version || sourceArtifact.versionId}</button>}
-    <SectionBody section={section} />
+    <SectionBody section={section} artifacts={artifacts} />
   </section>
 }

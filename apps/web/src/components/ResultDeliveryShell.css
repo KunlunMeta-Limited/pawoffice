@@ -1,4 +1,17 @@
-.result-delivery-notice { display: flex; align-items: center; gap: 12px; margin: 14px 28px 0; padding: 11px 14px; border-left: 2px solid #c6ac75; border-radius: 0 8px 8px 0; background: #faf7ef; color: #847351; font: 11px/1.6 system-ui, sans-serif; }
+/* Reader-level shell: history switch and historical-delivery notice, aligned with the reading column. */
+.result-delivery-switch,
+.result-delivery-notice {
+  box-sizing: border-box;
+  width: min(856px, calc(100% - 48px));
+  margin: 14px auto 0;
+}
+
+.result-delivery-switch { display: flex; align-items: center; gap: 8px; padding-top: 4px; color: #6b7970; font: 11.5px/1.6 system-ui, sans-serif; }
+.result-delivery-switch label { flex: none; }
+.result-delivery-switch select { max-width: min(360px, 60vw); min-height: 28px; padding: 2px 8px; border: 1px solid #e0e7e0; border-radius: 7px; background: #fbfcfa; color: #3f5347; font: inherit; font-size: 11.5px; cursor: pointer; }
+.result-delivery-switch select:focus-visible { outline: 2px solid #718575; outline-offset: 1px; }
+
+.result-delivery-notice { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-left: 2px solid #c6ac75; border-radius: 0 8px 8px 0; background: #faf7ef; color: #847351; font: 11px/1.6 system-ui, sans-serif; }
 .result-delivery-notice > div { display: flex; flex: 1; flex-direction: column; gap: 2px; }
 .result-delivery-notice strong { color: #655b41; font-weight: 600; }
 .result-delivery-notice button { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 4px 0; border: 0; background: transparent; color: #56745e; font: inherit; cursor: pointer; }
@@ -6,4 +19,17 @@
 .result-delivery-loading p { display: flex; align-items: center; gap: 8px; }
 .result-delivery-loading [role=alert] { color: #a36551; }
 .result-delivery-loading button { padding: 6px 10px; border: 1px solid #dce5da; border-radius: 6px; background: #f8faf6; color: #5d755e; font: inherit; cursor: pointer; }
-@media (max-width: 620px) { .result-delivery-notice { margin: 12px 16px 0; align-items: flex-start; } .result-delivery-notice button { font-size: 10px; } }
+
+@media (max-width: 900px) {
+  .result-delivery-switch,
+  .result-delivery-notice { width: min(856px, calc(100% - 56px)); }
+}
+
+@media (max-width: 760px) {
+  .result-delivery-switch,
+  .result-delivery-notice { width: auto; margin: 12px 16px 0; }
+  .result-delivery-notice { align-items: flex-start; }
+  .result-delivery-notice button { font-size: 10px; }
+  .result-delivery-switch { flex-wrap: wrap; }
+  .result-delivery-switch select { max-width: 100%; }
+}
