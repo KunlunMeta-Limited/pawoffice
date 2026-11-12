@@ -17,7 +17,7 @@
     "summary": "公开来源采集 18 条记录，合并重复后保留 15 条，其中 13 条出处已核验，2 条待核实。",
     "verdict": "已核验记录可归档使用；2 条待核实记录单独标注来源，核对主办方公告后再合入正式清单。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 17:56",
+    "producedAt": "2026-11-12 21:45",
     "team": "信息采集办公室",
     "teamSize": 3,
     "updatedAt": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/csv",
         "sha256": ""
       }

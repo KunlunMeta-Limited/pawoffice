@@ -17,7 +17,7 @@
     "summary": "一周 3 个发布节点已排定：周一短视频、周三图文、周五评论问答；每类内容对应复盘指标已定义。",
     "verdict": "排期可执行；发布前需核对素材与封面，周五按形式分别回填完播、收藏与评论。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 17:56",
+    "producedAt": "2026-11-12 21:45",
     "team": "自媒体运营办公室",
     "teamSize": 3,
     "updatedAt": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/csv",
         "sha256": ""
       }

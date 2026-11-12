@@ -216,6 +216,7 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
       <span className="result-workspace-result-status" data-status={presentation.key} role="status" title={presentation.description}>
         <i aria-hidden="true" />成果 · {presentation.label}
       </span>
+      {/本地模拟数据|模拟业务数据/.test(result.note) && <span className="result-workspace-meta-item result-workspace-demo-badge">本地演示 · 模拟业务数据</span>}
       {result.owner && <span className="result-workspace-meta-item"><UserRound size={12} aria-hidden="true" />{result.owner}</span>}
       {teamLabel && <span className="result-workspace-meta-item"><Users size={12} aria-hidden="true" />{teamLabel}</span>}
       {(result.producedAt || result.updatedAt) && <span className="result-workspace-meta-item">

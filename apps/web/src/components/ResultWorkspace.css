@@ -68,6 +68,7 @@
 
 .result-workspace-title[data-long='true'] { font-size: 26px; }
 
+.result-workspace-demo-badge { color: #5c6b5e; border: 1px solid #d8dfd4; border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 620; letter-spacing: .02em; }
 .result-workspace-meta {
   display: flex;
   flex-wrap: wrap;
@@ -578,7 +579,8 @@
   .result-workspace { padding: 18px 16px 36px; }
   .result-workspace-title { font-size: 21px; }
   .result-workspace-conclusion { font-size: 18.5px; }
-  .result-workspace-meta { gap: 5px 12px; font-size: 11.5px; }
+  .result-workspace-demo-badge { color: #5c6b5e; border: 1px solid #d8dfd4; border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 620; letter-spacing: .02em; }
+.result-workspace-meta { gap: 5px 12px; font-size: 11.5px; }
   .result-workspace-result-status { font-size: 11px; }
 }
 

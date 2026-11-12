@@ -17,7 +17,7 @@
     "summary": "已完成标题、摘要、H1 与内链的检查，形成 3 项文案调整与 1 条内链建议；待实际修改并发布后再观察搜索表现。",
     "verdict": "以上为检查结论与建议，不代表线上页面已经修改；请先按清单更新页面与内链，发布后观察搜索表现。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 17:56",
+    "producedAt": "2026-11-12 21:45",
     "team": "SEO优化办公室",
     "teamSize": 3,
     "updatedAt": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:56",
+        "producedAt": "2026-11-12 21:45",
         "mimeType": "text/csv",
         "sha256": ""
       }
