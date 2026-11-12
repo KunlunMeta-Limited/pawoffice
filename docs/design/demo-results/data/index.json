@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-12T09:35:12.907Z",
+  "generatedAt": "2026-11-12T09:56:04.797Z",
   "scenarios": [
     {
       "id": "office-1",
@@ -61,7 +61,7 @@
       "resultStatus": "ready",
       "readingMode": "delivery",
       "metrics": 4,
-      "artifacts": 2,
+      "artifacts": 3,
       "checks": 3,
       "openRisks": 1,
       "next": 3

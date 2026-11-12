@@ -137,7 +137,7 @@ test('8 个演示场景全部产出可阅读的成果页', () => {
     const result = board.result
     assert.equal(result.title, expectedResults[office.id], `${office.id} 成果标题`)
     assert.equal(result.status, 'ready', office.id)
-    assert.equal(result.artifacts.length, 2, `${office.id} 交付物`)
+    assert.equal(result.artifacts.length, office.id === 'office-demo-tax' ? 3 : 2, `${office.id} 交付物`)
     assert(result.artifacts.some(artifact => artifact.kind === 'data'), office.id)
     assert.equal(result.checks.length, 3, `${office.id} 检查项`)
     assert.equal(result.tasks.length, 3, `${office.id} 任务记录`)
@@ -153,7 +153,7 @@ test('每个场景都有与自身语义对应的关键内容', () => {
   const expectations = {
     'office-content': ['图片清单', '素材审核清单', '13–16 英寸'],
     'office-demo-seo': ['产品页 SEO 优化清单', '核心搜索词', '内链建议'],
-    'office-demo-tax': ['待补凭证', 'P-04', 'R-06'],
+    'office-demo-tax': ['待补凭证', 'P-04', 'R-06', '申报草稿（待复核）'],
     'office-demo-social': ['发布节点', '周一', '复盘维度'],
     'office-demo-collection': ['原始记录', '出处已核验', '待核实'],
     'office-demo-digest': ['信息入口', '周三 15:00', '待确认'],

@@ -40,7 +40,7 @@ const report = `# 折叠电脑支架转化复盘
 
 ## 观察结果
 
-- 商品访问 360 → 350 次（-2.8%），曝光没有变化。
+- 商品访问 360 → 350 次（-2.8%）。
 - 订单 9 → 14 单（+5 单），访问成交率 2.5% → 4.0%（+1.5pp）。
 - 首轮 10 条购买咨询中，6 条涉及适用尺寸或机型。
 
@@ -59,7 +59,6 @@ const data = `指标,首轮,更新后,变化
 商品访问（次）,360,350,-2.8%
 订单（单）,9,14,+5
 访问成交率,2.5%,4.0%,+1.5pp
-尺寸/机型咨询（条）,6,10,"首轮 10 条咨询中 6 条"
 `
 
 /**
@@ -123,15 +122,15 @@ function seoResult(producedAt: string): OfficeResultInput {
     producedAt,
     team: 'SEO优化办公室',
     title: '产品页 SEO 优化清单',
-    summary: '产品页标题、摘要与 H1 已统一「折叠电脑支架」主题，交付 3 项页面改动与 1 条内链建议。',
-    verdict: '建议先改页面文案、再补站内入口；当前未接入收录与排名数据，不能预测流量变化。',
+    summary: '已完成标题、摘要、H1 与内链的检查，形成 3 项文案调整与 1 条内链建议；待实际修改并发布后再观察搜索表现。',
+    verdict: '以上为检查结论与建议，不代表线上页面已经修改；请先按清单更新页面与内链，发布后观察搜索表现。',
     metricsTitle: '优化项统计',
     metricsCaption: '按影响范围排序',
     metrics: [
-      { id: 'page', label: '页面改动', value: '3', unit: '项', change: '标题、摘要与 H1' },
+      { id: 'page', label: '待调整项', value: '3', unit: '项', change: '标题、摘要与 H1' },
       { id: 'keyword', label: '核心搜索词', value: '1', unit: '个', change: '折叠电脑支架' },
       { id: 'link', label: '内链建议', value: '1', unit: '条', change: '产品对比页 → 产品页' },
-      { id: 'status', label: '优化建议', value: '已交付', kind: 'status', tone: 'positive', change: '待发布后观察搜索表现' },
+      { id: 'status', label: '检查状态', value: '已完成检查', kind: 'status', tone: 'positive', change: '修改与发布待执行' },
     ],
     report: { title: 'SEO 优化清单', description: '页面文案与内链的改动建议。', content: `# 产品页 SEO 优化清单
 
@@ -151,7 +150,7 @@ H1,与标题不一致,统一核心词
 内链,无入口,对比页加一条产品页链接
 ` },
     checks: [
-      { id: 'theme', label: '标题、摘要与 H1 主题一致', status: 'passed' },
+      { id: 'theme', label: '标题、摘要与 H1 的建议已确认', status: 'passed' },
       { id: 'link', label: '内链建议已标注目标页', status: 'passed' },
       { id: 'order', label: '改动清单已按影响范围排序', status: 'passed' },
     ],
@@ -178,7 +177,7 @@ function taxResult(producedAt: string): OfficeResultInput {
     metrics: [
       { id: 'kinds', label: '资料类型', value: '2', unit: '类', change: '收支台账与发票明细' },
       { id: 'pending', label: '待补凭证', value: '2', unit: '条', change: 'P-04 与 R-06', tone: 'negative' },
-      { id: 'draft', label: '交付物', value: '1', unit: '份', change: '待复核的申报草稿' },
+      { id: 'draft', label: '申报草稿', value: '1', unit: '份', change: '待复核，凭证补齐前不提交' },
       { id: 'status', label: '复核状态', value: '待补件', kind: 'status', tone: 'negative', change: '补齐凭证编号后再复核' },
     ],
     report: { title: '申报资料核对报告', description: '归集、核对与待补项说明。', content: `# 本期申报资料核对报告
@@ -197,6 +196,19 @@ function taxResult(producedAt: string): OfficeResultInput {
 P-04,付款凭证,补编号并核对日期金额,待补
 R-06,入账凭证,补编号并保留发票对应,待补
 ` },
+    extraArtifacts: [{ id: 'draft', kind: 'document', title: '申报草稿（待复核）', description: '已归集资料与待补凭证的申报草稿，仅供内部复核。',
+      change: 'added', version: '1.0', producedAt, mimeType: 'text/markdown', content: `# 本期申报草稿（待复核）
+
+## 已归集
+- 收支台账与发票明细（2 类）。
+
+## 待补
+- P-04 付款凭证编号与日期金额待补。
+- R-06 入账凭证编号与发票对应关系待补。
+
+## 状态
+- 草稿仅供内部复核，凭证补齐前不提交申报。
+` }],
     checks: [
       { id: 'collect', label: '发票已按日期与来源归集', status: 'passed' },
       { id: 'ledger', label: '收支与凭证已逐项核对', status: 'passed' },
@@ -361,6 +373,7 @@ function result(spec: {
   metricsTitle: string; metricsCaption: string; metrics: NonNullable<OfficeResultInput['metrics']>
   report: { title: string; description: string; content: string }
   data: { title: string; description: string; content: string }
+  extraArtifacts?: NonNullable<OfficeResultInput['artifacts']>
   checks: NonNullable<OfficeResultInput['checks']>
   risks?: NonNullable<OfficeResultInput['risks']>
   tasks: NonNullable<OfficeResultInput['tasks']>
@@ -376,6 +389,7 @@ function result(spec: {
         change: 'added', version: '1.0', producedAt: spec.producedAt, mimeType: 'text/markdown', content: spec.report.content },
       { id: 'data', kind: 'data', title: spec.data.title, description: spec.data.description,
         change: 'added', version: '1.0', producedAt: spec.producedAt, mimeType: 'text/csv', content: spec.data.content },
+      ...(spec.extraArtifacts ?? []),
     ],
     checks: spec.checks, risks: spec.risks ?? [], decisions: [], tasks: spec.tasks, next: spec.next,
     note: spec.note ?? '以上为本地模拟数据，不连接真实外部系统、不产生实际业务操作。',

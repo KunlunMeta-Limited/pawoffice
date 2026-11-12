@@ -14,17 +14,17 @@
     "runId": "",
     "title": "产品页 SEO 优化清单",
     "status": "ready",
-    "summary": "产品页标题、摘要与 H1 已统一「折叠电脑支架」主题，交付 3 项页面改动与 1 条内链建议。",
-    "verdict": "建议先改页面文案、再补站内入口；当前未接入收录与排名数据，不能预测流量变化。",
+    "summary": "已完成标题、摘要、H1 与内链的检查，形成 3 项文案调整与 1 条内链建议；待实际修改并发布后再观察搜索表现。",
+    "verdict": "以上为检查结论与建议，不代表线上页面已经修改；请先按清单更新页面与内链，发布后观察搜索表现。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 17:35",
+    "producedAt": "2026-11-12 17:56",
     "team": "SEO优化办公室",
     "teamSize": 3,
     "updatedAt": "",
     "metrics": [
       {
         "id": "page",
-        "label": "页面改动",
+        "label": "待调整项",
         "value": "3",
         "unit": "项",
         "kind": "auto",
@@ -66,13 +66,13 @@
       },
       {
         "id": "status",
-        "label": "优化建议",
-        "value": "已交付",
+        "label": "检查状态",
+        "value": "已完成检查",
         "unit": "",
         "kind": "status",
         "emphasis": "normal",
         "previous": "",
-        "change": "待发布后观察搜索表现",
+        "change": "修改与发布待执行",
         "trend": "flat",
         "tone": "positive",
         "target": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:35",
+        "producedAt": "2026-11-12 17:56",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 17:35",
+        "producedAt": "2026-11-12 17:56",
         "mimeType": "text/csv",
         "sha256": ""
       }
@@ -117,7 +117,7 @@
     "checks": [
       {
         "id": "theme",
-        "label": "标题、摘要与 H1 主题一致",
+        "label": "标题、摘要与 H1 的建议已确认",
         "status": "passed",
         "artifactId": "",
         "versionId": ""

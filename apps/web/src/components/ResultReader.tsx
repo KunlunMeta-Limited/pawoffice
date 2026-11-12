@@ -184,6 +184,7 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
     {(overview || view === 'actions') && <section className="result-hero" aria-label="成果摘要操作">
       {view === 'full' && <div className="result-hero-meta">
         <span className={`result-status is-${result.status}`}><StatusIcon size={14} strokeWidth={2.2} />{status.label}</span>
+        {/本地模拟数据|模拟业务数据/.test(result.note) && <span className="result-meta-item result-demo-badge">本地演示数据</span>}
         {result.owner && <span className="result-meta-item"><UserRound size={13} />{result.owner}</span>}
         {result.producedAt && <span className="result-meta-item"><CalendarDays size={13} /><time dateTime={result.producedAt}
           title="产出时间（本地时区）">{formatResultTimestamp(result.producedAt)}</time></span>}
