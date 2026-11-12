@@ -63,3 +63,4 @@ code/demoResults.ts            演示任务完成时写入成果的映射（本�
 - 当成果包含 **≥2 个 comparison 指标** 时，阅读器自动进入「数据主导」：指标带排在交付物之前，首屏摘要字号下调，重点转为前后对比；不针对具体业务写模板。
 - 该规则由 `ResultWorkspace` 通过 `data-lead="data"` 标记，纯前端实现，不新增协议字段。
 - 盲测：仓库 `tests/resultBlindStructure.test.mjs` 用三份**非演示场景**的合法结果验证自适应：无交付物的长篇说明型、仅比较指标的指标型、文档+自定义区块的混合型。
+- 证据文件：`code/ResultWorkspace.tsx`（data-led 规则与摘要折叠）、`blind-tests/resultBlindStructure.test.mjs`（3 个非演示结构盲测，3/3 通过）。

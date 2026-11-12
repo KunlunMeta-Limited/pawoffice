@@ -593,3 +593,9 @@
 .result-workspace[data-lead="data"] .result-workspace-conclusion { font-size: 20px; line-height: 1.55; font-weight: 560; letter-spacing: -.01em; }
 .result-workspace[data-lead="data"] .result-workspace-abstract { padding-bottom: 10px; }
 .result-workspace[data-lead="data"] .result-workspace-metric-band { padding-top: 4px; }
+/* Data-led first screen: keep the prose summary available but collapsed to avoid duplicating the metric band. */
+.result-workspace-summary-disclosure { margin: 2px 0 10px; }
+.result-workspace-summary-disclosure > summary { cursor: pointer; color: var(--rb-muted); font-size: 12px; font-weight: 600; list-style: none; }
+.result-workspace-summary-disclosure > summary::before { content: "▸ "; }
+.result-workspace-summary-disclosure[open] > summary::before { content: "▾ "; }
+.result-workspace[data-lead="data"] .result-workspace-summary-disclosure .result-workspace-conclusion { margin-top: 8px; font-size: 17px; line-height: 1.55; }

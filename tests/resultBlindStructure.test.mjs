@@ -61,6 +61,7 @@ test('指标型成果：比较数据成为首屏主内容（data-lead）', () =>
   const html = render(result)
   assert(html.includes('data-lead="data"'), '比较型指标应触发 data-lead')
   assert(html.includes('A 渠道转化率'))
+  assert(html.includes('result-workspace-summary-disclosure'), '数据主导时摘要应折叠')
   assert(html.indexOf('result-workspace-metric-band') < html.indexOf('result-workspace-review'), '指标区应排在验收区之前')
 })
 

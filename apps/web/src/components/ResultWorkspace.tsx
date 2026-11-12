@@ -237,7 +237,11 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
 
     <section className="result-workspace-abstract" aria-label="本轮结论">
       {summary
-        ? <p className="result-workspace-conclusion">{summary}</p>
+        ? dataLed
+          // Data-led results already show the key numbers in the metric band; keep the prose summary
+          // available but collapsed so the first screen is not a duplicate wall of text.
+          ? <details className="result-workspace-summary-disclosure"><summary>摘要</summary><p className="result-workspace-conclusion">{summary}</p></details>
+          : <p className="result-workspace-conclusion">{summary}</p>
         : <p className="result-workspace-conclusion is-neutral">
           {hasResult ? '本轮成果未提供摘要，请从下方的交付内容与验证记录开始阅读。' : presentation.description}
         </p>}
