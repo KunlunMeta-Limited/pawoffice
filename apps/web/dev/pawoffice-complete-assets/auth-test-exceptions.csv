@@ -1,7 +1,0 @@
-case_id,category,status,issue,severity,owner
-SEC-017,短信验证码限流,failed,并发请求可能绕过单用户限流,high,陈雨
-SES-021,会话安全,failed,多端退出后旧会话延迟失效,medium,林舟
-UX-031,移动端,pending,iOS验证码自动填充与焦点待复核,low,许清
-NET-044,弱网,pending,Android弱网令牌刷新待复核,medium,赵岚
-A11Y-052,可访问性,pending,错误播报与键盘路径待复核,medium,许清
-REQ-060,需求验收,pending,v2.2范围检查在v2.3下待重验,low,林舟
