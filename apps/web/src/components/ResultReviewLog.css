@@ -63,18 +63,18 @@
 
 /* ---------- check rows ---------- */
 
-.result-workspace-checks { margin: 8px 0 0; padding: 0; list-style: none; }
+.result-workspace-checks { display: grid; gap: 3px; margin: 8px 0 0; padding: 0; list-style: none; }
 
 .result-workspace-checks li {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr) max-content;
   align-items: baseline;
   gap: 2px 9px;
-  padding: 8px 0;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--rb-soft-line, #f0f3ef);
 }
 
-.result-workspace-checks li:last-child { border-bottom: 0; }
+.result-workspace-checks li:last-child { border-bottom-color: transparent; }
 
 .result-workspace-checks li svg {
   flex: none;
@@ -106,33 +106,21 @@
 .result-workspace-checks li[data-status='failed'] em { color: #94483a; }
 .result-workspace-checks li[data-status='stale'] em { color: var(--review-stale); }
 
-/* Passed recedes to secondary small print; what still needs evidence keeps full weight. */
-.result-workspace-checks li[data-status='passed'] { padding: 5px 0; }
-.result-workspace-checks li[data-status='passed'] > span { color: var(--rb-muted, #64736a); font-size: 12.5px; }
-.result-workspace-checks li[data-status='passed'] em { font-size: 11px; }
+.result-workspace-checks li:is([data-status='pending'], [data-status='failed'], [data-status='stale']) {
+  border-radius: 8px;
+  border-bottom-color: transparent;
+}
 
 .result-workspace-checks li[data-status='pending'] {
-  margin: 3px 0;
-  padding: 9px 12px;
-  border-bottom: 0;
-  border-radius: 8px;
   background: #fbfaf4;
 }
 
 .result-workspace-checks li[data-status='failed'] {
-  margin: 3px 0;
-  padding: 9px 12px;
-  border-bottom: 0;
-  border-radius: 8px;
   background: #fdf8f6;
   box-shadow: inset 2px 0 0 #d9a496;
 }
 
 .result-workspace-checks li[data-status='stale'] {
-  margin: 3px 0;
-  padding: 9px 12px;
-  border-bottom: 0;
-  border-radius: 8px;
   background: #fdfaf1;
   box-shadow: inset 2px 0 0 #cdb178;
 }
@@ -184,9 +172,7 @@
 .result-workspace-risk[data-status='open'] .result-workspace-risk-title { color: var(--rb-ink, #26332b); }
 .result-workspace-risk[data-status='mitigating'] .result-workspace-risk-title { color: var(--rb-body, #4f5d53); }
 
-/* Closed risks stay readable but recede; they are also folded into a disclosure below. */
-.result-workspace-risk[data-status='closed'] { opacity: .62; }
-.result-workspace-risk[data-status='closed'] .result-workspace-risk-title { font-weight: 480; }
+.result-workspace-risk[data-status='closed'] .result-workspace-risk-title { color: var(--rb-body, #4f5d53); }
 
 .result-workspace-risk-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; }
 
@@ -247,11 +233,8 @@
 @media (max-width: 620px) {
   .result-workspace-check-band { padding: 11px 13px 12px; }
   .result-workspace-check-summary { font-size: 12.5px; }
-  .result-workspace-checks li { grid-template-columns: 18px minmax(0, 1fr); }
+  .result-workspace-checks li { grid-template-columns: 18px minmax(0, 1fr); padding-inline: 10px; }
   .result-workspace-checks li em,
   .result-workspace-checks li small { grid-column: 2; }
-  .result-workspace-checks li[data-status='pending'],
-  .result-workspace-checks li[data-status='failed'],
-  .result-workspace-checks li[data-status='stale'] { padding: 8px 10px; }
   .result-workspace-risk-title { font-size: 13.5px; }
 }

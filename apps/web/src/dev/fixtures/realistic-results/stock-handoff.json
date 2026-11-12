@@ -1,0 +1,80 @@
+{
+  "template": "result-v1",
+  "runId": "stock-handoff",
+  "title": "华东仓 11 月盘点差异｜复核交接",
+  "status": "ready",
+  "verdict": "6 个 SKU 待复核，先保留账面数量",
+  "summary": "已完成 11 月 11 日 A 区账实比对。仓班先复点 3 个库位，库管再核对 2 项批次和 1 项未过账调拨。",
+  "owner": "沈禾",
+  "team": "华东仓运营",
+  "producedAt": "2026-11-11T17:20:00+08:00",
+  "metrics": [
+    {
+      "id": "pending-sku",
+      "kind": "value",
+      "label": "待复核 SKU",
+      "value": "6",
+      "unit": "个",
+      "emphasis": "primary"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "stock-exceptions",
+      "kind": "data",
+      "title": "A 区盘点差异明细.csv",
+      "mimeType": "text/csv",
+      "version": "11-11 交接版",
+      "versionId": "stock-exceptions-v1",
+      "description": "含库位、账面数、实盘数与复核动作，差额按实盘减账面计算。",
+      "content": "SKU,库位,账面数,实盘数,差额,复核动作\nST-014,A01-03,48,46,-2,重盘整箱与散件\nST-028,A02-01,32,35,3,检查相邻库位混放\nST-053,A03-02,120,118,-2,换人重盘并复点零散件\nST-067,A04-05,24,23,-1,核对外箱和系统批次\nST-092,A05-01,40,42,2,核对暂存区批次标签\nST-108,A06-04,18,12,-6,确认当日调拨单是否过账\n",
+      "producedAt": "2026-11-11T17:20:00+08:00",
+      "runId": "stock-handoff"
+    },
+    {
+      "id": "stock-instructions",
+      "kind": "document",
+      "title": "复核顺序与回填说明",
+      "version": "v1.0",
+      "versionId": "stock-instructions-v1",
+      "description": "夜班与次日库管使用同一回填口径，保留每次复核记录。",
+      "content": "# 复核顺序与回填说明\n\n盘点截止时间为 11 月 11 日 16:00。后续入库和调拨记录应分开处理。\n\n## 夜班复点\n\nA01-03、A02-01、A03-02 由另一名仓员复点。分别记录整箱、散件和相邻库位混放数量，写明复点人及时间。\n\n## 库管核对\n\n- 对照 A04-05、A05-01 的外箱标签和系统批次。\n- 查 A06-04 的当日调拨单，确认数量是否已从源库位扣减。\n\n## 结束条件\n\n六条记录均完成复核后，由库管主管审核调整单。复核中发现新差异时，新增记录并注明发现时间。",
+      "producedAt": "2026-11-11T17:20:00+08:00",
+      "runId": "stock-handoff"
+    }
+  ],
+  "checks": [
+    {
+      "id": "stock-scope",
+      "label": "截止 16:00 的盘点范围与账面快照已对齐",
+      "status": "passed"
+    },
+    {
+      "id": "stock-count",
+      "label": "A01-03、A02-01、A03-02 等待换人复点",
+      "status": "pending",
+      "artifactId": "stock-exceptions",
+      "versionId": "stock-exceptions-v1"
+    },
+    {
+      "id": "stock-ledger",
+      "label": "批次和调拨差异等待库管确认",
+      "status": "pending"
+    }
+  ],
+  "risks": [
+    {
+      "id": "stock-move",
+      "title": "复核期间继续移库会改变实盘基准",
+      "level": "medium",
+      "status": "mitigating",
+      "owner": "夜班组长",
+      "note": "复核前记录本次盘点截止后的移动，库管以差异明细与流水逐项对齐。"
+    }
+  ],
+  "next": [
+    "夜班组长在 20:00 前回填三处复点结果。",
+    "11 月 12 日 10:00 前由库管核对批次与调拨流水，主管审核后再调整库存。"
+  ],
+  "note": "PawOffice 开发演示。业务、人员和数字均为模拟样例。"
+}

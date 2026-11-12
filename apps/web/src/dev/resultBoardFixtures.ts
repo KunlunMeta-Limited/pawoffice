@@ -19,6 +19,15 @@ import type {
 import { resultPresentation } from '../results/presentation.ts'
 import sampleSource from './fixtures/result-ready-round3.json?raw'
 import historySource from './fixtures/whiteboard-ready-round3.json?raw'
+import completeSource from './fixtures/pawoffice-complete/pawoffice-full-result.json?raw'
+import completeFactSource from './fixtures/pawoffice-complete/pawoffice-fact-only-result.json?raw'
+import completeColumnsSource from './fixtures/pawoffice-complete/pawoffice-layout-columns.json?raw'
+import completeGridSource from './fixtures/pawoffice-complete/pawoffice-layout-grid.json?raw'
+import completeCardsSource from './fixtures/pawoffice-complete/pawoffice-layout-cards.json?raw'
+import refundPilotSource from './fixtures/realistic-results/refund-pilot.json?raw'
+import stockHandoffSource from './fixtures/realistic-results/stock-handoff.json?raw'
+import paymentReviewSource from './fixtures/realistic-results/payment-review.json?raw'
+import exportCanarySource from './fixtures/realistic-results/export-canary.json?raw'
 
 /* -------------------------------------------------------------------------------------------------
  * Schema-checked constructors
@@ -975,7 +984,27 @@ export const typeFixtureNames = [
 ] as const
 export type TypeFixtureName = typeof typeFixtureNames[number]
 
-export type ResultBoardFixtureName = 'sample' | 'history' | 'matrix' | 'layouts' | 'limits' | TypeFixtureName
+const scenarioSources = {
+  'refund-pilot': ['自助退款试点', refundPilotSource],
+  'stock-handoff': ['仓库盘点交接', stockHandoffSource],
+  'payment-review': ['支付超时复盘', paymentReviewSource],
+  'export-canary': ['账单导出灰度', exportCanarySource],
+} as const
+type ScenarioName = keyof typeof scenarioSources
+export const resultScenarioNames = Object.keys(scenarioSources) as ScenarioName[]
+
+const completeSources = {
+  complete: ['完整交付包 · 灰度验收', completeSource],
+  'complete-fact': ['完整交付包 · 说明型成果', completeFactSource],
+  'complete-columns': ['完整交付包 · 双栏', completeColumnsSource],
+  'complete-grid': ['完整交付包 · 网格', completeGridSource],
+  'complete-cards': ['完整交付包 · 卡片', completeCardsSource],
+  ...scenarioSources,
+} as const
+type CompleteFixtureName = keyof typeof completeSources
+const completeFixtureNames = Object.keys(completeSources) as CompleteFixtureName[]
+
+export type ResultBoardFixtureName = 'sample' | 'history' | 'matrix' | 'layouts' | 'limits' | TypeFixtureName | CompleteFixtureName
 
 export type ResultBoardFixture = {
   name: ResultBoardFixtureName
@@ -986,7 +1015,27 @@ export type ResultBoardFixture = {
   result: OfficeResult
 }
 
+function completeFixture(name: CompleteFixtureName): ResultBoardFixture {
+  const [title, source] = completeSources[name]
+  const origin = typeof window === 'undefined' ? 'http://localhost:5173' : window.location.origin
+  const localAssets = new URL(`${import.meta.env.BASE_URL}dev/pawoffice-complete-assets/`, origin)
+  const result = checkedResult(JSON.parse(source.replaceAll('http://localhost:5173/demo-assets/', localAssets.href)), name)
+  const board = boardFor(result, 'queued')
+  // The ZIP supplies a result, not an execution state for the enclosing task board.
+  delete (board as Partial<WhiteboardTaskBoardData>).status
+  return { name, title, dataSource: 'frontend-fixture', note: result.note, board, result }
+}
+
 export const resultBoardFixtures: Record<ResultBoardFixtureName, ResultBoardFixture> = {
+  'refund-pilot': completeFixture('refund-pilot'),
+  'stock-handoff': completeFixture('stock-handoff'),
+  'payment-review': completeFixture('payment-review'),
+  'export-canary': completeFixture('export-canary'),
+  complete: completeFixture('complete'),
+  'complete-fact': completeFixture('complete-fact'),
+  'complete-columns': completeFixture('complete-columns'),
+  'complete-grid': completeFixture('complete-grid'),
+  'complete-cards': completeFixture('complete-cards'),
   sample: {
     name: 'sample', title: '真实样例 · 登录模块交付成果', dataSource: 'real-sample',
     note: '用户真实样例 result-ready-round3.json（逐字节复制）。样例只有 result 对象，board 不带 status。',
@@ -1055,5 +1104,5 @@ export const resultBoardFixtures: Record<ResultBoardFixtureName, ResultBoardFixt
 }
 
 export const resultBoardFixtureNames = [
-  'sample', 'history', 'matrix', 'layouts', 'limits', ...typeFixtureNames,
+  'sample', 'history', 'matrix', 'layouts', 'limits', ...typeFixtureNames, ...completeFixtureNames,
 ] as const

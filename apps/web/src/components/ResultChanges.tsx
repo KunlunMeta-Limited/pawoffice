@@ -10,17 +10,16 @@ const statusLabels = { added: '新增', modified: '修改', deleted: '删除', r
 const statusOrder = ['added', 'modified', 'deleted', 'renamed'] as const
 
 function LineCounts({ file }: { file: Pick<ChangedFile, 'added' | 'deleted' | 'binary'> }) {
-  return <span className="result-change-counts">{file.binary ? <span>二进制</span> : <>
+  return <span className="result-change-counts">{file.binary ? <span>二进制 · 无法文本预览</span> : <>
     <span className="is-added">+{file.added}</span><span className="is-deleted">-{file.deleted}</span>
   </>}</span>
 }
 
 /** Honest fallbacks first: a binary, oversized or stat-only file never gets an invented text diff. */
 function DiffBody({ file }: { file: ChangedFile }) {
-  const parsed = parseUnifiedDiff(file.binary ? '' : file.diff)
+  const parsed = parseUnifiedDiff(file.diff)
   const hasLines = parsed.lines.some(line => ['context', 'added', 'deleted'].includes(line.kind))
-  const empty = file.binary ? '二进制文件不支持逐行对比。'
-    : file.oversized ? '文件较大，后端未提供可预览的差异。'
+  const empty = file.oversized ? '文件较大，后端未提供可预览的差异。'
       : file.diff.trim() ? '未提供可解析的 unified diff 内容。' : '后端仅提供了变更统计，尚未提供逐行差异。'
   if (!hasLines) return <p className="result-diff-empty">{empty}</p>
   return <>
@@ -77,9 +76,19 @@ export function ResultChanges({ section, active = true }: { section: ResultChang
         const expanded = open.has(index)
         const panelId = `${baseId}-diff-${index}`
         const label = statusLabels[file.status]
-        const rowLabel = `${expanded ? '收起' : '展开'} ${file.path} 的逐行差异，${label}，新增 ${file.added} 行，删除 ${file.deleted} 行${file.binary ? '，二进制文件' : ''}`
+        const rowLabel = `${expanded ? '收起' : '展开'} ${file.path} 的逐行差异，${label}，新增 ${file.added} 行，删除 ${file.deleted} 行`
+        const fileSummary = <>
+          <span className="result-change-status" data-status={file.status}>{label}</span>
+          <span className="result-change-path">
+            <code>{file.path}</code>
+            {file.previousPath && <small>原路径：{file.previousPath}</small>}
+          </span>
+          {file.oversized && <span className="result-change-large">较大文件</span>}
+          <LineCounts file={file} />
+        </>
         return <li key={`${file.status}-${file.path}-${index}`}>
-          <button type="button" className="result-change-row" data-status={file.status}
+          {file.binary ? <div className="result-change-row" data-status={file.status} data-preview="unavailable">{fileSummary}</div>
+            : <button type="button" className="result-change-row" data-status={file.status}
             aria-expanded={expanded} aria-controls={expanded ? panelId : undefined} aria-label={rowLabel}
             onClick={() => toggle(index)}
             onKeyDown={event => {
@@ -88,15 +97,9 @@ export function ResultChanges({ section, active = true }: { section: ResultChang
               event.stopPropagation()
               collapse(index)
             }}>
-            <span className="result-change-status" data-status={file.status}>{label}</span>
-            <span className="result-change-path">
-              <code>{file.path}</code>
-              {file.previousPath && <small>原路径：{file.previousPath}</small>}
-            </span>
-            {file.oversized && <span className="result-change-large">较大文件</span>}
-            <LineCounts file={file} />
+            {fileSummary}
             <ChevronRight className="result-change-chevron" size={14} strokeWidth={2.2} aria-hidden="true" />
-          </button>
+          </button>}
           {expanded && <div className="result-change-diff" id={panelId} role="region"
             aria-label={`${file.path} 的逐行差异`}
             onKeyDown={event => {

@@ -1,0 +1,79 @@
+{
+  "template": "result-v1",
+  "runId": "export-canary",
+  "title": "批量账单导出改造｜10% 灰度交付",
+  "status": "ready",
+  "verdict": "导出 P95 降到 3.4 秒，维持 10% 灰度",
+  "summary": "在同一份 20 万行账单样本上，新旧实现各运行 30 次。新实现分批读取并写入 CSV，导出 P95 从 9.8 秒降到 3.4 秒。高峰期验证安排在 11 月 11 日晚高峰。",
+  "owner": "唐宁",
+  "team": "账务平台组",
+  "producedAt": "2026-11-11T15:40:00+08:00",
+  "metrics": [
+    {
+      "id": "export-p95",
+      "kind": "comparison",
+      "label": "导出耗时 P95",
+      "previous": "9.8 秒",
+      "value": "3.4",
+      "unit": "秒",
+      "change": "-6.4 秒",
+      "trend": "down",
+      "tone": "positive",
+      "emphasis": "primary"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "export-runbook",
+      "kind": "document",
+      "title": "账单导出灰度与回滚手册",
+      "version": "v1.1",
+      "versionId": "export-runbook-v11",
+      "description": "记录测量口径、扩量条件和回退入口，供晚高峰值班使用。",
+      "content": "# 账单导出灰度与回滚手册\n\n## 本轮测量\n\n选用同一份 20 万行脱敏账单样本。新旧实现各重复运行 30 次，计时范围从开始导出到文件写入完成。\n\n| 项目 | 旧实现 | 新实现 |\n| --- | --- | --- |\n| 导出 P95 | 9.8 秒 | 3.4 秒 |\n| 校验列 | 账单号、金额、币种、入账时间 | 相同 |\n\n## 今晚观察\n\n在 20:00 至 21:00 维持 10% 灰度。检查导出失败率、P95 和文件行数。连续 15 分钟失败率高于 1%，或发现任一缺行，立即暂停扩量。\n\n## 回退\n\n关闭账单导出灰度开关，确认新请求回到旧实现。已运行的导出继续观察到完成，记录任务 ID 和结果。",
+      "producedAt": "2026-11-11T15:40:00+08:00",
+      "runId": "export-canary"
+    }
+  ],
+  "checks": [
+    {
+      "id": "export-parity",
+      "label": "新旧导出文件的行数、关键字段与金额合计一致",
+      "status": "passed"
+    },
+    {
+      "id": "export-gate",
+      "label": "关闭灰度开关后，新请求切回旧实现",
+      "status": "passed",
+      "artifactId": "export-runbook",
+      "versionId": "export-runbook-v11"
+    },
+    {
+      "id": "export-peak",
+      "label": "晚高峰失败率和耗时待验证",
+      "status": "pending"
+    }
+  ],
+  "sections": [
+    {
+      "id": "export-changes",
+      "kind": "changes",
+      "title": "按批读取与写入",
+      "caption": "保留原字段序列和排序键。",
+      "files": [
+        {
+          "path": "src/billing/exportBills.ts",
+          "status": "modified",
+          "added": 3,
+          "deleted": 2,
+          "diff": "@@ -18,4 +18,5 @@\n export async function exportBills(scope: Scope, writer: CsvWriter) {\n-  const bills = await ledger.list(scope)\n-  await writer.writeRows(bills.map(toCsvRow))\n+  for await (const bills of ledger.readBatches(scope, { size: 2000, orderBy: \"billId\" })) {\n+    await writer.writeRows(bills.map(toCsvRow))\n+  }\n }"
+        }
+      ]
+    }
+  ],
+  "next": [
+    "11 月 11 日 20:00 至 21:00 由账务值班观察灰度数据并记录异常任务 ID。",
+    "满足手册中的观察条件后，由负责人决定是否扩大到 30%。"
+  ],
+  "note": "PawOffice 开发演示。业务、人员和数字均为模拟样例。"
+}

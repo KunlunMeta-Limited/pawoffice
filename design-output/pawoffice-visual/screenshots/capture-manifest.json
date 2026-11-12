@@ -1,0 +1,307 @@
+{
+  "source": "../pawoffice-result-design.html",
+  "runtime": "Chromium",
+  "sourceMode": "Local file URL; self-contained offline HTML",
+  "method": "Direct browser captures. No compositing or generated images.",
+  "captures": [
+    {
+      "file": "01-reader-first-screen.png",
+      "title": "成果阅读器首屏 / 交付物型",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 864
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "02-delivery-full.png",
+      "title": "交付物型完整长图",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 2629
+      },
+      "capture": "full page"
+    },
+    {
+      "file": "03-file-delivery.png",
+      "title": "文件交付集合",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 456
+      },
+      "capture": "element"
+    },
+    {
+      "file": "04-checks-and-risks.png",
+      "title": "检查与风险",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 558
+      },
+      "capture": "element"
+    },
+    {
+      "file": "05-version-timeline.png",
+      "title": "版本与工作记录",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 505
+      },
+      "capture": "element"
+    },
+    {
+      "file": "06-code-diff.png",
+      "title": "浅色代码 diff",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1113,
+        "height": 413
+      },
+      "capture": "element"
+    },
+    {
+      "file": "07-document-reader.png",
+      "title": "文档阅读",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 864
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "08-document-version-comparison.png",
+      "title": "文档版本对照",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 864
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "09-fact-report-first-screen.png",
+      "title": "事实描述型首屏",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 864
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "10-fact-report-full.png",
+      "title": "事实报告完整长图",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 2075
+      },
+      "capture": "full page"
+    },
+    {
+      "file": "11-components-full.png",
+      "title": "数据类型组件完整长图",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 5530
+      },
+      "capture": "full page"
+    },
+    {
+      "file": "12-metrics-six-types.png",
+      "title": "六类 Metrics",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 627
+      },
+      "capture": "element"
+    },
+    {
+      "file": "13-artifacts-four-types.png",
+      "title": "四类 Artifacts 与图廊",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 715
+      },
+      "capture": "element"
+    },
+    {
+      "file": "14-professional-sections.png",
+      "title": "专业 Sections、风险与版本状态",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 1279
+      },
+      "capture": "element"
+    },
+    {
+      "file": "15-custom-blocks.png",
+      "title": "十二类 Custom Blocks",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 1910
+      },
+      "capture": "element"
+    },
+    {
+      "file": "16-layout-variants.png",
+      "title": "内容组合布局",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1115,
+        "height": 455
+      },
+      "capture": "element"
+    },
+    {
+      "file": "17-mobile-390-first-screen.png",
+      "title": "390px 交付首屏",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "18-mobile-390-delivery-full.png",
+      "title": "390px 交付完整长图",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 390,
+        "height": 3896
+      },
+      "capture": "full page"
+    },
+    {
+      "file": "19-mobile-390-document.png",
+      "title": "390px 文档阅读",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "20-mobile-390-fact-report.png",
+      "title": "390px 事实报告首屏",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 390,
+        "height": 844
+      },
+      "capture": "viewport"
+    },
+    {
+      "file": "21-mobile-390-fact-full.png",
+      "title": "390px 事实报告完整长图",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 390,
+        "height": 2347
+      },
+      "capture": "full page"
+    },
+    {
+      "file": "22-mobile-390-metrics.png",
+      "title": "390px 指标组件",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "image": {
+        "width": 346,
+        "height": 1417
+      },
+      "capture": "element"
+    },
+    {
+      "file": "23-data-fixture-preview.png",
+      "title": "数据文件预览 / fixture 来源",
+      "viewport": {
+        "width": 1787,
+        "height": 864
+      },
+      "image": {
+        "width": 1787,
+        "height": 864
+      },
+      "capture": "viewport"
+    }
+  ]
+}

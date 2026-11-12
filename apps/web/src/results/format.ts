@@ -64,9 +64,10 @@ export function resultFileBase(result: OfficeResult) {
   return base || 'result'
 }
 
-/** auto = comparison only when the backend supplied a previous observation, otherwise a plain value. */
+/** Resolve auto from the supplied goal or previous observation. */
 export function resultMetricKind(metric: ResultMetric): ResolvedKind {
   if (metric.kind !== 'auto') return metric.kind
+  if (metric.target || metric.targetStatus || metric.progress !== undefined) return 'target'
   return metric.previous ? 'comparison' : 'value'
 }
 
@@ -80,7 +81,15 @@ function metricValue(metric: ResultMetric) {
 function metricLine(metric: ResultMetric) {
   const kind = resolvedKind(metric)
   if (kind === 'comparison') return `${metric.label}：${metric.previous ? `${metric.previous} → ` : ''}${metricValue(metric)}${metric.change ? `（${metric.change}）` : ''}`
-  if (kind === 'target') return `${metric.label}：${metricValue(metric)}${metric.target ? ` / 目标 ${metric.target}` : ''}${metric.targetStatus ? `（${targetStatusLabels[metric.targetStatus]}${metric.progress !== undefined ? `，${Math.round(metric.progress)}%` : ''}）` : ''}`
+  if (kind === 'target') {
+    const details = [
+      metric.targetStatus && targetStatusLabels[metric.targetStatus],
+      metric.progress !== undefined && `${Math.round(metric.progress)}%`,
+      metric.change,
+    ].filter(Boolean).join('，')
+    const observations = [metric.previous, metricValue(metric)].filter(Boolean).join(' → ')
+    return `${metric.label}：${observations}${metric.target ? ` / 目标 ${metric.target}` : ''}${details ? `（${details}）` : ''}`
+  }
   if (kind === 'status' || kind === 'text') return `${metric.label}：${metric.value}`
   return `${metric.label}：${metricValue(metric)}${metric.change ? `（${metric.change}）` : ''}`
 }

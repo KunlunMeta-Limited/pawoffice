@@ -47,7 +47,7 @@
   display: block;
   width: 56px;
   height: 56px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .result-deliverable-main { flex: 1 1 auto; min-width: 0; }
@@ -244,8 +244,12 @@
 .result-deliverable[data-kind='image'] .result-deliverable-title { align-self: center; }
 
 @media (max-width: 760px) {
-  .result-deliverable { flex-wrap: wrap; gap: 8px; min-height: 0; padding: 12px 0; }
-  .result-deliverable-actions { width: 100%; justify-content: flex-start; margin: 0; gap: 6px; }
+  .result-deliverable { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-height: 0; padding: 12px 0; }
+  .result-deliverable[data-kind='image'] { grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; }
+  .result-deliverable-line { flex-wrap: wrap; gap: 2px 8px; overflow: visible; white-space: normal; }
+  .result-deliverable-description { flex-basis: 100%; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+  .result-deliverable-line > .result-deliverable-description::before { content: none; }
+  .result-deliverable-actions { grid-column: 1 / -1; justify-content: flex-start; margin: 0; gap: 6px; }
   .result-deliverable-action { min-height: 38px; padding: 5px 12px; }
   .result-deliverable-domain { max-width: 100%; }
 }

@@ -15,17 +15,17 @@
 .result-file-error, .result-file-notice, .result-file-caption { margin: 0; padding: 10px 12px; font: 12px/1.7 system-ui, sans-serif; overflow-wrap: anywhere; }
 .result-file-error { color: #a45f4b; background: #fcf3ee; }
 .result-file-notice { color: #8b7549; background: #fcf8ee; }
-.result-file-caption { color: #7a887d; }
+.result-file-caption { color: #5e6e62; }
 .result-csv-controls, .result-csv-pages { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 12px; font: 11px/1.5 system-ui, sans-serif; }
 .result-csv-controls label, .result-csv-pages label { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .result-csv-controls input[type=search] { min-width: 0; width: 180px; max-width: 100%; }
 .result-csv-controls input[type=search], .result-csv-controls select, .result-csv-pages select { padding: 5px 7px; border: 1px solid #dce5da; border-radius: 5px; background: #fff; color: #526859; font: inherit; }
-.result-csv-scroll { max-width: 100%; max-height: 55vh; overflow: auto; border-block: 1px solid #e5ebe2; }
+.result-csv-scroll { max-width: 100%; max-height: 50dvh; overflow: auto; border-top: 1px solid #e5ebe2; }
 .result-csv-scroll table { min-width: 100%; width: max-content; margin: 0; border-collapse: collapse; font-size: 12px; }
 .result-csv-scroll th, .result-csv-scroll td { max-width: 360px; min-width: 70px; padding: 9px 12px; border-bottom: 1px solid #edf1e9; text-align: left; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; }
-.result-csv-scroll th { color: #748476; font-weight: 500; background: #f7f9f5; }
+.result-csv-scroll th { color: #556758; font-weight: 550; background: #f0f4ec; }
 .result-csv-scroll thead th { position: sticky; top: 0; z-index: 1; }
-.result-csv-scroll tbody th { min-width: 40px; color: #99a296; background: #fafbf8; }
+.result-csv-scroll tbody th { min-width: 40px; color: #637165; background: #fafbf8; }
 .result-csv-scroll td:empty::after { content: '—'; color: #bac3b5; }
 .result-csv-pages > span { margin-left: auto; color: #7a887d; }
 .result-csv-pages button:disabled { opacity: .4; cursor: default; }

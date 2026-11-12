@@ -5,7 +5,7 @@ import {
   PackageCheck, PencilLine, Table2, Target, UserRound,
 } from 'lucide-react'
 import type { OfficeResult, ResultArtifact, ResultCheck, ResultMetric } from '@pawoffice/protocol/office-ui'
-import { formatResultTimestamp, resultFileBase, resultHasContent, resultReport, resultStatusText, resultSummaryText } from '../results/format.ts'
+import { formatResultTimestamp, resultFileBase, resultHasContent, resultMetricKind, resultReport, resultStatusText, resultSummaryText } from '../results/format.ts'
 import { ResultMarkdown } from './ResultMarkdown.tsx'
 import type { ResultDocumentMetadata } from '../results/presentation.ts'
 import { resultChecks, resultVerificationConflict } from '../results/checks.ts'
@@ -22,19 +22,11 @@ const checkIcons = { passed: CheckCircle2, pending: CircleDashed, failed: Circle
 const checkLabels = { passed: '已通过', pending: '待补充', failed: '未通过' } as const
 const artifactIcons = { document: FileText, image: ImageIcon, link: Link2, data: Table2 } as const
 
-type ResolvedMetricKind = 'comparison' | 'value' | 'status' | 'target' | 'text'
-
 function downloadText(filename: string, content: string, type = 'text/markdown;charset=utf-8') {
   const url = URL.createObjectURL(new Blob([content], { type }))
   const link = document.createElement('a')
   link.href = url; link.download = filename; link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
-/** auto = comparison when a previous value exists, otherwise a plain value card. */
-function resolveMetricKind(metric: ResultMetric): ResolvedMetricKind {
-  if (metric.kind !== 'auto') return metric.kind
-  return metric.previous ? 'comparison' : 'value'
 }
 
 function MetricHeader({ metric }: { metric: ResultMetric }) {
@@ -83,7 +75,9 @@ function TargetMetric({ metric }: { metric: ResultMetric }) {
       <div className="result-target-track" role="progressbar" aria-label={`${metric.label}进度`} aria-valuenow={Math.round(metric.progress)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${metric.progress}%` }} /></div>
       <small>{Math.round(metric.progress)}%</small>
     </div>}
-    {(metric.target || metric.change) && <p className="result-metric-previous">{metric.target ? `目标 ${metric.target}` : metric.change}</p>}
+    {(metric.target || metric.previous || metric.change) && <p className="result-metric-previous">{[
+      metric.target && `目标 ${metric.target}`, metric.previous && `首轮 ${metric.previous}`, metric.change,
+    ].filter(Boolean).join(' · ')}</p>}
   </>
 }
 
@@ -96,7 +90,7 @@ function TextMetric({ metric }: { metric: ResultMetric }) {
 }
 
 function MetricCard({ metric }: { metric: ResultMetric }) {
-  const kind = resolveMetricKind(metric)
+  const kind = resultMetricKind(metric)
   return <article className={`result-metric result-kind-${kind}`} data-kind={kind} data-tone={metric.tone} data-trend={metric.trend} data-emphasis={metric.emphasis}>
     {kind === 'status' ? <StatusMetric metric={metric} />
       : kind === 'target' ? <TargetMetric metric={metric} />
@@ -165,7 +159,7 @@ export function ResultReader({ result, onOpenBoard, view = 'full', documentMeta 
   const checks = resultChecks(result)
   const passed = checks.filter(check => check.status === 'passed').length
   const metrics = result.metrics
-  const kinds = metrics.map(resolveMetricKind)
+  const kinds = metrics.map(resultMetricKind)
   const metricsTitle = result.metricsTitle || '关键指标'
   const metricsCaption = result.metricsCaption || (kinds.length > 0 && kinds.every(kind => kind === 'comparison') ? '首轮观察 → 更新后观察' : '')
   const metricCount = metrics.length

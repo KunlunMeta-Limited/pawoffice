@@ -10,7 +10,7 @@ const versionStatusLabels: Record<ResultVersion['status'], string> = {
  * (released solid / draft hollow / rolled-back red) and the state text always repeats it.
  * The current delivery picker stays a separate top-level control; this is only the record.
  */
-export function ResultVersionTimeline({ result }: { result: OfficeResult }) {
+export function ResultVersionTimeline({ result, releaseScopes }: { result: OfficeResult; releaseScopes?: Readonly<Record<string, string>> }) {
   if (!result.versions.length) return null
   return <ol className="result-workspace-versions" data-count={result.versions.length} aria-label="成果版本记录">
     {result.versions.map(version => {
@@ -22,7 +22,7 @@ export function ResultVersionTimeline({ result }: { result: OfficeResult }) {
           {meta && <span className="result-workspace-version-meta">{meta}</span>}
         </span>
         <span className="result-workspace-version-state" data-status={version.status}>
-          {versionStatusLabels[version.status]}
+          {version.status === 'released' && releaseScopes?.[version.id] ? `已发布至${releaseScopes[version.id]}` : versionStatusLabels[version.status]}
         </span>
       </li>
     })}

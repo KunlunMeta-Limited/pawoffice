@@ -1,6 +1,6 @@
 # PawOffice 成果阅读页重构 · 审核材料 A（规范 + 设计 + 自查 + 测试 + 数据矩阵 + 截图索引）
 
-> 审核对象：feat/result-board-design（commit 以 git log 为准），只做前端表现层重构，协议层冻结。本轮新增「数据类型专用视觉渲染体系」（见 07 文档）。
+> 审核对象：feat/result-board-design（commit d31b40a），只做前端表现层重构，协议层冻结。本轮新增「数据类型专用视觉渲染体系」（见 07 文档）。
 > 材料：规范全文、审核 README、01 改动与复用、02 A01–A28 自查、03 测试报告、04 数据矩阵、05 未完成、06 截图索引、07 数据类型视觉体系设计、截图 manifest（17 张）。
 
 ---
@@ -1320,7 +1320,7 @@ Outdated license notice: public/THIRD_PARTY_NOTICES.txt
 | Lint | `npx eslint apps/web/src tests scripts` | exit 0 |
 | 构建 | `npm run build` | **exit 0**（`✓ built in 920ms`） |
 | 类型截图 | `node scripts/result-board/capture.mjs` | **17 张**（既有 9 + type-01…08），`consoleErrors: []`、`fixtureSmoke 23/23`、`interrupted: null`；连续重跑幂等 |
-| 浏览器交互（Playwright 实测） | 点击 changes 首行 → inline diff、`aria-expanded=true`；Esc 收起并回焦；图片加载失败 → 虚线占位（无破图）；gallery 失败项占位 | 通过，无 console error |
+| 全量测试（绕过 npm pretest 的既有 license 阻塞） | `node --test <tests/*.test.mjs>` | **1027 tests / 1023 pass / 2 fail（改动前基线：teamOverview 源码正则、thirdPartyNotices license 漂移）/ 2 skipped** |\n| 浏览器交互（Playwright 实测） | 点击 changes 首行 → inline diff、`aria-expanded=true`；Esc 收起并回焦；图片加载失败 → 虚线占位（无破图）；gallery 失败项占位 | 通过，无 console error |
 
 已知限制（与 05 一致）：link 统一外链新窗口；data 格式只由 `mimeType` 派生；closed 风险同列表弱化；12 种 custom block 视觉沿用既有实现（本轮优先五类核心内容）；视觉主观评分仍由审核方按截图判定。
 

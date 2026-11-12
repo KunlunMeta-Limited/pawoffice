@@ -120,6 +120,7 @@
 .result-workspace-version-state[data-status='draft'] { color: var(--rb-muted, #64736a); }
 
 @media (max-width: 620px) {
-  .result-workspace-version { gap: 7px; }
-  .result-workspace-version-state { font-size: 10.5px; }
+  .result-workspace-version { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 8px; }
+  .result-workspace-version-main { grid-column: 1 / -1; grid-row: 2; }
+  .result-workspace-version-state { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; white-space: normal; }
 }

@@ -560,14 +560,30 @@
 /* ---------- image ---------- */
 .result-block-image { min-width: 0; }
 
+.result-block-image-preview {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: min(100%, 720px);
+  color: #43684e;
+  text-decoration: none;
+}
+
 .result-block-image-el {
   display: block;
-  width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: min(360px, 52svh);
   border-radius: 10px;
   border: 1px solid var(--result-line);
   background: #f7f9f6;
 }
+
+.result-block-image-open { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.result-block-image-preview:hover .result-block-image-open { text-decoration: underline; text-underline-offset: 3px; }
+.result-block-image-preview:focus-visible { outline: 2px solid #718575; outline-offset: 3px; }
 
 .result-block-image-empty {
   display: flex;

@@ -19,9 +19,10 @@ import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/
 import { ResultWorkspace } from '../components/ResultWorkspace.tsx'
 import * as readerModule from '../components/WhiteboardReader.tsx'
 import {
-  presentationKeys, resultBoardFixtureNames, resultBoardFixtures, resultBoardStates,
+  presentationKeys, resultBoardFixtureNames, resultBoardFixtures, resultBoardStates, resultScenarioNames,
 } from './resultBoardFixtures.ts'
 import type { ResultBoardFixture, ResultPresentationKey } from './resultBoardFixtures.ts'
+import { CompleteResultPreview, ResultScenarioIndex } from './CompleteResultPreview.tsx'
 
 type ReaderDialogProps = {
   board: WhiteboardTaskBoardData
@@ -94,8 +95,18 @@ export function ResultBoardPreviewApp() {
     document.body.dataset.presentation = new URLSearchParams(location.search).get('state') ?? ''
     void document.fonts.ready.then(() => document.body.classList.add('preview-fonts-ready'))
   }, [fixture])
+  const params = new URLSearchParams(location.search)
+  if (params.get('examples') === '1') {
+    return <ResultScenarioIndex fixtures={resultScenarioNames.map(name => resultBoardFixtures[name])} />
+  }
   if (!fixture) return <PreviewError message={error ?? '未知错误'} />
-  if (ResultReaderDialog) return <ResultReaderDialog board={fixture.board} result={fixture.result} initialDeliveryId={deliveryId} onClose={() => {}} />
+  const editorialFixture = fixture.name === 'complete' || fixture.name === 'complete-fact'
+    || resultScenarioNames.some(name => name === fixture.name)
+  if (editorialFixture && params.get('view') !== 'all') {
+    return <CompleteResultPreview board={fixture.board} result={fixture.result} fixture={fixture.name} />
+  }
+  if (ResultReaderDialog) return <ResultReaderDialog board={fixture.board} result={fixture.result} initialDeliveryId={deliveryId}
+    onClose={() => { if (editorialFixture) location.assign(`?fixture=${fixture.name}`) }} />
   if ('status' in fixture.board) return <FallbackWhiteboardReader board={fixture.board} boardId={fixture.name} />
   return <FallbackDialog board={fixture.board} result={fixture.result} />
 }

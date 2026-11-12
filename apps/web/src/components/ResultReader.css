@@ -390,10 +390,6 @@
 .result-artifact-preview pre { padding: 10px; overflow-x: auto; border-radius: 8px; background: #f2f5f2; }
 .result-artifact-preview pre code { padding: 0; background: transparent; }
 .result-artifact-preview img { max-width: 100%; height: auto; border-radius: 6px; }
-.result-artifact-table { max-width: 100%; overflow-x: auto; margin: 8px 0; }
-.result-artifact-preview table { width: 100%; min-width: 320px; border-collapse: collapse; font-size: 11.5px; }
-.result-artifact-preview :is(th, td) { padding: 6px 8px; border: 1px solid #e2e8e1; text-align: left; }
-.result-artifact-preview th { background: #f2f6f2; font-weight: 650; }
 
 /* ---------- Checks and decisions ---------- */
 .result-columns {

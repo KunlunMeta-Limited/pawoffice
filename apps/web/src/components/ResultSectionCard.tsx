@@ -67,8 +67,9 @@ function GalleryBody({ section }: { section: ResultGallerySection }) {
         data-preview={hasImage ? 'true' : undefined} title={item.title}>
         <div className="result-workspace-thumb" data-placeholder={hasImage ? undefined : 'true'}>
           {hasImage
-            ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`查看${item.title}原图（新窗口）`}>
+            ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`放大查看${item.title}原图（新窗口）`}>
               <img src={item.image} alt={item.title} loading="lazy" onError={() => markFailed(item.id)} />
+              <span className="result-gallery-open" aria-hidden="true">放大查看 <ExternalLink size={12} /></span>
             </a>
             : <span className="result-workspace-thumb-placeholder" aria-hidden="true"><ImageIcon size={22} strokeWidth={1.7} /></span>}
         </div>

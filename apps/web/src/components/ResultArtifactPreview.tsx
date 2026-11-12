@@ -4,6 +4,7 @@ import type { ResultArtifact, ResultSection } from '@pawoffice/protocol/office-u
 import { formatResultTimestamp } from '../results/format.ts'
 import { artifactIsText, readArtifactVersion } from '../results/resources.ts'
 import { compareArtifactText } from '../results/diff.ts'
+import { filePreviewKind } from '../results/filePreview.ts'
 import { ResultTextPreview } from './ResultTextPreview.tsx'
 import { ResultSectionCard } from './ResultSectionCard.tsx'
 import { ResultDiffTable } from './ResultDiffTable.tsx'
@@ -71,7 +72,9 @@ export function ResultArtifactPreview({ artifact, current, versions, origin, tri
   }, [trigger])
   const [downloadError, setDownloadError] = useState('')
   const download = () => { setDownloadError(''); void downloadArtifact(artifact).catch(error => setDownloadError(error instanceof Error ? error.message : '下载失败')) }
-  return <dialog ref={dialog} className="result-version-dialog" aria-labelledby={titleId}
+  const kind = filePreviewKind(artifact.mimeType, artifact.title)
+  const tabular = !compare && !((showRich || structuredOnly) && sections.length) && (kind === 'csv' || kind === 'tsv')
+  return <dialog ref={dialog} className="result-version-dialog" data-layout={tabular ? 'tabular' : undefined} aria-labelledby={titleId}
     onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose() }}>
     <header className="result-version-head"><div><h2 id={titleId}>{artifact.title}</h2>
       <p>{artifact.version || artifact.versionId || '未标注版本'}{origin && ` · ${origin}`}{artifact.producedAt && ` · ${formatResultTimestamp(artifact.producedAt)}`}</p>

@@ -127,7 +127,7 @@ function StatusMetric({ metric }: { metric: ResultMetric }) {
 function TargetMetric({ metric }: { metric: ResultMetric }) {
   const status = metric.targetStatus
   const StatusIcon = status ? targetIcons[status] : null
-  const tick = metric.target ? targetPercent(metric.target) : null
+  const tick = metric.unit === '%' && metric.target ? targetPercent(metric.target) : null
   return <>
     <Figure metric={metric} size="value" />
     <Caption metric={metric} />
@@ -137,13 +137,18 @@ function TargetMetric({ metric }: { metric: ResultMetric }) {
         <StatusIcon size={12} strokeWidth={2.2} aria-hidden="true" />{targetLabels[status]}
       </span>}
     </div>
-    {metric.progress !== undefined && <div className="result-metric-scale" role="progressbar" aria-label={`${metric.label}进度`}
-      aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(metric.progress)}>
-      <i className="result-metric-scale-fill" data-tone={metric.tone}
-        style={{ width: `${Math.min(100, Math.max(0, metric.progress))}%` }} />
-      {tick !== null && <span className="result-metric-scale-tick" style={{ left: `${tick}%` }} aria-hidden="true" />}
+    {metric.progress !== undefined && <div className="result-metric-progress">
+      <div className="result-metric-scale" role="progressbar" aria-label={`${metric.label}进度`}
+        aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(metric.progress)}>
+        <i className="result-metric-scale-fill" data-tone={metric.tone}
+          style={{ width: `${Math.min(100, Math.max(0, metric.progress))}%` }} />
+        {tick !== null && <span className="result-metric-scale-tick" style={{ left: `${tick}%` }} aria-hidden="true" />}
+      </div>
+      <span className="result-metric-progress-value">进度 {Math.round(metric.progress)}%</span>
     </div>}
-    {!status && metric.change && <p className="result-metric-note">{metric.change}</p>}
+    {(metric.previous || metric.change) && <p className="result-metric-note">{[
+      metric.previous && `首轮 ${metric.previous}`, metric.change,
+    ].filter(Boolean).join(' · ')}</p>}
   </>
 }
 
@@ -181,7 +186,8 @@ function CompactMetricRow({ metric }: { metric: ResultMetric }) {
     ? [metric.previous && `首轮 ${metric.previous}`, metric.change].filter(Boolean).join(' · ')
     : kind === 'target'
       ? [metric.targetStatus ? targetLabels[metric.targetStatus] : '', metric.target && `目标 ${metric.target}`,
-        metric.progress !== undefined ? `${Math.round(metric.progress)}%` : ''].filter(Boolean).join(' · ')
+        metric.progress !== undefined ? `进度 ${Math.round(metric.progress)}%` : '',
+        metric.previous && `首轮 ${metric.previous}`, metric.change].filter(Boolean).join(' · ')
       : metric.change
   return <li className="result-metric-row" data-kind={kind} data-tone={metric.tone} data-emphasis={metric.emphasis}>
     <span className="result-metric-row-label">{metric.label}</span>

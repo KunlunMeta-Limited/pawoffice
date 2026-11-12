@@ -250,11 +250,25 @@
 .result-metric-target-status[data-status='missed'] { color: var(--rm-red); }
 .result-metric-target-status[data-status='at-risk'] { color: var(--rm-amber); }
 
+.result-metric-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.result-metric-progress-value {
+  color: var(--rm-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .result-metric-scale {
   position: relative;
+  flex: 1;
   height: 4px;
   max-width: 220px;
-  margin-top: 11px;
   border-radius: 999px;
   background: #edf1ed;
 }
