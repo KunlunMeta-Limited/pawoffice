@@ -1,0 +1,47 @@
+{
+  "template": "result-v1",
+  "title": "补充版式验证：grid",
+  "status": "ready",
+  "summary": "仅用于验证 custom.layout=grid 的响应式排版，不代表另一轮业务结果。",
+  "sections": [
+    {
+      "id": "extra-layout",
+      "kind": "custom",
+      "layout": "grid",
+      "title": "风险处理要点",
+      "blocks": [
+        {
+          "type": "keyValue",
+          "items": [
+            {
+              "label": "阻断项",
+              "value": "短信并发限流"
+            },
+            {
+              "label": "当前状态",
+              "value": "待修复"
+            }
+          ]
+        },
+        {
+          "type": "keyValue",
+          "items": [
+            {
+              "label": "第二项",
+              "value": "多端退出撤销"
+            },
+            {
+              "label": "当前状态",
+              "value": "修复中"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "text": "**原则：** 小屏幕上按逻辑顺序纵向排列，不通过缩小字号强行保留多列。"
+        }
+      ]
+    }
+  ],
+  "note": "布局 fixture，模拟数据。"
+}

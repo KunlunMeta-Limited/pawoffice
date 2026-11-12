@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ArrowRight, LoaderCircle } from 'lucide-react'
 import type { OfficeResult, ResultArtifact, ResultDelivery, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
@@ -92,12 +92,29 @@ export function ResultDeliveryShell({ board, result, children, initialDeliveryId
     return [...entries.values()]
   }, [preview, knownDeliveries, resolved, selected, result.artifacts])
   const origin = preview ? deliveries.find(delivery => delivery.id === preview.artifact.runId) : undefined
+  const selectId = useId()
+  const selectDelivery = (id: string) => {
+    if (!id) { returnToCurrent(); return }
+    const delivery = deliveries.find(item => item.id === id)
+    if (!delivery) return
+    setMissingTarget(false)
+    setLoaded(null)
+    setSelected(delivery)
+    requestAnimationFrame(() => container.current?.closest('.whiteboard-reader-content')?.scrollTo(0, 0))
+  }
   const previewSections = preview ? artifactPreviewSections([viewResult,
     knownDeliveries.find(delivery => delivery.id === preview.artifact.runId)?.result,
     ...knownDeliveries.map(delivery => delivery.result), result], preview.artifact) : []
 
   return <ArtifactPreviewContext.Provider value={{ open: (artifact, trigger) => setPreview({ artifact, trigger }) }}>
     <div ref={container} className="result-delivery-shell">
+      {deliveries.length > 1 && <div className="result-delivery-switch">
+        <label htmlFor={selectId}>交付历史</label>
+        <select id={selectId} value={selected?.id ?? ''} onChange={event => selectDelivery(event.target.value)}>
+          <option value="">当前成果</option>
+          {deliveries.map(delivery => <option key={delivery.id} value={delivery.id}>{label(delivery)}</option>)}
+        </select>
+      </div>}
       {selected && <div className="result-delivery-notice" role="status">
         <div><strong>历史交付 · {label(selected)}</strong><span>{formatResultTimestamp(selected.createdAt)} · 文档固定为当时版本。</span></div>
         <button type="button" onClick={returnToCurrent}>返回当前成果<ArrowRight size={13} /></button>

@@ -37,15 +37,18 @@ export class ChatWorkspace {
   private catalogue: readonly DashboardConversation[] = []
   private readonly requestDelete?: (id: string) => Promise<void>
   private readonly onRemoved?: (id: string) => void
+  /** Optional guard: return a user-facing reason to refuse deleting this conversation. */
+  private readonly canRemove?: (id: string) => string | undefined
   private active = false
   private unsubscribeStorage?: () => void
   private refreshing?: Promise<void>
   private refreshAgain = false
 
-  constructor(teamId: string, source: OfficeChatSource, options: { persistence?: ChatWorkspacePersistence; requestDelete?: (id: string) => Promise<void>; onRemoved?: (id: string) => void } = {}) {
+  constructor(teamId: string, source: OfficeChatSource, options: { persistence?: ChatWorkspacePersistence; requestDelete?: (id: string) => Promise<void>; onRemoved?: (id: string) => void; canRemove?: (id: string) => string | undefined } = {}) {
     this.teamId = teamId; this.source = source; this.persistence = options.persistence
     this.requestDelete = options.requestDelete
     this.onRemoved = options.onRemoved
+    this.canRemove = options.canRemove
     this.ready = this.restore()
   }
   getSnapshot = () => this.state
@@ -142,6 +145,8 @@ export class ChatWorkspace {
     const entry = this.entries.get(id)
     if (!this.state.ready || !entry) return Promise.reject(new Error('会话不存在或尚未恢复'))
     if (this.blocked) return Promise.reject(new Error('会话存档当前不可写，请刷新后重试'))
+    const refused = this.canRemove?.(id)
+    if (refused) return Promise.reject(new Error(refused))
     const removal = Promise.resolve().then(async () => {
       if (entry.data) await this.requestDelete?.(id)
       if ((!entry.data || !this.requestDelete) && !await entry.session.stop()) throw new Error('停止生成未确认，未删除会话；请重新同步后重试')

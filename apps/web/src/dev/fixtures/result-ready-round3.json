@@ -1,0 +1,246 @@
+{
+  "artifacts": [
+    {
+      "id": "prd",
+      "kind": "document",
+      "title": "登录模块需求说明",
+      "description": "功能范围、交互规则和验收标准。",
+      "versionId": "prd-v2",
+      "version": "v2.0",
+      "runId": "delivery-3",
+      "producedAt": "2026-10-28T12:00:00+08:00",
+      "mimeType": "text/markdown",
+      "sha256": "cf375c1fe73f99fb76fb203299eb11bdd82055c6a9d1141352c7e336cf69713c",
+      "content": "# 登录模块需求说明\n\n## 功能范围\n- 账号密码登录\n- 短信验证码登录\n- 退出登录与角色权限校验\n\n## 验收要求\n验证码 5 分钟内有效。\n登录失败给出明确提示。\n连续失败 5 次后限制请求 10 分钟。\n退出后清除会话。\n"
+    },
+    {
+      "id": "api",
+      "kind": "document",
+      "title": "登录接口文档",
+      "description": "请求字段、返回值与错误处理约定。",
+      "versionId": "api-v1",
+      "version": "v1.0",
+      "runId": "delivery-2",
+      "producedAt": "2026-10-28T11:00:00+08:00",
+      "mimeType": "text/markdown",
+      "sha256": "73e5dd2b3ede4f5d04098a323da378863217bf88dd4d2456531f325f465bfa62",
+      "content": "# 登录接口文档\n\n## POST /api/auth/login\n请求字段：account、password。\n成功返回：accessToken、expiresIn。\n错误反馈：账号密码错误、验证码过期、请求过于频繁。\n\n本文件在第三轮未修改，当前成果仍保留第二轮的交付版本。\n"
+    },
+    {
+      "id": "report",
+      "kind": "document",
+      "title": "验收报告",
+      "description": "验证对象与结论，保留对应的产物版本。",
+      "versionId": "report-v1",
+      "version": "v1.0",
+      "runId": "delivery-3",
+      "producedAt": "2026-10-28T12:00:00+08:00",
+      "mimeType": "text/markdown",
+      "sha256": "5dd2c232287bca661107d021887ab0a0a4f53d50c9c24c225e8003f2a971499d",
+      "content": "# 验收报告\n\n原需求说明 prd-v1 的范围检查已通过。\n第三轮新增频率限制要求，需要针对 prd-v2 重新验证。\n"
+    }
+  ],
+  "verdict": "模拟数据：交付文档已准备好，等待负责人完成上线验收。",
+  "summary": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+  "risks": [
+    {
+      "level": "medium",
+      "status": "open",
+      "title": "短信验证码频率限制待复核",
+      "id": "sms-limit",
+      "owner": "周宁",
+      "note": "发布前检查同一手机号及 IP 的频率限制。"
+    }
+  ],
+  "title": "登录模块交付成果",
+  "checks": [
+    {
+      "label": "登录与退出主流程",
+      "status": "passed",
+      "id": "main-flow"
+    },
+    {
+      "label": "关键角色权限校验",
+      "status": "passed",
+      "id": "permission"
+    },
+    {
+      "label": "短信验证码频率限制复核",
+      "status": "pending",
+      "id": "rate-limit"
+    },
+    {
+      "id": "scope-review",
+      "label": "需求范围检查",
+      "status": "passed",
+      "artifactId": "prd",
+      "versionId": "prd-v1"
+    }
+  ],
+  "versions": [
+    {
+      "author": "王明",
+      "at": "2026-10-28 11:00:00",
+      "note": "首次交付需求说明 v1.0 与接口文档 v1.0。",
+      "id": "delivery-2",
+      "status": "released",
+      "version": "第 2 轮交付"
+    },
+    {
+      "author": "王明",
+      "at": "2026-10-28 12:00:00",
+      "note": "需求说明更新至 v2.0，新增验收报告；接口文档 v1.0 继续保留。",
+      "id": "delivery-3",
+      "status": "released",
+      "version": "第 3 轮交付"
+    }
+  ],
+  "next": [
+    "完成验证码频率限制复核，再进行最终验收。"
+  ],
+  "note": "以上内容均为本地模拟业务数据。",
+  "producedAt": "2026-10-28T12:00:00+08:00",
+  "teamSize": 2,
+  "runId": "delivery-3",
+  "tasks": [
+    {
+      "owner": "王明",
+      "status": "done",
+      "title": "登录功能开发",
+      "id": "implementation",
+      "progress": 100
+    },
+    {
+      "status": "doing",
+      "progress": 92,
+      "title": "发布前验收",
+      "id": "testing",
+      "owner": "周宁",
+      "note": "复核验证码频率限制。"
+    }
+  ],
+  "updatedAt": "2026-11-11T19:09:17.9134305+08:00",
+  "template": "result-v1",
+  "status": "ready",
+  "metrics": [
+    {
+      "label": "测试用例",
+      "id": "cases",
+      "unit": "个",
+      "value": "86"
+    },
+    {
+      "targetStatus": "met",
+      "tone": "positive",
+      "value": "96",
+      "progress": 96,
+      "unit": "%",
+      "id": "rate",
+      "label": "测试通过率",
+      "target": "95%"
+    },
+    {
+      "label": "待处理问题",
+      "tone": "negative",
+      "id": "issues",
+      "unit": "项",
+      "value": "1"
+    }
+  ],
+  "team": "研发组",
+  "owner": "王明",
+  "decisions": [
+    {
+      "at": "2026-11-11",
+      "choice": "账号密码 + 短信验证码",
+      "id": "auth-method",
+      "question": "本轮支持哪些登录方式？"
+    }
+  ],
+  "sections": [
+    {
+      "kind": "changes",
+      "id": "code-changes",
+      "title": "文件变更",
+      "files": [
+        {
+          "path": "src/features/auth/LoginForm.tsx",
+          "status": "modified",
+          "added": 6,
+          "deleted": 2,
+          "diff": "diff --git a/src/features/auth/LoginForm.tsx b/src/features/auth/LoginForm.tsx\n--- a/src/features/auth/LoginForm.tsx\n+++ b/src/features/auth/LoginForm.tsx\n@@ -12,6 +12,10 @@\n export function LoginForm() {\n   const [error, setError] = useState('')\n-  const submit = () => login()\n+  const [submitting, setSubmitting] = useState(false)\n+  const submit = async () => {\n+    setSubmitting(true)\n+    try { await login() } finally { setSubmitting(false) }\n+  }\n   return (\n-    <button onClick={submit}>登录</button>\n+    <button disabled={submitting} onClick={submit}>登录</button>\n   )\n"
+        },
+        {
+          "path": "src/features/auth/useLogin.ts",
+          "status": "added",
+          "added": 7,
+          "deleted": 0,
+          "diff": "--- /dev/null\n+++ b/src/features/auth/useLogin.ts\n@@ -0,0 +1,7 @@\n+import { api } from '../../api'\n+\n+export async function login() {\n+  const response = await api.post('/auth/login')\n+  if (!response.ok) throw new Error('登录失败')\n+  return response.json()\n+}\n"
+        },
+        {
+          "path": "tests/auth/login.test.ts",
+          "status": "added",
+          "added": 5,
+          "deleted": 0,
+          "diff": "--- /dev/null\n+++ b/tests/auth/login.test.ts\n@@ -0,0 +1,5 @@\n+test('提交过程中禁用登录按钮', async () => {\n+  render(<LoginForm />)\n+  await user.click(screen.getByRole('button', { name: '登录' }))\n+  expect(screen.getByRole('button')).toBeDisabled()\n+})\n"
+        },
+        {
+          "path": "src/features/auth/legacyLogin.ts",
+          "status": "deleted",
+          "added": 0,
+          "deleted": 3,
+          "diff": "--- a/src/features/auth/legacyLogin.ts\n+++ /dev/null\n@@ -1,3 +0,0 @@\n-export function legacyLogin() {\n-  return window.localStorage.getItem('legacy-token')\n-}\n"
+        },
+        {
+          "path": "src/features/auth/session.ts",
+          "previousPath": "src/features/auth/storage.ts",
+          "status": "renamed",
+          "added": 1,
+          "deleted": 1,
+          "diff": "rename from src/features/auth/storage.ts\nrename to src/features/auth/session.ts\n--- a/src/features/auth/storage.ts\n+++ b/src/features/auth/session.ts\n@@ -1,3 +1,3 @@\n-export const sessionKey = 'legacy-token'\n+export const sessionKey = 'access-token'\n export const readSession = () => localStorage.getItem(sessionKey)\n export const clearSession = () => localStorage.removeItem(sessionKey)\n"
+        },
+        {
+          "path": "docs/login-flow.png",
+          "status": "added",
+          "added": 0,
+          "deleted": 0,
+          "binary": true
+        }
+      ]
+    },
+    {
+      "items": [
+        {
+          "artifactId": "prd",
+          "versionId": "prd-v2",
+          "status": "done",
+          "title": "登录模块需求说明",
+          "id": "prd-meta",
+          "at": "2026-10-28 12:00:00",
+          "version": "v2.0"
+        },
+        {
+          "artifactId": "api",
+          "versionId": "api-v1",
+          "status": "done",
+          "title": "登录接口文档",
+          "id": "api-meta",
+          "at": "2026-10-28 11:00:00",
+          "version": "v1.0"
+        },
+        {
+          "artifactId": "report",
+          "versionId": "report-v1",
+          "status": "done",
+          "title": "验收报告",
+          "id": "report-meta",
+          "at": "2026-10-28 12:00:00",
+          "version": "v1.0"
+        }
+      ],
+      "title": "交付文档",
+      "id": "docs",
+      "kind": "documents"
+    }
+  ]
+}

@@ -84,8 +84,9 @@ test('new-only payloads are reachable through the production reader and wall ent
     const board = boardSchema.parse({ title: '任务', status: 'completed', result })
     const html = render(board)
     assert(html.includes('result-workspace'))
-    assert.equal((html.match(/role="tablist"/g) ?? []).length, 1)
-    assert.equal((html.match(/role="tab"/g) ?? []).length, 3)
+    assert(!html.includes('role="tablist"'), 'no tabs in the single-page reader')
+    assert(!html.includes('role="tab"'))
+    assert(!html.includes('aria-selected'))
     assert(wall({ taskBoard: board }).includes('查看成果'))
   }
   assert(!format.resultHasContent(resultSchema.parse({})))
@@ -102,8 +103,15 @@ test('attention includes failed checks, nested checks, unresolved risks and bloc
   assert.equal(attention.length, 4)
   assert.deepEqual(attention.slice(0, 2).map(item => item.danger), [true, true])
   const html = render(boardSchema.parse({ title: '任务', result }))
-  assert(html.includes('需要关注'))
-  assert(html.includes('全部待处理事项'))
+  // The first-screen reminder counts the top-level verification checks + open risks + blocked tasks.
+  assert(html.includes('需要关注 3 项'))
+  assert(html.includes('1 项未通过检查'))
+  assert(html.includes('1 项待处理风险'))
+  assert(html.includes('1 项受阻任务'))
+  // Nested tests-section checks still render in their own section and still drive conflict detection.
+  assert(html.includes('补充回归'))
+  const verified = resultSchema.parse({ status: 'verified', sections: [{ kind: 'tests', id: 't', title: '测试', checks: [{ id: 'nested', label: '补充回归', status: 'pending' }] }] })
+  assert.equal(presentation.resultPresentation(boardSchema.parse({ result: verified }), verified).key, 'conflict')
   assert(html.includes('补充回归'))
 })
 

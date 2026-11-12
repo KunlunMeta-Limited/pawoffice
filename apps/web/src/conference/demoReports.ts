@@ -111,7 +111,7 @@ const scenarioReports = {
     title: '产品页 SEO 优化调研报告',
     tone: 'blue',
     metrics: [
-      { label: '页面改动', value: '03 项', detail: '标题、摘要与 H1' },
+      { label: '待调整项', value: '03 项', detail: '标题、摘要与 H1' },
       { label: '核心搜索词', value: '01 个', detail: '折叠电脑支架' },
       { label: '内链建议', value: '01 条', detail: '产品对比页 → 产品页' },
     ],
@@ -131,7 +131,7 @@ const scenarioReports = {
     metrics: [
       { label: '资料类型', value: '02 类', detail: '收支台账与发票明细' },
       { label: '待补凭证', value: '02 条', detail: 'P-04 与 R-06' },
-      { label: '交付物', value: '01 份', detail: '待复核的申报草稿' },
+      { label: '申报草稿', value: '01 份', detail: '待复核，凭证补齐前不提交' },
     ],
     chart: { title: '补件分布', unit: '条', rows: [
       { label: '付款凭证', value: 1 }, { label: '入账凭证', value: 1 },

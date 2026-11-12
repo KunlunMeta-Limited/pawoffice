@@ -1,0 +1,72 @@
+{
+  "template": "result-v1",
+  "runId": "refund-pilot",
+  "title": "自助退款入口｜门店试点交付",
+  "status": "verified",
+  "verdict": "试点流程已验收，首批覆盖 8 家门店",
+  "summary": "本轮交付订单详情中的自助退款入口、试点规则和客服指引。首批只开放未发货且使用原支付渠道的整单退款，试点观察一周。",
+  "owner": "许然",
+  "team": "交易体验组",
+  "producedAt": "2026-11-10T16:30:00+08:00",
+  "metrics": [
+    {
+      "id": "pilot-stores",
+      "kind": "value",
+      "label": "首批试点门店",
+      "value": "8",
+      "unit": "家",
+      "emphasis": "primary",
+      "tone": "positive"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "refund-rules",
+      "kind": "document",
+      "title": "自助退款试点规则",
+      "version": "v1.0",
+      "versionId": "refund-rules-v1",
+      "description": "供门店负责人确认开放条件、转人工规则及暂停方式。",
+      "content": "# 自助退款试点规则\n\n试点周期为 11 月 11 日至 17 日。每日 10:00 检查前一天的退款失败和人工转接记录。\n\n## 哪些订单可以自助办理\n\n| 订单情况 | 办理方式 | 用户可见结果 |\n| --- | --- | --- |\n| 未发货、整单、原渠道支付 | 在订单详情申请 | 显示已受理，到账时间以支付渠道为准 |\n| 已发货或部分退款 | 转客服 | 展示联系入口，保留订单号 |\n| 退款处理中 | 继续查看原申请 | 不创建第二条退款单 |\n\n## 什么情况下暂停\n\n出现重复退款或错误退到其他渠道时，值班主管应立即关闭试点开关，保留退款单号和日志，交由交易团队核对。",
+      "producedAt": "2026-11-10T16:30:00+08:00",
+      "runId": "refund-pilot"
+    },
+    {
+      "id": "refund-support",
+      "kind": "document",
+      "title": "门店与客服操作指引",
+      "version": "v1.0",
+      "versionId": "refund-support-v1",
+      "description": "包含退款处理中、超过到账时间和转人工时的处理方式。",
+      "content": "# 门店与客服操作指引\n\n## 收到用户咨询时\n\n1. 先查订单详情中的退款状态，确认用户是否已发起申请。\n2. 若显示处理中，说明申请已受理，请用户等待页面提示的到账时间。\n3. 超过提示时间仍未到账时，记录订单号与退款单号，转支付值班核查。\n\n已发货、部分退款及组合支付沿用现有客服流程。门店无需手工补发退款。",
+      "producedAt": "2026-11-10T16:30:00+08:00",
+      "runId": "refund-pilot"
+    }
+  ],
+  "checks": [
+    {
+      "id": "eligible",
+      "label": "未发货整单退款可从申请走到原渠道退款",
+      "status": "passed",
+      "artifactId": "refund-rules",
+      "versionId": "refund-rules-v1"
+    },
+    {
+      "id": "duplicate",
+      "label": "重复点击和刷新页面只生成一笔退款申请",
+      "status": "passed"
+    },
+    {
+      "id": "fallback",
+      "label": "不符合自助条件时，订单详情提供人工入口",
+      "status": "passed",
+      "artifactId": "refund-support",
+      "versionId": "refund-support-v1"
+    }
+  ],
+  "next": [
+    "11 月 11 日由门店运营开启首批 8 家门店，客服主管同步指引。",
+    "11 月 18 日汇总退款失败及人工转接记录，再决定是否扩店。"
+  ],
+  "note": "PawOffice 开发演示。业务、人员和数字均为模拟样例。"
+}

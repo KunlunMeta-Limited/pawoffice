@@ -127,30 +127,35 @@ test('the result page leads with the conclusion and renders metrics, artifacts, 
   assert(rejected.includes('data-status="rejected"'))
 })
 
-test('a completed goal opens the shared overview and preserves result and board content', () => {
+test('a completed goal opens the shared single-page reader and preserves result and board content', () => {
   const html = reader(createResultDemoBoard('verified'))
-  assert(html.includes('role="tablist"'))
+  // A03: the reading container has no category tabs or segmented switch.
+  assert(!html.includes('role="tablist"'))
+  assert(!html.includes('role="tab"'))
+  assert(!html.includes('aria-selected'))
   assert(html.includes('is-result'))
   assert(html.includes('result-workspace-conclusion'))
   assert(html.includes('电脑支架首轮经营复盘'))
   assert(!html.includes('whiteboard-reader-fallback'))
-  const boardTab = html.indexOf('任务详情与协作')
-  assert(boardTab > 0)
-  assert(html.includes('aria-selected="true"'))
+  // The existing dialog tool row and task-detail disclosure are preserved.
+  assert(html.includes('导出全部轮次原始数据'))
+  assert(html.includes('关闭当前成果'))
+  assert(html.includes('任务详情与协作'))
+  assert(html.includes('执行阶段'))
 })
 
-test('unfinished goals keep stable navigation and distinguish draft from no result', () => {
+test('unfinished goals keep the same single reading container and distinguish draft from no result', () => {
   const html = reader(createResultDemoBoard('draft'))
   assert(html.includes('whiteboard-detail'))
   assert(html.includes('当前目标'))
   assert(!html.includes('result-conclusion'))
-  assert(html.includes('role="tablist"'))
+  assert(!html.includes('role="tablist"'))
   const legacy = reader({ template: 'task-board-v1', title: '旧白板', status: 'running', description: '原有说明', steps: [] })
   assert(legacy.includes('原有说明'))
   assert(!legacy.includes('whiteboard-reader-fallback'))
   assert(!legacy.includes('>任务白板</summary>'))
   assert(!legacy.includes('class="task-whiteboard"'))
-  assert.equal((legacy.match(/role="tablist"/g) ?? []).length, 1)
+  assert.equal((legacy.match(/role="tablist"/g) ?? []).length, 0)
   assert(legacy.includes('成果 · 正在产出'))
   assert(html.includes('成果 · 草稿'))
 })

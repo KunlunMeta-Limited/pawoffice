@@ -158,42 +158,57 @@ test('stage steps prefer the backend state and fall back to progress', () => {
   assert.equal(schema.parse({ template: 'task-board-v1', title: '任务', steps: [{ id: 's', title: '阶段', progress: 100 }] }).steps[0].state, undefined)
 })
 
-test('the task-detail workspace renders its header, tabs and semantic sections', () => {
+test('the single-page workspace renders its header and semantic sections without tabs', () => {
   const html = renderWorkspace()
-  for (const text of ['登录模块开发', '执行中', '王明', '前端组（3人）', '2024-06-20 14:30',
-    '概览', '交付物', '过程记录', '任务明细', '版本记录', '风险与备注',
+  for (const text of ['登录模块开发', '执行中', '王明', '前端组（3人）', '2024-06-20 14:30', '成果 · 已交付',
+    '任务推进', '版本记录', '风险记录', '决策记录', '下一步', '工作过程',
     '登录与方案', '功能开发', '测试与审查',
     '页面原型 / 页面预览', '产品文档', '测试与验收', '接口交付', '部署与发布', '文件与附件',
     '/login', 'POST', '已完成', '06-18 10:20', '/send-code', '开发中',
     '86', '96', '测试进度', '登录功能测试', '待补充',
     '开发环境', '运行中', '生产环境', '待发布', 'v1.2.0',
     '登录页设计稿', '12.5 MB', '测试报告', '1.8 MB',
-    '忘记密码页原型', '验收标准']) {
+    '忘记密码页原型', '验收标准', '以上为本地模拟数据，不连接真实账号服务。']) {
     assert(html.includes(text), text)
   }
-  assert(html.includes('role="tablist"'))
-  assert(html.includes('aria-selected="true"'))
+  // A03: no tablist, no tab role, no segmented category switch anywhere in the reading flow.
+  assert(!html.includes('role="tablist"'))
+  assert(!html.includes('role="tab"'))
+  assert(!html.includes('aria-selected'))
+  assert(!html.includes('role="tabpanel"'))
+  assert(!/>(概览|交付物|过程记录)</.test(html))
   assert(html.includes('role="progressbar"'))
-  assert(html.includes('data-kind="gallery"'))
-  assert(html.includes('data-kind="files"'))
-  assert(html.includes('role="tabpanel"'))
+  assert(html.includes('class="result-metrics"'))
+  assert(html.includes('data-count="1"'), 'the single metric stays a value, not a KPI wall')
+  assert(html.includes('result-workspace-check-summary'))
+  // A09: sections keep their source order.
+  const kinds = workspaceResult().sections.map(section => section.kind)
+  let previous = -1
+  for (const kind of kinds) {
+    const index = html.indexOf(`data-kind="${kind}"`)
+    assert(index > previous, `${kind} keeps source order`)
+    previous = index
+  }
   for (const section of workspaceResult().sections) assert(html.includes(`data-kind="${section.kind}"`), section.kind)
 })
 
-test('navigation stays stable while optional process sections follow the available data', () => {
+test('optional process blocks follow the available data without any tabs', () => {
   const sectionsOnly = resultSchema.parse({ sections: workspaceResult().sections })
   const html = renderWorkspace(sectionsOnly)
-  assert(html.includes('交付物'))
-  assert(!html.includes('任务明细'))
+  assert(!html.includes('role="tablist"'))
+  assert(html.includes('页面原型 / 页面预览'))
+  assert(html.includes('文件与附件'))
+  assert(!html.includes('任务推进'))
   assert(!html.includes('版本记录'))
-  assert(!html.includes('风险与备注'))
-  const tabsOnly = resultSchema.parse({ versions: workspaceResult().versions, risks: workspaceResult().risks })
-  const tabbed = renderWorkspace(tabsOnly)
+  assert(!html.includes('风险记录'))
+  assert(!html.includes('本轮交付'), 'no artifacts or file changes means no delivery block')
+  const processOnly = resultSchema.parse({ versions: workspaceResult().versions, risks: workspaceResult().risks })
+  const tabbed = renderWorkspace(processOnly)
+  assert(!html.includes('role="tablist"'))
   assert(tabbed.includes('版本记录'))
-  assert(tabbed.includes('风险与备注'))
-  assert(tabbed.includes('交付物'))
-  assert(tabbed.includes('当前没有可查看的交付物'))
-  assert(!tabbed.includes('任务明细'))
+  assert(tabbed.includes('风险记录'))
+  assert(!tabbed.includes('本轮交付'))
+  assert(!tabbed.includes('当前没有可查看的交付物'))
 })
 
 test('workspace text is escaped and rendered as text, never as markup', () => {

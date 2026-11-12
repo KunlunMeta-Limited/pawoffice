@@ -69,6 +69,13 @@ export class OfficeTeamSession {
     this.chat = new ChatWorkspace(runtime.sceneId, chatSource, {
       persistence: options.chatPersistence,
       onRemoved: id => this.decisions.removeConversation(id),
+      // A running local demo owns its conversation; deleting it would silently drop the work.
+      canRemove: id => {
+        const demo = this.simulation?.demoSource
+        return demo?.isRunning && demo.conversationId === id
+          ? '该会话正在执行任务，请先停止演示再删除。'
+          : undefined
+      },
       requestDelete: source.kind === 'example' ? undefined : async conversationId => {
         if (!options.requestUi) throw new Error('当前连接未提供会话删除处理')
         const result = await options.requestUi({ id: crypto.randomUUID(), teamId: runtime.sceneId, conversationId, action: 'conversation.delete' })
