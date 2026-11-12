@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
-  AlertTriangle, CheckCircle2, CircleDashed, CircleX, Image as ImageIcon, Info, UserRound,
+  AlertTriangle, CheckCircle2, CircleDashed, CircleX, ExternalLink, Image as ImageIcon, Info, UserRound,
 } from 'lucide-react'
 import type {
   ResultBlock, ResultBlockKind, ResultSectionLayout, ResultTableColumn,
@@ -350,7 +350,11 @@ function ChartBlock({ block }: { block: BlockOf<'chart'> }) {
 function ImageBlock({ block }: { block: BlockOf<'image'> }) {
   return <div className="result-block-image">
     {block.url
-      ? <img className="result-block-image-el" src={block.url} alt={block.alt} loading="lazy" />
+      ? <a className="result-block-image-preview" href={block.url} target="_blank" rel="noopener noreferrer"
+        aria-label={`查看原图${block.alt ? `：${block.alt}` : ''}（新窗口）`}>
+        <img className="result-block-image-el" src={block.url} alt={block.alt} loading="lazy" />
+        <span className="result-block-image-open">查看原图 <ExternalLink size={12} aria-hidden="true" /></span>
+      </a>
       : <div className="result-block-image-empty">
         <ImageIcon size={20} strokeWidth={1.6} aria-hidden="true" />
         <span>{block.alt || '暂无图片'}</span>

@@ -1,0 +1,768 @@
+{
+  "template": "result-v1",
+  "runId": "auth-release-r4",
+  "title": "会员登录与会话安全升级｜第 4 轮灰度交付",
+  "status": "ready",
+  "summary": "本轮完成登录与会话安全升级的灰度交付，形成需求说明、验收报告、界面示意和测试明细；120 条回归用例中 114 条通过、2 条未通过、4 条待复核，正式上线暂缓。",
+  "verdict": "已交付但尚未完成最终验收。短信验证码并发限流和多端退出一致性为阻断项；通过率 95.0%，低于 98% 目标，生产发布未启动。",
+  "owner": "林舟",
+  "team": "身份与安全小组",
+  "teamSize": 4,
+  "producedAt": "2026-11-11T20:30:00+08:00",
+  "updatedAt": "2026-11-11T21:00:00+08:00",
+  "metricsTitle": "本轮交付与质量指标",
+  "metricsCaption": "数值与目标均为模拟业务数据；运行状态不等于验收通过",
+  "metrics": [
+    {
+      "id": "test-total",
+      "kind": "value",
+      "label": "回归用例",
+      "value": "120",
+      "unit": "条",
+      "emphasis": "primary"
+    },
+    {
+      "id": "api-p95",
+      "kind": "comparison",
+      "label": "登录接口 P95 延迟",
+      "value": "182",
+      "unit": "ms",
+      "previous": "246 ms",
+      "change": "-64 ms",
+      "trend": "down",
+      "tone": "positive"
+    },
+    {
+      "id": "staging",
+      "kind": "status",
+      "label": "灰度环境",
+      "value": "运行中",
+      "tone": "neutral"
+    },
+    {
+      "id": "test-pass",
+      "kind": "target",
+      "label": "自动化通过率",
+      "value": "95.0",
+      "unit": "%",
+      "target": "98%",
+      "targetStatus": "missed",
+      "progress": 95,
+      "tone": "negative",
+      "emphasis": "primary"
+    },
+    {
+      "id": "release-gate",
+      "kind": "text",
+      "label": "发布门槛",
+      "value": "尚未满足，暂缓正式上线",
+      "tone": "negative"
+    },
+    {
+      "id": "risk-coverage",
+      "kind": "auto",
+      "label": "已处置或缓解风险",
+      "value": "2",
+      "unit": "项",
+      "target": "3 项",
+      "targetStatus": "at-risk",
+      "progress": 67,
+      "tone": "neutral"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "auth-spec",
+      "kind": "document",
+      "title": "登录与会话安全交付说明",
+      "description": "功能范围、交互要求、验收边界和本轮未决事项。",
+      "versionId": "auth-spec-v23",
+      "version": "v2.3",
+      "runId": "auth-release-r4",
+      "producedAt": "2026-11-11T20:30:00+08:00",
+      "mimeType": "text/markdown",
+      "change": "added",
+      "content": "# 会员登录与会话安全升级 · 交付说明 v2.3\n\n> 文档性质：演示用业务成果。所有数字、测试及人员均为虚构 fixture，不代表真实系统运行结果。\n\n## 1. 本轮目标\n\n本轮将登录模块从单端登录补全为支持 **密码登录、短信验证、刷新令牌、主动退出和异常审计** 的会话链路。主要目标是降低登录接口延迟并补全风险验证，不以“代码完成”代替“验收通过”。\n\n## 2. 已交付范围\n\n| 范围 | 本轮状态 | 说明 |\n| --- | --- | --- |\n| 密码登录与错误提示 | 已实现 | 密码错误仅给统一提示；不暴露账号是否存在 |\n| 短信验证码登录 | 已实现，限制策略未通过验收 | 接口已接入，但并发压力下存在单用户限流绕过 |\n| 令牌续期与退出 | 已实现，需修复多端退出 | 刷新令牌轮换正常；部分多设备退出场景存在延迟 |\n| 关键事件审计 | 已实现 | 记录登录成功、失败及频繁请求事件；敏感凭据不记录 |\n| 正式发布 | 未启动 | 仅灰度环境具备访问能力，不代表生产环境上线 |\n\n## 3. 主要交互要求\n\n1. 密码登录失败时显示非枚举式错误提示，禁止回显敏感凭据。\n2. 验证码有效期 5 分钟；同一手机号和 IP 维度的频率控制必须分别生效。\n3. 退出登录清理客户端会话；其他终端会话按发布策略撤销。\n4. 令牌续期异常时需跳转重新登录，不可陷入无限重试。\n\n## 4. 验证现状\n\n回归计划 120 条：114 通过、2 未通过、4 待复核，通过率 **95.0%**；目标 **98%**，尚未达标。当前灰度环境运行正常，但这不能证明正式发布条件已满足。\n\n## 5. 未决事项与上线门槛\n\n- **P0**：短信验证码并发限流绕过，修复后需要重做专项安全测试。\n- **P1**：跨终端退出登录生效时间不稳定，需完成一致性修复与回归。\n- **待复核**：移动端无障碍、弱网和旧版需求说明范围检查。\n\n**结论：** 当前成果状态应为“已交付，尚未最终验证”。不得展示“已上线”或“已验收通过”。\n",
+      "sha256": "23e4bd222436b312010d72cfcc5a813286613061cb5384f84c6e3eec10b09fd8"
+    },
+    {
+      "id": "auth-review",
+      "kind": "document",
+      "title": "灰度验收与风险报告",
+      "description": "120 条测试的验收结论、失败项及发布建议。",
+      "versionId": "auth-review-v1",
+      "version": "v1.0",
+      "runId": "auth-release-r4",
+      "producedAt": "2026-11-11T20:30:00+08:00",
+      "mimeType": "text/markdown",
+      "change": "added",
+      "content": "# 灰度验收与风险报告 · v1.0\n\n> 数据来源：PawOffice 视觉渲染演示 fixture，测试结果为模拟数据。\n\n## 执行摘要\n\n本轮内部灰度包已形成，计划测试 **120** 条，**114** 条通过，**2** 条未通过，**4** 条待复核。通过率 **95.0%**，低于 **98%** 的发布目标。\n\n## 失败项\n\n| ID | 问题 | 严重性 | 处理状态 |\n| --- | --- | --- | --- |\n| SEC-017 | 同用户并发请求可能绕过短信验证码限流 | 高 | 未修复，阻止正式上线 |\n| SES-021 | 多设备退出后旧会话未及时失效 | 中 | 修复中，需回归 |\n\n## 待补充验证\n\n1. iOS Safari 的验证码自动填充与键盘焦点。\n2. Android 弱网时令牌刷新与重新登录路径。\n3. 无障碍键盘导航与错误信息播报。\n4. 旧需求说明 v2.2 的范围检查需在 v2.3 重新执行。\n\n## 已有证据\n\n- 关键登录和刷新令牌接口返回结果符合本轮预期。\n- 灰度环境接口 P95 延迟为 182 ms（上轮 246 ms）；该改善不覆盖安全缺陷。\n- 两张界面示意截图仅用于视觉评审，不是测试执行证据。\n\n## 发布建议\n\n**暂不批准正式上线。** 先关闭 SEC-017 和 SES-021，再补齐待复核的 4 个项目，重新执行门槛评估。\n",
+      "sha256": "e3bb158c7927ae699035afb60d302218938ce437ece2adcb8bb0bd2fd1029a18"
+    },
+    {
+      "id": "auth-screen",
+      "kind": "image",
+      "title": "登录页面（桌面设计示意）",
+      "description": "浅色登录界面的静态视觉示意；不是产品真实截图。",
+      "versionId": "auth-screen-r4",
+      "version": "评审稿 04",
+      "runId": "auth-release-r4",
+      "producedAt": "2026-11-11T20:30:00+08:00",
+      "mimeType": "image/png",
+      "change": "added",
+      "url": "http://localhost:5173/demo-assets/auth-login-desktop.png",
+      "sha256": "d7ae1c6ba89aafa3fd63d129b1f85dfb9154571100e32019b79bbb84934d7125"
+    },
+    {
+      "id": "auth-exceptions",
+      "kind": "data",
+      "title": "失败与待复核用例明细",
+      "description": "仅包含 2 条失败、4 条待复核记录，不冒充全部 120 条用例。",
+      "versionId": "auth-exceptions-r4",
+      "version": "v1.0",
+      "runId": "auth-release-r4",
+      "producedAt": "2026-11-11T20:30:00+08:00",
+      "mimeType": "text/csv",
+      "change": "added",
+      "content": "case_id,category,status,issue,severity,owner\nSEC-017,短信验证码限流,failed,并发请求可能绕过单用户限流,high,陈雨\nSES-021,会话安全,failed,多端退出后旧会话延迟失效,medium,林舟\nUX-031,移动端,pending,iOS验证码自动填充与焦点待复核,low,许清\nNET-044,弱网,pending,Android弱网令牌刷新待复核,medium,赵岚\nA11Y-052,可访问性,pending,错误播报与键盘路径待复核,medium,许清\nREQ-060,需求验收,pending,v2.2范围检查在v2.3下待重验,low,林舟\n",
+      "sha256": "2ec4b62b7d00c141e8fea344de5bbe1879c7d7a5ef2889c705d36b0099c6979c"
+    },
+    {
+      "id": "auth-dashboard",
+      "kind": "link",
+      "title": "本轮灰度验收简报（本地预览）",
+      "description": "提供本轮统计和两项阻断问题的 HTML 概览。",
+      "versionId": "auth-dashboard-r4",
+      "version": "v1.0",
+      "runId": "auth-release-r4",
+      "producedAt": "2026-11-11T20:30:00+08:00",
+      "mimeType": "text/html",
+      "change": "added",
+      "url": "http://localhost:5173/demo-assets/auth-test-report.html"
+    }
+  ],
+  "sections": [
+    {
+      "kind": "custom",
+      "id": "executive-analysis",
+      "title": "关键结论与验证依据",
+      "caption": "先读结论，再看证据；部分示意图是设计 fixture",
+      "purpose": "analysis",
+      "emphasis": "primary",
+      "layout": "stack",
+      "blocks": [
+        {
+          "type": "heading",
+          "level": "h2",
+          "text": "本轮的核心判断"
+        },
+        {
+          "type": "text",
+          "text": "**灰度交付已完成，但正式上线应暂缓。** 本轮围绕登录、短信验证码、会话退出及审计补全交付。120 条回归用例中 114 条通过、2 条未通过、4 条待复核。阻断点不是视觉或交付文件，而是验证码限流和多端会话撤销。"
+        },
+        {
+          "type": "keyValue",
+          "items": [
+            {
+              "label": "交付范围",
+              "value": "账号密码、短信验证码、令牌续期、退出登录、审计记录"
+            },
+            {
+              "label": "发布环境",
+              "value": "灰度 staging 可访问；正式生产未发布"
+            },
+            {
+              "label": "评价依据",
+              "value": "回归测试 120 条、接口时延采样、需求范围审查"
+            },
+            {
+              "label": "当前结论",
+              "value": "已交付但尚未通过最终验收",
+              "tone": "negative"
+            }
+          ]
+        },
+        {
+          "type": "callout",
+          "tone": "warning",
+          "text": "正式上线门槛为通过率至少 98% 且 P0 安全问题全部关闭；当前仅为灰度交付，不得将“环境运行中”表述为“验收通过”。"
+        },
+        {
+          "type": "heading",
+          "level": "h3",
+          "text": "验证构成与关键证据"
+        },
+        {
+          "type": "stats",
+          "items": [
+            {
+              "label": "已通过",
+              "value": "114",
+              "unit": "条"
+            },
+            {
+              "label": "未通过",
+              "value": "2",
+              "unit": "条"
+            },
+            {
+              "label": "待复核",
+              "value": "4",
+              "unit": "条"
+            }
+          ]
+        },
+        {
+          "type": "chart",
+          "chart": "bar",
+          "series": [
+            {
+              "label": "通过",
+              "value": 114
+            },
+            {
+              "label": "失败",
+              "value": 2
+            },
+            {
+              "label": "待复核",
+              "value": 4
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "columns": [
+            {
+              "key": "area",
+              "label": "业务范围",
+              "format": "text"
+            },
+            {
+              "key": "state",
+              "label": "状态",
+              "format": "status"
+            },
+            {
+              "key": "case",
+              "label": "证据编号",
+              "format": "code"
+            },
+            {
+              "key": "owner",
+              "label": "责任人",
+              "format": "owner"
+            }
+          ],
+          "rows": [
+            {
+              "area": "密码登录",
+              "state": "通过",
+              "case": "AUTH-001",
+              "owner": "林舟"
+            },
+            {
+              "area": "短信验证码限流",
+              "state": "未通过",
+              "case": "SEC-017",
+              "owner": "陈雨"
+            },
+            {
+              "area": "多终端退出",
+              "state": "未通过",
+              "case": "SES-021",
+              "owner": "林舟"
+            },
+            {
+              "area": "移动端与无障碍",
+              "state": "待复核",
+              "case": "A11Y-052",
+              "owner": "许清"
+            }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "text": "灰度环境连通性与日志脱敏检查已完成。",
+              "status": "passed"
+            },
+            {
+              "text": "短信限流并发缺陷必须修复后重验。",
+              "status": "failed"
+            },
+            {
+              "text": "移动端自动填充与无障碍需补证。",
+              "status": "pending"
+            }
+          ]
+        },
+        {
+          "type": "progress",
+          "value": 97
+        },
+        {
+          "type": "divider"
+        },
+        {
+          "type": "heading",
+          "level": "h3",
+          "text": "用户路径与页面证据"
+        },
+        {
+          "type": "image",
+          "url": "http://localhost:5173/demo-assets/auth-login-mobile.png"
+        },
+        {
+          "type": "diagram",
+          "source": "flowchart LR\n  A[输入凭据] --> B{凭据有效?}\n  B -- 否 --> C[统一错误提示]\n  B -- 是 --> D[风险与限流检查]\n  D --> E{通过?}\n  E -- 否 --> F[限制并记录审计]\n  E -- 是 --> G[签发会话令牌]\n  G --> H[退出与撤销会话]"
+        },
+        {
+          "type": "text",
+          "text": "**图示说明：** 上图描述*预期业务流程*，不表示每个安全控制已经通过验证。实际未通过的两项见下方「回归测试」与「风险登记」。"
+        }
+      ]
+    },
+    {
+      "kind": "documents",
+      "id": "delivery-docs",
+      "title": "正式交付文档",
+      "caption": "点击打开同版本正文；历史检查与当前版本分开",
+      "items": [
+        {
+          "id": "doc-spec",
+          "title": "登录与会话安全交付说明",
+          "version": "v2.3",
+          "at": "2026-11-11 20:30",
+          "status": "done",
+          "artifactId": "auth-spec",
+          "versionId": "auth-spec-v23"
+        },
+        {
+          "id": "doc-review",
+          "title": "灰度验收与风险报告",
+          "version": "v1.0",
+          "at": "2026-11-11 20:30",
+          "status": "done",
+          "artifactId": "auth-review",
+          "versionId": "auth-review-v1"
+        }
+      ]
+    },
+    {
+      "kind": "gallery",
+      "id": "ui-gallery",
+      "title": "界面示意与评审截图",
+      "caption": "视觉 fixture，不代表实际产品已部署",
+      "items": [
+        {
+          "id": "gallery-desktop",
+          "title": "桌面端登录页",
+          "meta": "1280×760 · 设计示意",
+          "status": "done",
+          "image": "http://localhost:5173/demo-assets/auth-login-desktop.png"
+        },
+        {
+          "id": "gallery-mobile",
+          "title": "移动端登录页",
+          "meta": "640×900 · 设计示意",
+          "status": "done",
+          "image": "http://localhost:5173/demo-assets/auth-login-mobile.png"
+        }
+      ]
+    },
+    {
+      "kind": "tests",
+      "id": "quality-tests",
+      "title": "回归测试与质量评估",
+      "caption": "通过率 95.0%，未达到 98% 发布目标",
+      "purpose": "evidence",
+      "metrics": [
+        {
+          "id": "t-total",
+          "label": "计划用例",
+          "value": "120",
+          "unit": "条",
+          "tone": "neutral"
+        },
+        {
+          "id": "t-pass",
+          "label": "通过",
+          "value": "114",
+          "unit": "条",
+          "tone": "positive"
+        },
+        {
+          "id": "t-fail",
+          "label": "未通过",
+          "value": "2",
+          "unit": "条",
+          "tone": "negative"
+        },
+        {
+          "id": "t-pending",
+          "label": "待复核",
+          "value": "4",
+          "unit": "条",
+          "tone": "neutral"
+        }
+      ],
+      "progress": 97,
+      "progressLabel": "已执行用例比例（116/120）",
+      "checks": [
+        {
+          "id": "tcase-1",
+          "label": "密码登录、账号枚举防护回归",
+          "status": "passed"
+        },
+        {
+          "id": "tcase-2",
+          "label": "刷新令牌轮换与审计日志检查",
+          "status": "passed"
+        },
+        {
+          "id": "tcase-3",
+          "label": "SEC-017 并发验证码限流安全测试",
+          "status": "failed"
+        },
+        {
+          "id": "tcase-4",
+          "label": "SES-021 多端会话撤销一致性",
+          "status": "failed"
+        },
+        {
+          "id": "tcase-5",
+          "label": "移动端/无障碍补充回归（4 个检查点）",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "kind": "api",
+      "id": "auth-api-list",
+      "title": "身份 API 接口清单",
+      "caption": "接口可用不等于安全验收通过",
+      "purpose": "evidence",
+      "rows": [
+        {
+          "id": "api-login",
+          "method": "POST",
+          "endpoint": "/api/auth/login",
+          "status": "done",
+          "at": "2026-11-11 19:00"
+        },
+        {
+          "id": "api-otp",
+          "method": "POST",
+          "endpoint": "/api/auth/otp/send",
+          "status": "active",
+          "at": "2026-11-11 19:05"
+        },
+        {
+          "id": "api-verify",
+          "method": "POST",
+          "endpoint": "/api/auth/otp/verify",
+          "status": "done",
+          "at": "2026-11-11 19:08"
+        },
+        {
+          "id": "api-refresh",
+          "method": "POST",
+          "endpoint": "/api/auth/token/refresh",
+          "status": "done",
+          "at": "2026-11-11 19:11"
+        },
+        {
+          "id": "api-logout",
+          "method": "POST",
+          "endpoint": "/api/auth/logout",
+          "status": "active",
+          "at": "2026-11-11 19:16"
+        },
+        {
+          "id": "api-audit",
+          "method": "GET",
+          "endpoint": "/api/auth/audit/events",
+          "status": "pending",
+          "at": "2026-11-11 19:20"
+        }
+      ]
+    },
+    {
+      "kind": "environments",
+      "id": "runtime-envs",
+      "title": "部署环境与运行状态",
+      "caption": "仅表示本地演示中的环境记录",
+      "purpose": "evidence",
+      "items": [
+        {
+          "id": "env-dev",
+          "name": "Development",
+          "status": "running",
+          "version": "v2.3",
+          "at": "2026-11-11 18:50"
+        },
+        {
+          "id": "env-stage",
+          "name": "Staging · 10% 灰度",
+          "status": "running",
+          "version": "v2.3-rc4",
+          "at": "2026-11-11 19:30"
+        },
+        {
+          "id": "env-prod",
+          "name": "Production · 正式环境",
+          "status": "pending",
+          "version": "v2.2",
+          "at": "2026-11-11 20:00"
+        }
+      ]
+    },
+    {
+      "kind": "files",
+      "id": "evidence-files",
+      "title": "补充证据与附件",
+      "caption": "本地服务须放置配套 demo-assets 文件",
+      "purpose": "evidence",
+      "items": [
+        {
+          "id": "file-png",
+          "name": "登录页设计示意.png",
+          "kind": "image",
+          "size": "42 KB",
+          "url": "http://localhost:5173/demo-assets/auth-login-desktop.png"
+        },
+        {
+          "id": "file-csv",
+          "name": "失败与待复核用例.csv",
+          "kind": "other",
+          "size": "521 B",
+          "url": "http://localhost:5173/demo-assets/auth-test-exceptions.csv"
+        },
+        {
+          "id": "file-note",
+          "name": "交付说明.md",
+          "kind": "document",
+          "size": "2 KB",
+          "url": "http://localhost:5173/demo-assets/auth-release-notes.md"
+        },
+        {
+          "id": "file-report",
+          "name": "验收简报.html",
+          "kind": "report",
+          "size": "1 KB",
+          "url": "http://localhost:5173/demo-assets/auth-test-report.html"
+        },
+        {
+          "id": "file-evidence-zip",
+          "name": "回归与界面证据包.zip",
+          "kind": "archive",
+          "size": "72 KB",
+          "url": "http://localhost:5173/demo-assets/auth-evidence-pack.zip"
+        }
+      ]
+    },
+    {
+      "kind": "changes",
+      "id": "git-changes",
+      "title": "本轮文件变更",
+      "caption": "变更文件展示代码事实，测试未通过不会被美化为通过",
+      "files": [
+        {
+          "path": "src/features/auth/smsRateLimit.ts",
+          "status": "modified",
+          "added": 2,
+          "deleted": 2,
+          "diff": "diff --git a/src/features/auth/smsRateLimit.ts b/src/features/auth/smsRateLimit.ts\n--- a/src/features/auth/smsRateLimit.ts\n+++ b/src/features/auth/smsRateLimit.ts\n@@ -1,3 +1,3 @@\n-export function canSend(codeCount: number) {\n-  return codeCount < 5\n+export function canSend(phoneCount: number, ipCount: number) {\n+  return phoneCount < 5 && ipCount < 20\n }\n"
+        },
+        {
+          "path": "src/features/auth/sessionManager.ts",
+          "status": "modified",
+          "added": 2,
+          "deleted": 1,
+          "diff": "diff --git a/src/features/auth/sessionManager.ts b/src/features/auth/sessionManager.ts\n--- a/src/features/auth/sessionManager.ts\n+++ b/src/features/auth/sessionManager.ts\n@@ -1,3 +1,4 @@\n-export async function logout(token: string) {\n+export async function logout(token: string, deviceId: string) {\n   await revokeToken(token)\n+  await markDeviceForRevocation(deviceId)\n }\n"
+        },
+        {
+          "path": "tests/auth/security.spec.ts",
+          "status": "added",
+          "added": 4,
+          "deleted": 0,
+          "diff": "diff --git a/tests/auth/security.spec.ts b/tests/auth/security.spec.ts\n--- a/tests/auth/security.spec.ts\n+++ b/tests/auth/security.spec.ts\n@@ -0,0 +1,4 @@\n+test('并发验证码请求触发限流', async () => {\n+  // Fixture: 当前案例仍未通过，不能把测试文件存在等同于通过\n+  expect(await simulateConcurrentRequests()).toEqual('limited')\n+})\n"
+        },
+        {
+          "path": "src/features/auth/tokenRefresh.ts",
+          "status": "renamed",
+          "added": 1,
+          "deleted": 1,
+          "diff": "diff --git a/src/features/auth/token.ts b/src/features/auth/tokenRefresh.ts\nrename from src/features/auth/token.ts\nrename to src/features/auth/tokenRefresh.ts\n--- a/src/features/auth/token.ts\n+++ b/src/features/auth/tokenRefresh.ts\n@@ -1 +1 @@\n-export const readToken = () => sessionStorage.getItem('token')\n+export const refreshToken = () => sessionStorage.getItem('refreshToken')\n",
+          "previousPath": "src/features/auth/token.ts"
+        },
+        {
+          "path": "src/features/auth/legacySession.ts",
+          "status": "deleted",
+          "added": 0,
+          "deleted": 1,
+          "diff": "diff --git a/src/features/auth/legacySession.ts b/src/features/auth/legacySession.ts\n--- a/src/features/auth/legacySession.ts\n+++ b/src/features/auth/legacySession.ts\n@@ -1 +0,0 @@\n-export const legacySession = () => localStorage.getItem('legacy_session')\n"
+        },
+        {
+          "path": "docs/assets/login-desktop.png",
+          "status": "added",
+          "added": 0,
+          "deleted": 0,
+          "binary": true
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "check-login",
+      "label": "账号密码登录与错误防枚举",
+      "status": "passed",
+      "artifactId": "auth-spec",
+      "versionId": "auth-spec-v23"
+    },
+    {
+      "id": "check-refresh",
+      "label": "令牌刷新与异常审计路径",
+      "status": "passed",
+      "artifactId": "auth-review",
+      "versionId": "auth-review-v1"
+    },
+    {
+      "id": "check-gray",
+      "label": "灰度环境基础可用性",
+      "status": "passed"
+    },
+    {
+      "id": "check-otp",
+      "label": "SEC-017：并发验证码限流",
+      "status": "failed"
+    },
+    {
+      "id": "check-session",
+      "label": "SES-021：多端退出撤销",
+      "status": "failed"
+    },
+    {
+      "id": "check-mobile",
+      "label": "移动端、弱网与无障碍补充验证",
+      "status": "pending"
+    },
+    {
+      "id": "check-old-spec",
+      "label": "v2.2 需求范围检查（旧版证据）",
+      "status": "passed",
+      "artifactId": "auth-spec",
+      "versionId": "auth-spec-v22"
+    }
+  ],
+  "risks": [
+    {
+      "id": "risk-rate",
+      "title": "并发验证码请求绕过单用户限流",
+      "level": "high",
+      "status": "open",
+      "owner": "陈雨",
+      "note": "安全测试 SEC-017 未通过；修复前禁止正式发布。"
+    },
+    {
+      "id": "risk-session",
+      "title": "跨终端退出时旧会话撤销延迟",
+      "level": "medium",
+      "status": "mitigating",
+      "owner": "林舟",
+      "note": "已加入设备级撤销标记，需补充分布式会话一致性回归。"
+    },
+    {
+      "id": "risk-copy",
+      "title": "错误提示文案在旧移动端存在差异",
+      "level": "low",
+      "status": "closed",
+      "owner": "许清",
+      "note": "已统一提示文字；关闭不等于移动端全套回归完成。"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "d-stage",
+      "question": "出现安全失败项时是否允许正式上线？",
+      "choice": "不允许；只保留受控灰度访问，待阻断项关闭后重验。",
+      "at": "2026-11-11"
+    },
+    {
+      "id": "d-logging",
+      "question": "错误审计是否可以记录账号密码或令牌？",
+      "choice": "不可；仅记录事件类型、匿名请求标识及风险等级。",
+      "at": "2026-11-10"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-login",
+      "title": "登录、续期和退出链路开发",
+      "owner": "林舟",
+      "status": "done",
+      "progress": 100,
+      "note": "灰度包已构建，非正式验收结论"
+    },
+    {
+      "id": "task-limit",
+      "title": "修复并发短信验证码限流",
+      "owner": "陈雨",
+      "status": "blocked",
+      "progress": 80,
+      "note": "等待安全回归与压测验证"
+    },
+    {
+      "id": "task-session",
+      "title": "多端会话撤销一致性修复",
+      "owner": "林舟",
+      "status": "doing",
+      "progress": 65,
+      "note": "补充撤销事件幂等处理"
+    },
+    {
+      "id": "task-mobile",
+      "title": "移动端及无障碍验证",
+      "owner": "许清",
+      "status": "todo",
+      "progress": 0,
+      "note": "完成两项阻断修复后复核"
+    }
+  ],
+  "versions": [
+    {
+      "id": "version-draft",
+      "version": "v2.2-draft",
+      "note": "建立密码登录、短信验证与令牌刷新基本流程。",
+      "at": "2026-11-05 16:00",
+      "author": "林舟",
+      "status": "draft"
+    },
+    {
+      "id": "version-rollback",
+      "version": "v2.2-pilot",
+      "note": "发现旧会话撤销问题，演示灰度回滚；并非生产回滚。",
+      "at": "2026-11-08 18:40",
+      "author": "陈雨",
+      "status": "rolled-back"
+    },
+    {
+      "id": "version-rc4",
+      "version": "v2.3-rc4",
+      "note": "本轮已发布到受控灰度；正式生产发布等待安全验收。",
+      "at": "2026-11-11 20:30",
+      "author": "林舟",
+      "status": "released"
+    }
+  ],
+  "next": [
+    "先修复 SEC-017 并发验证码限流，并重新执行短信安全专项测试。",
+    "修复 SES-021 多端退出撤销，验证多设备及弱网一致性。",
+    "补齐 4 项待复核验证，并对 v2.3 重新执行旧版范围检查。",
+    "重新计算通过率与发布门槛，通过后再发起正式上线评审。"
+  ],
+  "note": "以上内容全部为 PawOffice UI/UX 视觉验收专用虚构模拟数据；任何测试、发布与运行状态均不代表真实系统结果。"
+}

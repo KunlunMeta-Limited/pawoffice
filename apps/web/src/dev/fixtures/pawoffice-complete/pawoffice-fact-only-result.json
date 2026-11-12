@@ -1,0 +1,60 @@
+{
+  "template": "result-v1",
+  "title": "灰度登录体系：发布风险评估说明（纯事实型）",
+  "status": "ready",
+  "summary": "对已记录的测试结果与风险进行解释：当前阻断点在验证码限流与多设备退出，不是文件交付不足；建议暂缓正式上线。",
+  "verdict": "报告已形成，结论尚待负责人与安全验收确认。",
+  "team": "身份与安全小组",
+  "owner": "林舟",
+  "sections": [
+    {
+      "id": "fact-reading",
+      "kind": "custom",
+      "title": "结论与依据",
+      "purpose": "analysis",
+      "layout": "stack",
+      "blocks": [
+        {
+          "type": "heading",
+          "level": "h2",
+          "text": "为什么本轮不能正式上线"
+        },
+        {
+          "type": "text",
+          "text": "登录接口 P95 延迟下降不能抵消验证码限流缺陷。**验证状态应基于实际失败项与目标，而非依据灰度环境运行中进行推断。**"
+        },
+        {
+          "type": "callout",
+          "tone": "warning",
+          "text": "这是一份无独立交付文件的说明型成果，前端不应显示空的「本轮交付」。"
+        },
+        {
+          "type": "heading",
+          "level": "h3",
+          "text": "建议的验收顺序"
+        },
+        {
+          "type": "list",
+          "items": [
+            {
+              "text": "关闭短信并发限流缺陷",
+              "status": "pending"
+            },
+            {
+              "text": "完成多终端退出一致性回归",
+              "status": "pending"
+            },
+            {
+              "text": "完成移动端与无障碍验收",
+              "status": "pending"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "next": [
+    "待两项阻断风险关闭后重新审查正式发布条件。"
+  ],
+  "note": "以上内容均为本地模拟业务数据，仅用于事实描述型成果的前端设计验收。"
+}

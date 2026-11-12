@@ -61,18 +61,20 @@ test('overview and structured detail remain independent across the business-to-s
   assert.equal(preview({ taskBoard: board }), preview(state), 'changing detail must not change the overview')
 })
 
-test('legacy Markdown remains readable when no structured detail is available', () => {
+test('deprecated Markdown detail is no longer rendered; only structured detailSections are', () => {
   const legacy = schema.parse({ title: '旧白板', description: '原说明', steps: [] })
   assert.deepEqual(legacy.detailSections, [])
   for (const board of [legacy, { ...legacy, detail: '\n  ' }]) {
     assert(!read(board).includes('whiteboard-reader-fallback'))
     assert(!read(board).includes('>任务白板</summary>'))
-    assert(read(board).includes('原说明'))
+    assert(read(board).includes('原说明'), 'the task description stays readable')
+    assert(!read(board).includes('任务详情与协作'), 'no structured detail means no detail disclosure')
   }
+  // Spec §10: `detail` is deprecated and never rendered; only `detailSections` are.
   const withMarkdown = schema.parse({ ...legacy, detail: '# 旧版详情\n\n**完整内容**\n\n<script>alert(1)</script>\n\n[危险](javascript:alert%281%29)' })
   const html = read(withMarkdown)
-  assert(html.includes('旧版详情'))
-  assert(html.includes('<strong>完整内容</strong>'))
+  assert(!html.includes('旧版详情'))
+  assert(!html.includes('<strong>完整内容</strong>'))
   assert(!html.includes('whiteboard-reader-fallback'))
   assert(!html.includes('<script>'))
   assert(!html.includes('javascript:'))

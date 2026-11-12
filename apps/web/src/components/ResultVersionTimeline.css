@@ -1,0 +1,126 @@
+/*
+ * Version timeline — time language for the result's own revision record.
+ * Self-contained: only the shared --rb-* tokens and the reader font context come from outside.
+ */
+
+.result-workspace-versions {
+  position: relative;
+  margin: 0;
+  padding: 2px 0 0;
+  list-style: none;
+}
+
+.result-workspace-version {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 1px 0 14px 24px;
+  min-width: 0;
+}
+
+/* The rail links one revision to the next; the last node ends the line. */
+.result-workspace-version::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  bottom: 2px;
+  left: 5px;
+  width: 1px;
+  background: #e3e9e3;
+}
+
+.result-workspace-version:last-child { padding-bottom: 2px; }
+.result-workspace-version:last-child::after { display: none; }
+
+/* Node: released = solid green, draft = hollow, rolled-back = brick red. */
+.result-workspace-version::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 1px;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid #9aa79d;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.result-workspace-version[data-status='released']::before {
+  border-color: #3f6b53;
+  background: #3f6b53;
+  box-shadow: 0 0 0 3px #e9f1ea;
+}
+
+.result-workspace-version[data-status='draft']::before {
+  border-color: #9aa79d;
+  background: #fff;
+}
+
+.result-workspace-version[data-status='rolled-back']::before {
+  border-color: #a25948;
+  background: #a25948;
+  box-shadow: 0 0 0 3px #f7ebe7;
+}
+
+.result-workspace-version-tag {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid #e2e8e2;
+  border-radius: 5px;
+  background: #f6f8f5;
+  color: var(--rb-ink, #26332b);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: nowrap;
+}
+
+.result-workspace-version[data-status='released'] .result-workspace-version-tag { border-color: #d5e5da; color: #2f6a49; }
+.result-workspace-version[data-status='rolled-back'] .result-workspace-version-tag { border-color: #eedcd6; color: #8d4b3e; }
+.result-workspace-version[data-status='draft'] .result-workspace-version-tag { color: var(--rb-muted, #64736a); }
+
+.result-workspace-version-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.result-workspace-version-main p {
+  margin: 0;
+  color: var(--rb-body, #4f5d53);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.result-workspace-version[data-status='draft'] .result-workspace-version-main p { color: var(--rb-muted, #64736a); }
+
+.result-workspace-version-meta {
+  color: var(--rb-muted, #64736a);
+  font-size: 10.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.result-workspace-version-state {
+  flex: none;
+  align-self: center;
+  color: var(--rb-muted, #64736a);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.result-workspace-version-state[data-status='released'] { color: #2f7a51; }
+.result-workspace-version-state[data-status='rolled-back'] { color: #94483a; }
+.result-workspace-version-state[data-status='draft'] { color: var(--rb-muted, #64736a); }
+
+@media (max-width: 620px) {
+  .result-workspace-version { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 8px; }
+  .result-workspace-version-main { grid-column: 1 / -1; grid-row: 2; }
+  .result-workspace-version-state { grid-column: 2; grid-row: 1; justify-self: end; text-align: right; white-space: normal; }
+}

@@ -1,10 +1,11 @@
-import { useContext, useId } from 'react'
-import { CheckCircle2, CircleDashed, CircleX, ClipboardCheck, File, FileArchive, FileBarChart, FileDiff, FileText, FolderOpen, Gauge, Images, Image as ImageIcon, LayoutGrid, Server, Webhook } from 'lucide-react'
+import { useContext, useId, useState } from 'react'
+import { CheckCircle2, CircleDashed, CircleX, ClipboardCheck, ExternalLink, File, FileArchive, FileBarChart, FileDiff, FileText, FolderOpen, Gauge, Images, Image as ImageIcon, LayoutGrid, Server, Webhook } from 'lucide-react'
 import type { ResultArtifact, ResultApiSection, ResultDocumentsSection, ResultEnvironmentsSection, ResultFilesSection, ResultGallerySection, ResultSection, ResultTestsSection } from '@pawoffice/protocol/office-ui'
 import { ArtifactPreviewContext } from '../results/artifactContext.ts'
 import { CustomSectionBody } from './ResultBlocks.tsx'
 import { ResultChanges } from './ResultChanges.tsx'
 import { Chip, Track } from './ResultPrimitives.tsx'
+import './ResultSectionKinds.css'
 type ChipTone = 'done' | 'active' | 'progress' | 'pending' | 'danger'
 const galleryStatusLabels: Record<ResultGallerySection['items'][number]['status'], string> = {
   done: '已完成', active: '开发中', pending: '待开始',
@@ -20,9 +21,6 @@ const environmentStatusLabels: Record<ResultEnvironmentsSection['items'][number]
 }
 const galleryStatusTones: Record<ResultGallerySection['items'][number]['status'], ChipTone> = {
   done: 'done', active: 'active', pending: 'pending',
-}
-const documentStatusTones: Record<ResultDocumentsSection['items'][number]['status'], ChipTone> = {
-  done: 'done', active: 'progress', pending: 'pending',
 }
 const apiStatusTones: Record<ResultApiSection['rows'][number]['status'], ChipTone> = {
   done: 'done', active: 'active', pending: 'pending',
@@ -42,33 +40,81 @@ const metricToneIcons = { positive: CheckCircle2, negative: CircleX, neutral: Ga
 const checkIcons = { passed: CheckCircle2, pending: CircleDashed, failed: CircleX } as const
 const fileKindIcons = { image: ImageIcon, document: FileText, report: FileBarChart, archive: FileArchive, other: File } as const
 
+function isHttpUrl(value: string) {
+  return /^https?:\/\//i.test(value)
+}
+
+/**
+ * Gallery: an adaptive image grid. A legal image URL becomes a real thumbnail that opens the source
+ * in a new window; anything else keeps a neutral placeholder and says 暂无预览 instead of inventing an
+ * image. Item order is the source order — the grid only reflows, it never sorts.
+ */
 function GalleryBody({ section }: { section: ResultGallerySection }) {
+  // A legal URL can still fail to load; that item then uses the same dashed placeholder as an empty one.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set())
+  const markFailed = (id: string) => {
+    setFailed(current => {
+      if (current.has(id)) return current
+      const next = new Set(current)
+      next.add(id)
+      return next
+    })
+  }
   return <ul className="result-workspace-gallery">
-    {section.items.map(item => <li key={item.id} className="result-workspace-gallery-item" data-preview={Boolean(item.image)} title={item.title}>
-      <div className="result-workspace-thumb">
-        {item.image
-          ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`查看${item.title}原图（新窗口）`}><img src={item.image} alt={item.title} loading="lazy" /></a>
-          : <ImageIcon size={22} aria-hidden="true" />}
-      </div>
-      <div className="result-workspace-gallery-meta">
-        <span className="result-workspace-gallery-label">{item.meta || item.title}</span>
-        {!item.image && <small>暂无预览</small>}
-        <Chip tone={galleryStatusTones[item.status]}>{galleryStatusLabels[item.status]}</Chip>
-      </div>
-    </li>)}
+    {section.items.map(item => {
+      const hasImage = isHttpUrl(item.image) && !failed.has(item.id)
+      return <li key={item.id} className="result-workspace-gallery-item" data-status={item.status}
+        data-preview={hasImage ? 'true' : undefined} title={item.title}>
+        <div className="result-workspace-thumb" data-placeholder={hasImage ? undefined : 'true'}>
+          {hasImage
+            ? <a href={item.image} target="_blank" rel="noopener noreferrer" aria-label={`放大查看${item.title}原图（新窗口）`}>
+              <img src={item.image} alt={item.title} loading="lazy" onError={() => markFailed(item.id)} />
+              <span className="result-gallery-open" aria-hidden="true">放大查看 <ExternalLink size={12} /></span>
+            </a>
+            : <span className="result-workspace-thumb-placeholder" aria-hidden="true"><ImageIcon size={22} strokeWidth={1.7} /></span>}
+        </div>
+        <div className="result-workspace-gallery-meta">
+          <span className="result-workspace-gallery-label">{item.title}</span>
+          {item.meta && <span className="result-workspace-gallery-note">{item.meta}</span>}
+          {!hasImage && <small className="result-workspace-gallery-empty">暂无预览</small>}
+          <span className="result-workspace-kind-chip" data-tone={galleryStatusTones[item.status]}>{galleryStatusLabels[item.status]}</span>
+        </div>
+      </li>
+    })}
   </ul>
 }
 
-function DocumentsBody({ section }: { section: ResultDocumentsSection }) {
+/**
+ * Documents: version file rows. A row opens the shared preview entry only when the counterpart in
+ * 本轮交付 is the same artifactId + versionId — titles never create a link. Unmatched rows stay as
+ * honest plain text with the reason they cannot open.
+ */
+function DocumentsBody({ section, artifacts }: { section: ResultDocumentsSection; artifacts?: readonly ResultArtifact[] }) {
+  const preview = useContext(ArtifactPreviewContext)
   return <ul className="result-workspace-docs">
-    {section.items.map(item => <li key={item.id} className="result-workspace-doc">
-      <span className="result-workspace-doc-icon" aria-hidden="true"><FileText size={15} strokeWidth={1.9} /></span>
-      <span className="result-workspace-doc-main">
-        <span className="result-workspace-doc-title" title={item.title}>{item.title}</span><small>{item.artifactId ? '指定产物版本未提供' : '文档说明（未关联文件）'}</small>
-        {(item.version || item.at) && <span className="result-workspace-doc-meta">{[item.version, item.at].filter(Boolean).join(' · ')}</span>}
-      </span>
-      <Chip tone={documentStatusTones[item.status]}>{documentStatusLabels[item.status]}</Chip>
-    </li>)}
+    {section.items.map(item => {
+      const matched = artifacts?.find(artifact => artifact.id === item.artifactId
+        && item.versionId !== '' && artifact.versionId === item.versionId)
+      const openable = Boolean(matched && preview)
+      const meta = [item.version, item.at, documentStatusLabels[item.status]].filter(Boolean).join(' · ')
+      return <li key={item.id} className="result-workspace-doc" data-status={item.status}
+        data-linked={openable ? 'true' : 'false'}>
+        <span className="result-workspace-doc-glyph" aria-hidden="true"><FileText size={16} strokeWidth={1.9} /></span>
+        {openable
+          ? <button type="button" className="result-workspace-doc-open" aria-haspopup="dialog" title={[item.title, meta].filter(Boolean).join(' · ')}
+            onClick={event => preview!.open(matched!, event.currentTarget)}>
+            <span className="result-workspace-doc-title">{item.title}</span>
+            {item.version && <span className="result-workspace-doc-version">{item.version}</span>}
+          </button>
+          : <span className="result-workspace-doc-plain" title={[item.title, meta].filter(Boolean).join(' · ')}>
+            <span className="result-workspace-doc-title">{item.title}</span>
+            {item.version && <span className="result-workspace-doc-version">{item.version}</span>}
+            <small className="result-workspace-doc-reason">{item.artifactId ? '关联文件不在本轮交付中' : '文档说明（未关联文件）'}</small>
+          </span>}
+        {item.at && <time className="result-workspace-doc-time">{item.at}</time>}
+        <span className="result-workspace-doc-state" data-status={item.status}>{documentStatusLabels[item.status]}</span>
+      </li>
+    })}
   </ul>
 }
 
@@ -134,17 +180,24 @@ function EnvironmentsBody({ section }: { section: ResultEnvironmentsSection }) {
   </ul>
 }
 
+/**
+ * Files: attachment rows in the delivery language — type glyph, name, category and size. Only a legal
+ * http(s) URL opens; an attachment bound to an artifact stays a plain row instead of a fake download.
+ */
 function FilesBody({ section }: { section: ResultFilesSection }) {
   return <ul className="result-workspace-files">
     {section.items.map(item => {
       const Icon = fileKindIcons[item.kind]
+      const openable = isHttpUrl(item.url) && !item.artifactId
       const body = <>
         <span className="result-workspace-file-icon" data-kind={item.kind} aria-hidden="true"><Icon size={16} strokeWidth={1.9} /></span>
         <span className="result-workspace-file-name" title={item.name}>{item.name}</span>
+        <span className="result-workspace-file-kind" data-kind={item.kind}>{fileKindLabels[item.kind]}</span>
         {item.size && <span className="result-workspace-file-size">{item.size}</span>}
+        {openable && <ExternalLink className="result-workspace-file-open" size={13} strokeWidth={2} aria-hidden="true" />}
       </>
-      return <li key={item.id} className="result-workspace-file">
-        {item.url && !item.artifactId
+      return <li key={item.id} className="result-workspace-file" data-kind={item.kind} data-linked={openable ? 'true' : undefined}>
+        {openable
           ? <a className="result-workspace-file-card" href={item.url} target="_blank" rel="noopener noreferrer"
             aria-label={`${item.name}（${fileKindLabels[item.kind]}），在新窗口打开`}>{body}</a>
           : <div className="result-workspace-file-card" title={item.name}>{body}</div>}
@@ -153,10 +206,10 @@ function FilesBody({ section }: { section: ResultFilesSection }) {
   </ul>
 }
 
-function SectionBody({ section }: { section: ResultSection }) {
+function SectionBody({ section, artifacts }: { section: ResultSection; artifacts?: readonly ResultArtifact[] }) {
   switch (section.kind) {
     case 'gallery': return <GalleryBody section={section} />
-    case 'documents': return <DocumentsBody section={section} />
+    case 'documents': return <DocumentsBody section={section} artifacts={artifacts} />
     case 'tests': return <TestsBody section={section} />
     case 'api': return <ApiBody section={section} />
     case 'environments': return <EnvironmentsBody section={section} />
@@ -166,7 +219,9 @@ function SectionBody({ section }: { section: ResultSection }) {
   }
 }
 
-export function ResultSectionCard({ section, sourceArtifact }: { section: ResultSection; sourceArtifact?: ResultArtifact }) {
+export function ResultSectionCard({ section, sourceArtifact, artifacts }: {
+  section: ResultSection; sourceArtifact?: ResultArtifact; artifacts?: readonly ResultArtifact[]
+}) {
   const preview = useContext(ArtifactPreviewContext)
   const headingId = useId()
   const Icon = sectionIcons[section.kind]
@@ -178,6 +233,6 @@ export function ResultSectionCard({ section, sourceArtifact }: { section: Result
       {section.caption && !/^(查看全部|查看详情|上传文件)\s*[→↗]?$/.test(section.caption.trim()) && <small>{section.caption}</small>}
     </header>
     {sourceArtifact && <button className="result-section-source" type="button" onClick={event => preview?.open(sourceArtifact, event.currentTarget)} disabled={!preview}>来源：{sourceArtifact.title} · {sourceArtifact.version || sourceArtifact.versionId}</button>}
-    <SectionBody section={section} />
+    <SectionBody section={section} artifacts={artifacts} />
   </section>
 }

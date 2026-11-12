@@ -40,7 +40,7 @@ function CsvPreview({ text, tsv }: { text: string; tsv: boolean }) {
       <div className="result-csv-controls">
         <label><input type="checkbox" checked={header} onChange={event => { setHeader(event.target.checked); setPage(0) }} />首行为表头</label>
         <label>分隔符<select value={delimiter} onChange={event => { setDelimiter(event.target.value); setPage(0) }}><option value="">自动识别</option><option value=",">逗号</option><option value=";">分号</option><option value={'\t'}>制表符</option></select></label>
-        <label>搜索<input type="search" aria-label="搜索CSV内容" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} placeholder="筛选已载入的行" /></label>
+        <label>筛选已载入行<input type="search" aria-label="筛选已载入行（搜索CSV内容）" value={search} onChange={event => { setSearch(event.target.value); setPage(0) }} placeholder="输入关键词" /></label>
       </div>
       {parsed.error ? <p className="result-file-error" role="alert">{parsed.error}</p> : <>
         <p className="result-file-caption" role="status">{loaded.length} 行数据 · {columns} 列{search && ` · 匹配 ${filtered.length} 行`}{limited && ' · 仅载入前10000行，完整内容请下载原件'}</p>
@@ -51,12 +51,12 @@ function CsvPreview({ text, tsv }: { text: string; tsv: boolean }) {
           <tbody>{displayed.map(({ row, index }) => <tr key={index}><th scope="row">{index + 1}</th>{Array.from({ length: columns }, (_, i) => <td key={i}>{row[i] ?? ''}</td>)}</tr>)}</tbody>
         </table></div> : <p className="result-file-caption">CSV文件为空。</p>}
         {rows.length > 0 && !filtered.length && <p className="result-file-caption">没有匹配的数据行。</p>}
-        <div className="result-csv-pages">
+        {filtered.length > 25 && <div className="result-csv-pages">
           <label>每页<select aria-label="CSV每页行数" value={size} onChange={event => { setSize(Number(event.target.value)); setPage(0) }}>{[25, 50, 100].map(count => <option key={count} value={count}>{count}行</option>)}</select></label>
-          <span>第 {current + 1} / {pages} 页</span>
+          {pages > 1 && <><span>第 {current + 1} / {pages} 页</span>
           <button type="button" disabled={current === 0} onClick={() => setPage(current - 1)}>上一页</button>
-          <button type="button" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>下一页</button>
-        </div>
+          <button type="button" disabled={current === pages - 1} onClick={() => setPage(current + 1)}>下一页</button></>}
+        </div>}
       </>}
     </>}
   </section>
@@ -103,9 +103,9 @@ export function ResultTextPreview({ text, mimeType, title }: { text: string; mim
   const kind = filePreviewKind(mimeType, title)
   if (kind === 'csv' || kind === 'tsv') return <CsvPreview text={text} tsv={kind === 'tsv'} />
   if (kind === 'json') return <JsonPreview text={text} />
-  if (kind === 'markdown') return <>
+  if (kind === 'markdown') return <div className="result-markdown-document">
     {text.length > 200000 && <p className="result-file-notice">正文较长，当前仅预览部分内容，可下载该版本查看完整文件。</p>}
     <ResultMarkdown content={text.slice(0, 200000)} />
-  </>
+  </div>
   return <Source text={text} language={codeLanguage(mimeType, title)} />
 }

@@ -1,0 +1,447 @@
+/*
+ * Result metric band — six data types with six shapes.
+ *
+ * Reports numbers, they do not tile them: there is no card chrome, only typographic hierarchy,
+ * semantic colour and one thin scale where the data actually has a target. `tone`/`trend`/
+ * `targetStatus` choose colour and arrow direction; they never reorder or change a value.
+ *
+ * Density: 1 → one column · 2–3 → columns · 4 → 2×2 · 5–6 → three columns · 7–12 → compact rows.
+ */
+
+.result-metrics {
+  --rm-figure: 32px;
+  --rm-figure-primary: 36px;
+  --rm-comparison: 36px;
+  --rm-comparison-primary: 40px;
+  --rm-ink: var(--rb-ink, #26332b);
+  --rm-body: var(--rb-body, #4f5d53);
+  --rm-muted: var(--rb-muted, #64736a);
+  --rm-green: #3f7a57;
+  --rm-red: #a25948;
+  --rm-amber: #8a6b2f;
+  --rm-soft-line: #f0f3ef;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 44px;
+  align-items: start;
+}
+
+.result-metrics[data-count='1'] { grid-template-columns: minmax(0, 1fr); }
+.result-metrics[data-count='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.result-metrics[data-count='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.result-metrics[data-count='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.result-metrics[data-count='5'],
+.result-metrics[data-count='6'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.result-metrics[data-count='1'] .result-metric { max-width: 420px; }
+
+/* ---------- card shell: borderless by design, neutralizing the legacy reader card ---------- */
+
+.result-metrics .result-metric {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.result-metrics .result-metric[data-tone='positive'],
+.result-metrics .result-metric[data-tone='negative'] { background: none; }
+
+.result-metrics .result-metric[data-emphasis='primary'] {
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+/* ---------- value / comparison figure ---------- */
+
+.result-metric-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  margin: 0;
+  color: var(--rm-ink);
+}
+
+.result-metric-figure[data-size='comparison'] { gap: 4px; }
+
+.result-metric-number {
+  font-size: var(--rm-figure);
+  font-weight: 560;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result-metric-figure[data-size='comparison'] .result-metric-number { font-size: var(--rm-comparison); }
+
+.result-metric[data-emphasis='primary'] .result-metric-figure[data-size='value'] .result-metric-number {
+  font-size: var(--rm-figure-primary);
+}
+
+.result-metric[data-emphasis='primary'] .result-metric-figure[data-size='comparison'] .result-metric-number {
+  font-size: var(--rm-comparison-primary);
+}
+
+.result-metric-unit {
+  flex: none;
+  color: var(--rm-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.result-metric-unit[data-tight='true'] { margin-left: -1px; }
+
+/* The label is a caption under the figure — it never competes with the observation. */
+.result-metric-caption {
+  margin: 6px 0 0;
+  color: var(--rm-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.result-metric[data-emphasis='primary'] .result-metric-caption { color: var(--rm-body); font-weight: 560; }
+
+/* ---------- comparison: current first, previous/change second, optional two-bar read ---------- */
+
+.result-metric-compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 8px;
+  color: var(--rm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.result-metric-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--rm-body);
+  font-size: 12.5px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result-metric-change svg { flex: none; }
+/* Up is not automatically good: the backend tone owns the colour. */
+.result-metric-change[data-tone='positive'] { color: var(--rm-green); }
+.result-metric-change[data-tone='negative'] { color: var(--rm-red); }
+.result-metric-change[data-tone='neutral'] { color: var(--rm-muted); }
+
+.result-metric-previous {
+  color: var(--rm-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result-metric-bars {
+  display: grid;
+  gap: 4px;
+  max-width: 220px;
+  margin-top: 11px;
+}
+
+.result-metric-bar-row {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.result-metric-bar-label {
+  color: var(--rm-muted);
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.result-metric-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef1ed;
+}
+
+.result-metric-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #b9c8bd;
+  transition: width 180ms ease;
+}
+
+.result-metric-bar[data-current='true'] i { background: #6f9b81; }
+
+/* ---------- status: a state light and a word, never the numeric figure size ---------- */
+
+.result-metric-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--rm-ink);
+}
+
+.result-metric-status-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #8a978e;
+  box-shadow: 0 0 0 3px #eef1ed;
+}
+
+.result-metric-status[data-tone='positive'] .result-metric-status-dot { background: var(--rm-green); box-shadow: 0 0 0 3px #e7f1ea; }
+.result-metric-status[data-tone='negative'] .result-metric-status-dot { background: var(--rm-red); box-shadow: 0 0 0 3px #f7ebe7; }
+.result-metric-status[data-tone='neutral'] .result-metric-status-dot { background: #8a978e; box-shadow: 0 0 0 3px #eef1ed; }
+
+.result-metric-status-text {
+  font-size: 18px;
+  font-weight: 560;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.result-metric-status .result-metric-unit { font-size: 12px; }
+
+/* ---------- target: current value + 目标 chip + optional thin scale with target tick ---------- */
+
+.result-metric-target-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.result-metric-target-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border: 1px solid #e4eae3;
+  border-radius: 999px;
+  background: #fbfcfa;
+  color: var(--rm-body);
+  font-size: 11px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result-metric-target-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11.5px;
+  font-weight: 560;
+  white-space: nowrap;
+}
+
+.result-metric-target-status svg { flex: none; }
+.result-metric-target-status[data-status='met'] { color: #38714f; }
+.result-metric-target-status[data-status='missed'] { color: var(--rm-red); }
+.result-metric-target-status[data-status='at-risk'] { color: var(--rm-amber); }
+
+.result-metric-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.result-metric-progress-value {
+  color: var(--rm-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.result-metric-scale {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  max-width: 220px;
+  border-radius: 999px;
+  background: #edf1ed;
+}
+
+.result-metric-scale-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #7f9d8a;
+  transition: width 180ms ease;
+}
+
+.result-metric-scale-fill[data-tone='positive'] { background: #6f9b81; }
+.result-metric-scale-fill[data-tone='negative'] { background: #c08a78; }
+
+/* A hairline at the percentage the target names; only rendered when the target is a real percent. */
+.result-metric-scale-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: #6f7f74;
+  transform: translateX(-0.5px);
+}
+
+.result-metric-note {
+  margin: 6px 0 0;
+  color: var(--rm-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- text: a fact sentence, no unit or percent appended ---------- */
+
+.result-metric-fact {
+  margin: 0;
+  color: var(--rm-ink);
+  font-size: 18px;
+  font-weight: 540;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- 7–12: compact data rows that keep each kind's language ---------- */
+
+.result-metrics[data-density='compact'] { display: block; }
+
+.result-metric-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 40px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.result-metric-row {
+  display: grid;
+  grid-template-columns: minmax(84px, max-content) minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rm-soft-line);
+}
+
+.result-metric-row-label {
+  color: var(--rm-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.result-metric-row-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+  color: var(--rm-ink);
+  font-size: 15px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.result-metric-row-value svg { flex: none; align-self: center; }
+.result-metric-row[data-tone='positive'] .result-metric-row-value svg { color: var(--rm-green); }
+.result-metric-row[data-tone='negative'] .result-metric-row-value svg { color: var(--rm-red); }
+.result-metric-row[data-tone='neutral'] .result-metric-row-value svg { color: var(--rm-muted); }
+.result-metric-row .result-metric-unit { font-size: 11.5px; }
+
+.result-metric-row-dot {
+  flex: none;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #8a978e;
+}
+
+.result-metric-row-dot[data-tone='positive'] { background: var(--rm-green); }
+.result-metric-row-dot[data-tone='negative'] { background: var(--rm-red); }
+.result-metric-row-dot[data-tone='neutral'] { background: #8a978e; }
+
+.result-metric-row-scale {
+  flex: none;
+  align-self: center;
+  width: 46px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1ed;
+}
+
+.result-metric-row-scale i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #7f9d8a;
+}
+
+.result-metric-row-note {
+  color: var(--rm-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.result-metric-row[data-kind='text'] .result-metric-row-value {
+  font-size: 13px;
+  font-weight: 480;
+  line-height: 1.55;
+}
+
+.result-metric-row[data-kind='status'] .result-metric-row-value { font-weight: 540; }
+
+/* Emphasis enlarges the observation only; source order is untouched. */
+.result-metric-row[data-emphasis='primary'] .result-metric-row-label { color: var(--rm-body); font-weight: 560; }
+.result-metric-row[data-emphasis='primary'] .result-metric-row-value { font-weight: 650; }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 980px) {
+  .result-metrics { gap: 22px 30px; }
+  .result-metric-rows { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .result-metrics,
+  .result-metrics[data-count='3'],
+  .result-metrics[data-count='4'],
+  .result-metrics[data-count='5'],
+  .result-metrics[data-count='6'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .result-metrics[data-count='1'] { grid-template-columns: minmax(0, 1fr); }
+  .result-metrics .result-metric-number { font-size: calc(var(--rm-figure) - 4px); }
+  .result-metrics .result-metric-figure[data-size='comparison'] .result-metric-number { font-size: calc(var(--rm-comparison) - 4px); }
+  .result-metrics .result-metric[data-emphasis='primary'] .result-metric-figure[data-size='value'] .result-metric-number { font-size: calc(var(--rm-figure-primary) - 2px); }
+  .result-metrics .result-metric[data-emphasis='primary'] .result-metric-figure[data-size='comparison'] .result-metric-number { font-size: calc(var(--rm-comparison-primary) - 4px); }
+}
+
+@media (max-width: 520px) {
+  .result-metrics,
+  .result-metrics[data-count='2'],
+  .result-metrics[data-count='3'],
+  .result-metrics[data-count='4'],
+  .result-metrics[data-count='5'],
+  .result-metrics[data-count='6'] { grid-template-columns: minmax(0, 1fr); }
+  .result-metric-row { grid-template-columns: minmax(0, 1fr) max-content; }
+  .result-metric-row-note { grid-column: 1 / -1; text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .result-metric-bar i,
+  .result-metric-scale-fill { transition: none; }
+}
