@@ -355,8 +355,14 @@ test('listing pauses for a decision, a rejection stops the current run, and repl
   advanceUntil(hosts[0], pending)
   const interrupted = pending()
   assert.notEqual(interrupted.id, first.id)
+  // Deleting the conversation while the walkthrough runs would silently drop the work, so it is refused.
+  await assert.rejects(chat.remove('main'), /请先停止演示再删除/)
+  assert.equal(chat.getSnapshot().selectedId, 'main')
+  assert.equal(pending()?.id, interrupted.id)
+  assert.equal(simulation.isDemoRunning, true)
+  // After stopping, deleting is allowed; the next run restores and selects the scenario conversation.
+  simulation.setDemo(false)
   await chat.remove('main')
-  advanceUntil(hosts[0], () => !simulation.isDemoRunning)
   assert.equal(pending(), undefined)
 
   simulation.setDemo(true)

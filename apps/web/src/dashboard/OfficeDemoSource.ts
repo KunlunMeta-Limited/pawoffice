@@ -5,6 +5,8 @@ import { notifySubscribers } from '../notifications.ts'
 
 /** Explicit sample scene commands; this source never updates business tasks. */
 export class OfficeDemoSource {
+  /** Conversation a running demo writes into; undefined means the demo is conversation-agnostic. */
+  readonly conversationId?: string
   private runtime: SceneRuntime
   private listeners = new Set<() => void>()
   private enabled = false

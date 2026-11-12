@@ -190,6 +190,8 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
 
 /** Advance the local task walkthrough on the office's existing simulation clock. */
 export class ScenarioDemoSource extends OfficeDemoSource {
+  /** The walkthrough's tasks and board belong to the scenario's main conversation. */
+  readonly conversationId = 'main'
   private readonly scene: SceneRuntime
   private readonly data: ScenarioOfficeDataSource
   private readonly getSession: () => OfficeTeamSession
@@ -220,7 +222,12 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     this.resetProgress()
     if (!enabled) return
 
-    if (this.data.scenario.listingApproval) this.getSession().chat.restorePreviewConversation('main')
+    // The walkthrough belongs to the scenario's main conversation. Selecting it on start keeps the
+    // running tasks visible no matter which conversation the user typed the start command in.
+    const chat = this.getSession().chat
+    const focusScenarioConversation = () => chat.restorePreviewConversation('main')
+    if (chat.getSnapshot().ready) focusScenarioConversation()
+    else void chat.ready.then(() => { if (this.isRunning) focusScenarioConversation() })
     this.assigning = true
     const stops = this.data.scenario.steps.map(step => ({
       hostId: step.assigneeId,
