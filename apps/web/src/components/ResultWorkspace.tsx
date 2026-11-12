@@ -14,7 +14,7 @@ import { ResultArtifactList } from './ResultArtifactList.tsx'
 import { ResultReviewLog } from './ResultReviewLog.tsx'
 import { ResultVersionTimeline } from './ResultVersionTimeline.tsx'
 import { WhiteboardBoardView } from './WhiteboardBoardView.tsx'
-import { formatResultTimestamp, resultHasContent, resultTeamLabel } from '../results/format.ts'
+import { formatResultTimestamp, resultHasContent, resultMetricKind, resultTeamLabel } from '../results/format.ts'
 import { boardStatusLabels, resultPresentation } from '../results/presentation.ts'
 import {
   resultBoardChecks, resultBoardSections, resultChangedFileCount, resultCheckSummary,
@@ -114,6 +114,7 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
   const blockedTasks = result.tasks.filter(task => task.status === 'blocked').length
   const attentionCount = checkSummary.pending + checkSummary.failed + checkSummary.stale + openRisks + blockedTasks
   const artifacts = result.artifacts
+  const metrics = result.metrics
   const documentMeta = resultDocumentMetadata(result)
   const sections = resultBoardSections(result)
   const changeCount = resultChangedFileCount(result)
@@ -123,6 +124,9 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
   const goal = (board.description ?? '').trim()
   const showGoal = Boolean(goal && goal !== summary && goal !== result.verdict.trim())
   const readingMode = resultReadingMode(result)
+  // Generic content-first rule: a delivery result whose core is comparison data leads with the metrics
+  // band instead of an oversized conclusion paragraph. No per-business template is involved.
+  const dataLed = metrics.filter(metric => resultMetricKind(metric) === 'comparison').length >= 2
   const hasDelivery = artifacts.length > 0
   const hasReview = checks.length > 0 || Boolean(result.verdict) || result.risks.length > 0
   const hasRecords = result.decisions.length > 0 || result.tasks.length > 0
@@ -205,7 +209,7 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
   </section> : null
 
   return <div className="result-workspace" data-result-status={presentation.key} data-status={boardStatus}
-    data-reading-mode={readingMode} data-historical={historical ? 'true' : undefined}>
+    data-reading-mode={readingMode} data-lead={dataLed ? 'data' : undefined} data-historical={historical ? 'true' : undefined}>
     <header className="result-workspace-head">
       <div className="result-workspace-head-main">
         <h2 className="result-workspace-title" data-long={outsizedTitle ? 'true' : undefined} title={title}>{title}</h2>
@@ -248,8 +252,12 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
     </section>
 
     {readingMode === 'delivery'
-      ? <>{deliveryBlock}{reviewBlock}{metricsBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
-      : <>{sectionsBlock}{metricsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>}
+      ? dataLed
+        ? <>{metricsBlock}{deliveryBlock}{reviewBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
+        : <>{deliveryBlock}{reviewBlock}{metricsBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
+      : dataLed
+        ? <>{metricsBlock}{sectionsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>
+        : <>{sectionsBlock}{metricsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>}
 
     {trailBlock}
     {result.note && <p className="result-workspace-note"><Info size={14} strokeWidth={2} aria-hidden="true" /><span>{result.note}</span></p>}

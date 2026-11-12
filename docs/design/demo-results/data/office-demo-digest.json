@@ -17,7 +17,7 @@
     "summary": "邮件、群聊、表单 3 个入口的消息已归并：交付时间以邮件确认为周三 15:00，另有 3 项待确认。",
     "verdict": "按周三 15:00 准备交付；封面设计、改期建议与验收人仍需逐条确认，不能当作已确认结论。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 21:45",
+    "producedAt": "2026-11-12 22:06",
     "team": "多入口信息归纳办公室",
     "teamSize": 3,
     "updatedAt": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 21:45",
+        "producedAt": "2026-11-12 22:06",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 21:45",
+        "producedAt": "2026-11-12 22:06",
         "mimeType": "text/csv",
         "sha256": ""
       }

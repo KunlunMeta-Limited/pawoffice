@@ -588,3 +588,8 @@
   .result-workspace-track i,
   .result-workspace-disclosure > summary > svg { transition: none; }
 }
+
+/* Generic data-led rule: comparison-heavy results let the metric band carry the first screen. */
+.result-workspace[data-lead="data"] .result-workspace-conclusion { font-size: 20px; line-height: 1.55; font-weight: 560; letter-spacing: -.01em; }
+.result-workspace[data-lead="data"] .result-workspace-abstract { padding-bottom: 10px; }
+.result-workspace[data-lead="data"] .result-workspace-metric-band { padding-top: 4px; }

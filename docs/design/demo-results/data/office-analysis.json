@@ -17,7 +17,7 @@
     "summary": "两轮同口径 24 小时观察：商品访问 360 → 350 次，订单 9 → 14 单，访问成交率 2.5% → 4.0%。",
     "verdict": "建议保持 79 元售价：尺寸说明是待验证假设，不能据此证明因果；延长观察并补齐退款、售后数据后，再评估推广与价格。",
     "owner": "王明 · 负责人",
-    "producedAt": "2026-11-12 21:45",
+    "producedAt": "2026-11-12 22:06",
     "team": "经营分析团队",
     "teamSize": 3,
     "updatedAt": "",
@@ -93,7 +93,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 21:45",
+        "producedAt": "2026-11-12 22:06",
         "mimeType": "text/markdown",
         "sha256": ""
       },
@@ -108,7 +108,7 @@
         "versionId": "",
         "version": "1.0",
         "runId": "",
-        "producedAt": "2026-11-12 21:45",
+        "producedAt": "2026-11-12 22:06",
         "mimeType": "text/csv",
         "sha256": ""
       }
