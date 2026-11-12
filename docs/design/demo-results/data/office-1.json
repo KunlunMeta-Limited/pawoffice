@@ -1,0 +1,192 @@
+{
+  "office": {
+    "id": "office-1",
+    "name": "电商运营团队",
+    "conversationTitle": "折叠电脑支架上架准备"
+  },
+  "board": {
+    "title": "电商运营团队",
+    "status": "completed",
+    "description": "核对商品资料与页面，按 79 元完成上架准备与确认登记。"
+  },
+  "result": {
+    "template": "result-v1",
+    "runId": "",
+    "title": "折叠电脑支架上架检查",
+    "status": "ready",
+    "summary": "已按 79 元完成上架检查并确认上架：售价、六档调节与 13–16 英寸适用范围与商品资料一致，页面核对 4/4 项通过。",
+    "verdict": "上架前材料与页面已对齐；承重、散热等无材料支持的描述不对外展示。接下来按首个 24 小时观察访问、订单与咨询。",
+    "owner": "王明 · 负责人",
+    "producedAt": "2026-11-12 17:35",
+    "team": "电商运营团队",
+    "teamSize": 3,
+    "updatedAt": "",
+    "metrics": [
+      {
+        "id": "status",
+        "label": "上架状态",
+        "value": "已确认上架",
+        "unit": "",
+        "kind": "status",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "负责人已确认按 79 元上架",
+        "trend": "flat",
+        "tone": "positive",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "price",
+        "label": "售价",
+        "value": "79",
+        "unit": "元",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "与商品资料一致",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "fit",
+        "label": "适用尺寸",
+        "value": "13–16",
+        "unit": "英寸",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "未承诺 17 英寸机型",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "page-check",
+        "label": "页面核对",
+        "value": "4 / 4",
+        "unit": "项",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "标题、主图、详情、尺寸说明",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      }
+    ],
+    "metricsTitle": "上架前核对",
+    "metricsCaption": "以商品资料为唯一基准",
+    "artifacts": [
+      {
+        "id": "listing-checklist",
+        "kind": "document",
+        "title": "上架检查清单",
+        "description": "售价、规格、适用尺寸与页面一致性核对结果。",
+        "change": "added",
+        "content": "# 折叠电脑支架上架检查\n\n## 核对结果\n\n- 售价 79 元与商品资料一致，页面没有出现其他价格。\n- 六档高度调节、折叠收纳说明与供应商参数一致。\n- 适用范围标注 13–16 英寸，未承诺 17 英寸机型。\n- 标题、主图、详情页与尺寸说明核对 4/4 项一致。\n\n## 上架确认\n\n负责人已确认按 79 元上架（仅模拟，不连接真实店铺、不扣费）。\n\n## 待观察事项\n\n- 上架后首个 24 小时的访问、订单与购买咨询。\n- 尺寸、机型相关咨询单列，下一轮对比数量。\n- 承重、散热等缺少材料支持的描述不对外展示。\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/markdown",
+        "sha256": ""
+      },
+      {
+        "id": "listing-compare",
+        "kind": "data",
+        "title": "商品资料核对表",
+        "description": "商品资料与上架页面的逐项对照。",
+        "change": "added",
+        "content": "核对项,商品资料,上架页面,结论\n售价,79 元,79 元,一致\n适用范围,13–16 英寸,13–16 英寸,一致\n高度调节,六档,六档,一致\n标题与主图,已复核,已复核,一致\n详情与尺寸说明,已复核,已复核,一致\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/csv",
+        "sha256": ""
+      }
+    ],
+    "sections": [],
+    "checks": [
+      {
+        "id": "price",
+        "label": "售价 79 元与商品资料一致",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "fit",
+        "label": "13–16 英寸适用范围已写明",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "page",
+        "label": "标题、主图、详情与尺寸说明核对通过",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      }
+    ],
+    "decisions": [
+      {
+        "id": "listing",
+        "question": "是否按 79 元上架折叠电脑支架？",
+        "choice": "确认上架",
+        "at": "2026-11-12 17:35"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "check-data",
+        "title": "核对商品资料与售价",
+        "owner": "陈书 · 商品运营",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "check-page",
+        "title": "复核上架页面",
+        "owner": "周理 · 上架质检",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "log-listing",
+        "title": "记录上架确认结果",
+        "owner": "赵审 · 发布登记",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      }
+    ],
+    "versions": [],
+    "risks": [
+      {
+        "id": "claims",
+        "title": "承重与散热缺少材料支持",
+        "level": "low",
+        "status": "open",
+        "owner": "王明 · 负责人",
+        "note": "相关描述不写入卖点；等测试材料补齐后再评估。"
+      }
+    ],
+    "next": [
+      "按首个 24 小时观察访问、订单与购买咨询。",
+      "把尺寸、机型相关咨询单列，下一轮对比数量。",
+      "补拍折叠前后尺寸照片；承重与散热补齐测试材料后再作为卖点。"
+    ],
+    "note": "以上为本地模拟数据，不连接真实店铺、不产生费用。"
+  }
+}

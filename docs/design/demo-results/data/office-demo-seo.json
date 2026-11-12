@@ -1,0 +1,185 @@
+{
+  "office": {
+    "id": "office-demo-seo",
+    "name": "SEO优化办公室",
+    "conversationTitle": "产品页 SEO 检查"
+  },
+  "board": {
+    "title": "SEO优化办公室",
+    "status": "completed",
+    "description": "检查产品页标题、描述与内链，输出可执行的优化清单。"
+  },
+  "result": {
+    "template": "result-v1",
+    "runId": "",
+    "title": "产品页 SEO 优化清单",
+    "status": "ready",
+    "summary": "产品页标题、摘要与 H1 已统一「折叠电脑支架」主题，交付 3 项页面改动与 1 条内链建议。",
+    "verdict": "建议先改页面文案、再补站内入口；当前未接入收录与排名数据，不能预测流量变化。",
+    "owner": "王明 · 负责人",
+    "producedAt": "2026-11-12 17:35",
+    "team": "SEO优化办公室",
+    "teamSize": 3,
+    "updatedAt": "",
+    "metrics": [
+      {
+        "id": "page",
+        "label": "页面改动",
+        "value": "3",
+        "unit": "项",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "标题、摘要与 H1",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "keyword",
+        "label": "核心搜索词",
+        "value": "1",
+        "unit": "个",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "折叠电脑支架",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "link",
+        "label": "内链建议",
+        "value": "1",
+        "unit": "条",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "产品对比页 → 产品页",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "status",
+        "label": "优化建议",
+        "value": "已交付",
+        "unit": "",
+        "kind": "status",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "待发布后观察搜索表现",
+        "trend": "flat",
+        "tone": "positive",
+        "target": "",
+        "targetStatus": ""
+      }
+    ],
+    "metricsTitle": "优化项统计",
+    "metricsCaption": "按影响范围排序",
+    "artifacts": [
+      {
+        "id": "report",
+        "kind": "document",
+        "title": "SEO 优化清单",
+        "description": "页面文案与内链的改动建议。",
+        "change": "added",
+        "content": "# 产品页 SEO 优化清单\n\n## 页面文案\n- 标题与 H1 统一围绕「折叠电脑支架」，摘要补充六档调节、便携收纳与使用场景。\n\n## 站内入口\n- 在产品对比页增加一条指向产品页的链接，锚文本使用核心词。\n\n## 观察方式\n- 当前未接入收录与排名数据，发布后观察搜索表现再决定是否扩展关键词。\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/markdown",
+        "sha256": ""
+      },
+      {
+        "id": "data",
+        "kind": "data",
+        "title": "页面改动清单",
+        "description": "项目、现状与建议。",
+        "change": "added",
+        "content": "项目,现状,建议\n页面标题,未包含核心词,加入「折叠电脑支架」\n页面摘要,缺少卖点,补充六档调节与便携收纳\nH1,与标题不一致,统一核心词\n内链,无入口,对比页加一条产品页链接\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/csv",
+        "sha256": ""
+      }
+    ],
+    "sections": [],
+    "checks": [
+      {
+        "id": "theme",
+        "label": "标题、摘要与 H1 主题一致",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "link",
+        "label": "内链建议已标注目标页",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "order",
+        "label": "改动清单已按影响范围排序",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      }
+    ],
+    "decisions": [],
+    "tasks": [
+      {
+        "id": "page",
+        "title": "检查页面标题与描述",
+        "owner": "李研 · 页面审查",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "keyword",
+        "title": "整理关键词与内链",
+        "owner": "刘市 · 关键词分析",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "plan",
+        "title": "输出优化清单",
+        "owner": "陈书 · 优化方案",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      }
+    ],
+    "versions": [],
+    "risks": [
+      {
+        "id": "data",
+        "title": "未接入收录与排名数据",
+        "level": "low",
+        "status": "open",
+        "owner": "王明 · 负责人",
+        "note": "无法预测排名变化，发布后需观察搜索表现。"
+      }
+    ],
+    "next": [
+      "先更新产品页标题、摘要与 H1。",
+      "从产品对比页补一条指向产品页的内链。",
+      "发布后观察搜索表现，再决定是否继续扩展关键词。"
+    ],
+    "note": "以上为本地模拟数据，不连接真实外部系统、不产生实际业务操作。"
+  }
+}

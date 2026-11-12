@@ -117,16 +117,51 @@ test('电商运营团队：任务完成并确认上架后产出上架检查成�
   assert.equal(resultPresentation(board, result).label, '已交付')
 })
 
-test('其余 6 个演示场景保持诚实的空成果，不伪造结果', () => {
-  const withResult = new Set(['office-1', 'office-analysis'])
-  const others = conferenceLocalOffices().filter(office => !withResult.has(office.id))
-  assert.equal(others.length, 6)
-  for (const office of others) {
+const expectedResults = {
+  'office-1': '折叠电脑支架上架检查',
+  'office-content': '折叠电脑支架素材审核',
+  'office-analysis': '折叠电脑支架转化复盘',
+  'office-demo-seo': '产品页 SEO 优化清单',
+  'office-demo-tax': '本期申报资料核对',
+  'office-demo-social': '一周内容排期',
+  'office-demo-collection': '公开资料采集与校验',
+  'office-demo-digest': '跨入口项目简报',
+}
+
+test('8 个演示场景全部产出可阅读的成果页', () => {
+  const offices = conferenceLocalOffices()
+  assert.equal(offices.length, 8)
+  for (const office of offices) {
     const board = finishWalkthrough(office)
     assert.equal(board.status, 'completed', office.id)
-    assert.equal(board.result.title, '', `${office.id} 不应带成果标题`)
-    assert.equal(resultHasContent(board.result), false, `${office.id} 不应有成果内容`)
-    assert.equal(resultPresentation(board, board.result).label, '尚未交付', office.id)
+    const result = board.result
+    assert.equal(result.title, expectedResults[office.id], `${office.id} 成果标题`)
+    assert.equal(result.status, 'ready', office.id)
+    assert.equal(result.artifacts.length, 2, `${office.id} 交付物`)
+    assert(result.artifacts.some(artifact => artifact.kind === 'data'), office.id)
+    assert.equal(result.checks.length, 3, `${office.id} 检查项`)
+    assert.equal(result.tasks.length, 3, `${office.id} 任务记录`)
+    assert.equal(result.next.length, 3, `${office.id} 下一步`)
+    assert(result.summary.length > 0 && result.verdict.length > 0, office.id)
+    assert.equal(resultHasContent(result), true, office.id)
+    assert.equal(resultReadingMode(result), 'delivery', office.id)
+    assert.equal(resultPresentation(board, result).label, '已交付', `${office.id} 状态`)
+  }
+})
+
+test('每个场景都有与自身语义对应的关键内容', () => {
+  const expectations = {
+    'office-content': ['图片清单', '素材审核清单', '13–16 英寸'],
+    'office-demo-seo': ['产品页 SEO 优化清单', '核心搜索词', '内链建议'],
+    'office-demo-tax': ['待补凭证', 'P-04', 'R-06'],
+    'office-demo-social': ['发布节点', '周一', '复盘维度'],
+    'office-demo-collection': ['原始记录', '出处已核验', '待核实'],
+    'office-demo-digest': ['信息入口', '周三 15:00', '待确认'],
+  }
+  for (const [id, needles] of Object.entries(expectations)) {
+    const result = finishWalkthrough(officeById(id)).result
+    const haystack = JSON.stringify(result)
+    for (const needle of needles) assert(haystack.includes(needle), `${id} 应包含「${needle}」`)
   }
 })
 

@@ -1,0 +1,96 @@
+{
+  "generatedAt": "2026-11-12T09:38:29.388Z",
+  "baseUrl": "http://localhost:5173",
+  "viewport": "1440x900",
+  "consoleErrors": 0,
+  "scenarios": [
+    {
+      "scenario": "office-1",
+      "title": "折叠电脑支架上架检查",
+      "status": "已交付",
+      "screenshot": "screenshots/01-office-1.png",
+      "url": "/?office-frame=local:office-1",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-content",
+      "title": "折叠电脑支架素材审核",
+      "status": "已交付",
+      "screenshot": "screenshots/02-office-content.png",
+      "url": "/?office-frame=local:office-content",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-analysis",
+      "title": "折叠电脑支架转化复盘",
+      "status": "已交付",
+      "screenshot": "screenshots/03-office-analysis.png",
+      "url": "/?office-frame=local:office-analysis",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-demo-seo",
+      "title": "产品页 SEO 优化清单",
+      "status": "已交付",
+      "screenshot": "screenshots/04-office-demo-seo.png",
+      "url": "/?office-frame=local:office-demo-seo",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-demo-tax",
+      "title": "本期申报资料核对",
+      "status": "已交付",
+      "screenshot": "screenshots/05-office-demo-tax.png",
+      "url": "/?office-frame=local:office-demo-tax",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-demo-social",
+      "title": "一周内容排期",
+      "status": "已交付",
+      "screenshot": "screenshots/06-office-demo-social.png",
+      "url": "/?office-frame=local:office-demo-social",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-demo-collection",
+      "title": "公开资料采集与校验",
+      "status": "已交付",
+      "screenshot": "screenshots/07-office-demo-collection.png",
+      "url": "/?office-frame=local:office-demo-collection",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    },
+    {
+      "scenario": "office-demo-digest",
+      "title": "跨入口项目简报",
+      "status": "已交付",
+      "screenshot": "screenshots/08-office-demo-digest.png",
+      "url": "/?office-frame=local:office-demo-digest",
+      "checks": {
+        "delivered": true,
+        "dialog": "dialog.whiteboard-reader.is-result"
+      }
+    }
+  ]
+}

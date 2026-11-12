@@ -1,0 +1,185 @@
+{
+  "office": {
+    "id": "office-demo-digest",
+    "name": "多入口信息归纳办公室",
+    "conversationTitle": "跨入口项目简报"
+  },
+  "board": {
+    "title": "多入口信息归纳办公室",
+    "status": "completed",
+    "description": "汇总多个入口的项目消息，输出带待确认事项的简报。"
+  },
+  "result": {
+    "template": "result-v1",
+    "runId": "",
+    "title": "跨入口项目简报",
+    "status": "ready",
+    "summary": "邮件、群聊、表单 3 个入口的消息已归并：交付时间以邮件确认为周三 15:00，另有 3 项待确认。",
+    "verdict": "按周三 15:00 准备交付；封面设计、改期建议与验收人仍需逐条确认，不能当作已确认结论。",
+    "owner": "王明 · 负责人",
+    "producedAt": "2026-11-12 17:35",
+    "team": "多入口信息归纳办公室",
+    "teamSize": 3,
+    "updatedAt": "",
+    "metrics": [
+      {
+        "id": "sources",
+        "label": "信息入口",
+        "value": "3",
+        "unit": "个",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "邮件、群聊与表单",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "delivery",
+        "label": "交付时间",
+        "value": "周三 15:00",
+        "unit": "",
+        "kind": "text",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "以项目确认邮件为准",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "pending",
+        "label": "待确认",
+        "value": "3",
+        "unit": "项",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "封面、改期、验收人",
+        "trend": "flat",
+        "tone": "negative",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "status",
+        "label": "简报状态",
+        "value": "已整理",
+        "unit": "",
+        "kind": "status",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "待逐条确认后更新",
+        "trend": "flat",
+        "tone": "positive",
+        "target": "",
+        "targetStatus": ""
+      }
+    ],
+    "metricsTitle": "归纳结果",
+    "metricsCaption": "以邮件确认信息为准",
+    "artifacts": [
+      {
+        "id": "report",
+        "kind": "document",
+        "title": "项目简报",
+        "description": "跨入口信息归并后的时间、变更与待确认事项。",
+        "change": "added",
+        "content": "# 跨入口项目简报\n\n## 已确认\n- 交付时间：周三 15:00，以项目确认邮件为准。\n\n## 变更请求\n- 群聊提出改期到周四，保留为待确认建议，未采纳为结论。\n\n## 待确认\n- 封面设计需设计负责人确认。\n- 表单中的验收人缺失，需项目负责人补齐。\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/markdown",
+        "sha256": ""
+      },
+      {
+        "id": "data",
+        "kind": "data",
+        "title": "待确认事项",
+        "description": "事项、来源与状态。",
+        "change": "added",
+        "content": "事项,来源,状态\n封面设计,群聊,待设计负责人确认\n改期建议,群聊,待确认是否采纳\n验收人,表单,待项目负责人补齐\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/csv",
+        "sha256": ""
+      }
+    ],
+    "sections": [],
+    "checks": [
+      {
+        "id": "sources",
+        "label": "三个入口消息已登记",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "merge",
+        "label": "同一事件已归并",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "conflict",
+        "label": "冲突信息已标记待确认",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      }
+    ],
+    "decisions": [],
+    "tasks": [
+      {
+        "id": "gather",
+        "title": "汇集邮件、群聊和表单",
+        "owner": "周理 · 入口汇集",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "merge",
+        "title": "合并同一事件",
+        "owner": "刘市 · 事件归类",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "brief",
+        "title": "输出项目简报",
+        "owner": "陈书 · 简报整理",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      }
+    ],
+    "versions": [],
+    "risks": [
+      {
+        "id": "pending",
+        "title": "封面、改期与验收人未确认",
+        "level": "medium",
+        "status": "open",
+        "owner": "王明 · 负责人",
+        "note": "群聊与表单中的差异保留为待确认事项，不写成结论。"
+      }
+    ],
+    "next": [
+      "按周三 15:00 准备交付。",
+      "逐条确认封面设计、改期建议与验收人。",
+      "为每条信息补记出处，确认后再更新简报。"
+    ],
+    "note": "以上为本地模拟数据，不连接真实外部系统、不产生实际业务操作。"
+  }
+}

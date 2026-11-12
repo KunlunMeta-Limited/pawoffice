@@ -1,0 +1,109 @@
+{
+  "generatedAt": "2026-11-12T09:35:12.907Z",
+  "scenarios": [
+    {
+      "id": "office-1",
+      "name": "电商运营团队",
+      "conversationTitle": "折叠电脑支架上架准备",
+      "resultTitle": "折叠电脑支架上架检查",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-content",
+      "name": "商品视觉团队",
+      "conversationTitle": "折叠电脑支架素材审核",
+      "resultTitle": "折叠电脑支架素材审核",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-analysis",
+      "name": "经营分析团队",
+      "conversationTitle": "折叠电脑支架转化复盘",
+      "resultTitle": "折叠电脑支架转化复盘",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-demo-seo",
+      "name": "SEO优化办公室",
+      "conversationTitle": "产品页 SEO 检查",
+      "resultTitle": "产品页 SEO 优化清单",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-demo-tax",
+      "name": "报税办公室",
+      "conversationTitle": "本期申报资料整理",
+      "resultTitle": "本期申报资料核对",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-demo-social",
+      "name": "自媒体运营办公室",
+      "conversationTitle": "一周内容排期",
+      "resultTitle": "一周内容排期",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-demo-collection",
+      "name": "信息采集办公室",
+      "conversationTitle": "公开资料采集与校验",
+      "resultTitle": "公开资料采集与校验",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    },
+    {
+      "id": "office-demo-digest",
+      "name": "多入口信息归纳办公室",
+      "conversationTitle": "跨入口项目简报",
+      "resultTitle": "跨入口项目简报",
+      "resultStatus": "ready",
+      "readingMode": "delivery",
+      "metrics": 4,
+      "artifacts": 2,
+      "checks": 3,
+      "openRisks": 1,
+      "next": 3
+    }
+  ]
+}

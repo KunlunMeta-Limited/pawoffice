@@ -1,0 +1,185 @@
+{
+  "office": {
+    "id": "office-content",
+    "name": "商品视觉团队",
+    "conversationTitle": "折叠电脑支架素材审核"
+  },
+  "board": {
+    "title": "商品视觉团队",
+    "status": "completed",
+    "description": "整理主图、详情与尺寸说明，交付可审核的素材清单。"
+  },
+  "result": {
+    "template": "result-v1",
+    "runId": "",
+    "title": "折叠电脑支架素材审核",
+    "status": "ready",
+    "summary": "主图、卖点细节与尺寸图清单已复核：图片 4 张、详情 4 块，13–16 英寸适用范围在移动端清晰可读。",
+    "verdict": "素材与商品资料一致，可交付上架页面使用；折叠前后尺寸照片仍待补拍，补齐后再替换详情中的临时示意图。",
+    "owner": "王明 · 负责人",
+    "producedAt": "2026-11-12 17:35",
+    "team": "商品视觉团队",
+    "teamSize": 3,
+    "updatedAt": "",
+    "metrics": [
+      {
+        "id": "images",
+        "label": "图片清单",
+        "value": "4",
+        "unit": "张",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "主图 1 / 卖点细节 2 / 尺寸说明 1",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "fit",
+        "label": "适用范围",
+        "value": "13–16",
+        "unit": "英寸",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "未承诺 17 英寸机型",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "detail",
+        "label": "详情内容",
+        "value": "4",
+        "unit": "块",
+        "kind": "auto",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "场景、调节、收纳、尺寸",
+        "trend": "flat",
+        "tone": "neutral",
+        "target": "",
+        "targetStatus": ""
+      },
+      {
+        "id": "verdict",
+        "label": "审核结论",
+        "value": "通过",
+        "unit": "",
+        "kind": "status",
+        "emphasis": "normal",
+        "previous": "",
+        "change": "移动端字号与图文一致性已复核",
+        "trend": "flat",
+        "tone": "positive",
+        "target": "",
+        "targetStatus": ""
+      }
+    ],
+    "metricsTitle": "素材核对",
+    "metricsCaption": "以商品资料为唯一基准",
+    "artifacts": [
+      {
+        "id": "report",
+        "kind": "document",
+        "title": "素材审核清单",
+        "description": "主图、详情与尺寸说明的核对结果。",
+        "change": "added",
+        "content": "# 素材审核清单\n\n## 主图与附图\n- 主图展示展开状态的整体形态，附图分别说明六档调节与折叠收纳。\n\n## 详情结构\n- 使用场景 → 材质与尺寸 → 六档调节 → 折叠收纳 → 注意事项。\n\n## 尺寸说明\n- 独立尺寸图标注 13–16 英寸，未承诺 17 英寸机型；移动端字号需保持可读。\n\n## 待补事项\n- 折叠前后尺寸照片待补拍，补齐后替换详情中的临时示意图。\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/markdown",
+        "sha256": ""
+      },
+      {
+        "id": "data",
+        "kind": "data",
+        "title": "图片清单",
+        "description": "图片用途与数量。",
+        "change": "added",
+        "content": "用途,数量,说明\n商品主图,1,展开状态侧前视角\n卖点细节,2,六档调节与折叠收纳\n尺寸说明,1,13–16 英寸适用范围\n",
+        "url": "",
+        "versionId": "",
+        "version": "1.0",
+        "runId": "",
+        "producedAt": "2026-11-12 17:35",
+        "mimeType": "text/csv",
+        "sha256": ""
+      }
+    ],
+    "sections": [],
+    "checks": [
+      {
+        "id": "image-copy",
+        "label": "主图与附图覆盖商品形态与细节",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "fit-copy",
+        "label": "13–16 英寸说明与商品资料一致",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      },
+      {
+        "id": "mobile",
+        "label": "移动端字号与图文一致性已复核",
+        "status": "passed",
+        "artifactId": "",
+        "versionId": ""
+      }
+    ],
+    "decisions": [],
+    "tasks": [
+      {
+        "id": "shoot",
+        "title": "梳理主图拍摄要求",
+        "owner": "李研 · 视觉策划",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "detail",
+        "title": "编排详情页与尺寸图",
+        "owner": "陈书 · 详情设计",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      },
+      {
+        "id": "check",
+        "title": "复核并交付图片清单",
+        "owner": "周理 · 素材校对",
+        "status": "done",
+        "progress": 100,
+        "note": ""
+      }
+    ],
+    "versions": [],
+    "risks": [
+      {
+        "id": "photo",
+        "title": "折叠前后尺寸照片待补拍",
+        "level": "low",
+        "status": "open",
+        "owner": "王明 · 负责人",
+        "note": "当前详情使用临时示意图，未核验尺寸不对外承诺。"
+      }
+    ],
+    "next": [
+      "补拍折叠前后尺寸照片，替换详情中的临时示意图。",
+      "按主图、卖点细节、尺寸图顺序走查移动端页面。",
+      "把审核清单交付上架页面制作使用。"
+    ],
+    "note": "以上为本地模拟数据，不连接真实外部系统、不产生实际业务操作。"
+  }
+}
