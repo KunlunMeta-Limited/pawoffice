@@ -12,12 +12,15 @@ import { dashboardWhiteboardTaskBoard } from '../dashboard/whiteboard.ts'
 import { demoDialogues, isDemoStartCommand, matchesDemoKeyword, normalizeDemoQuestion } from './demoDialogue.ts'
 import type { DemoReplyPool, DemoScenarioId } from './demoDialogue.ts'
 import { isDemoReportQuestion, scenarioDemoReport } from './demoReports.ts'
+import { hasScenarioResult, scenarioResult } from './demoResults.ts'
 
 type ScenarioStep = { title: string; role: string; summary: string; assigneeId: string }
 type Scenario = {
   id: DemoScenarioId
   name: string
   conversationTitle: string
+  /** One-sentence goal, shown as the board's 任务目标 on the result page. */
+  goal: string
   steps: readonly [ScenarioStep, ScenarioStep, ScenarioStep]
   listingApproval?: { title: string; description: string }
 }
@@ -27,6 +30,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-1',
     name: '电商运营团队',
     conversationTitle: '折叠电脑支架上架准备',
+    goal: '核对商品资料与页面，按 79 元完成上架准备与确认登记。',
     steps: [
       { title: '核对商品资料与售价', role: '商品运营', summary: '核对 79 元定价、六档调节与 13–16 英寸适用范围。', assigneeId: 'app-agent' },
       { title: '复核上架页面', role: '上架质检', summary: '检查标题、主图、详情页和尺寸说明是否一致。', assigneeId: 'file-agent' },
@@ -41,6 +45,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-content',
     name: '商品视觉团队',
     conversationTitle: '折叠电脑支架素材审核',
+    goal: '整理主图、详情与尺寸说明，交付可审核的素材清单。',
     steps: [
       { title: '梳理主图拍摄要求', role: '视觉策划', summary: '明确展开状态、调节细节和折叠收纳的画面重点。', assigneeId: 'code-agent' },
       { title: '编排详情页与尺寸图', role: '详情设计', summary: '按使用场景、六档调节、折叠收纳和适用尺寸编排。', assigneeId: 'app-agent' },
@@ -51,6 +56,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-analysis',
     name: '经营分析团队',
     conversationTitle: '折叠电脑支架转化复盘',
+    goal: '对比两轮 24 小时经营数据，整理复盘建议与下一步动作。',
     steps: [
       { title: '核对两轮访问和订单', role: '数据核验', summary: '统一 24 小时口径，核对 360 次访问、9 单和 350 次访问、14 单。', assigneeId: 'data-agent' },
       { title: '分类尺寸与机型咨询', role: '咨询分析', summary: '归类首轮 10 条咨询，整理其中 6 条适配问题。', assigneeId: 'code-agent' },
@@ -61,6 +67,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-seo',
     name: 'SEO优化办公室',
     conversationTitle: '产品页 SEO 检查',
+    goal: '检查产品页标题、描述与内链，输出可执行的优化清单。',
     steps: [
       { title: '检查页面标题与描述', role: '页面审查', summary: '检查产品页的标题、描述与主标题。', assigneeId: 'code-agent' },
       { title: '整理关键词与内链', role: '关键词分析', summary: '按搜索意图整理关键词与页面间的链接。', assigneeId: 'review-agent' },
@@ -71,6 +78,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-tax',
     name: '报税办公室',
     conversationTitle: '本期申报资料整理',
+    goal: '归集本期票据并核对收支凭证，交付待复核的申报草稿。',
     steps: [
       { title: '归集本期发票', role: '票据归集', summary: '按日期和来源整理本期发票。', assigneeId: 'data-agent' },
       { title: '核对收支与凭证', role: '凭证核对', summary: '对照收支记录，标出待补凭证。', assigneeId: 'file-agent' },
@@ -81,6 +89,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-social',
     name: '自媒体运营办公室',
     conversationTitle: '一周内容排期',
+    goal: '规划一周内容选题与发布节奏，形成可执行的排期。',
     steps: [
       { title: '梳理受众与选题', role: '选题策划', summary: '从评论中整理受众感兴趣的话题。', assigneeId: 'review-agent' },
       { title: '起草短视频和图文', role: '内容制作', summary: '为技巧视频与案例图文拟定提纲。', assigneeId: 'app-agent' },
@@ -91,6 +100,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-collection',
     name: '信息采集办公室',
     conversationTitle: '公开资料采集与校验',
+    goal: '采集公开资料、去重并核验来源，归档可追溯的记录。',
     steps: [
       { title: '整理待采集来源', role: '来源检索', summary: '汇总公告、公开网页和订阅条目。', assigneeId: 'code-agent' },
       { title: '提取记录并去重', role: '信息提取', summary: '提取标题、日期和链接，合并重复记录。', assigneeId: 'data-agent' },
@@ -101,6 +111,7 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-digest',
     name: '多入口信息归纳办公室',
     conversationTitle: '跨入口项目简报',
+    goal: '汇总多个入口的项目消息，输出带待确认事项的简报。',
     steps: [
       { title: '汇集邮件、群聊和表单', role: '入口汇集', summary: '按入口登记消息及其时间。', assigneeId: 'file-agent' },
       { title: '合并同一事件', role: '事件归类', summary: '归并重复提及，标记不同入口的冲突。', assigneeId: 'review-agent' },
@@ -168,7 +179,12 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       tasks,
       events: events.slice(0, 100),
     }
-    this.replaceConversations([{ ...main, tasks, events: snapshot.events, whiteboard: dashboardWhiteboardTaskBoard(snapshot) }])
+    const board = { ...dashboardWhiteboardTaskBoard(snapshot), description: this.scenario.goal }
+    // Only a finished walkthrough that really ends in a report carries a result; everything else
+    // keeps the board-only state so the reader's empty fallback stays truthful.
+    const finished = tasks.length > 0 && tasks.every(task => task.status === 'completed')
+    const result = finished ? scenarioResult(this.scenario.id, new Date()) : undefined
+    this.replaceConversations([{ ...main, tasks, events: snapshot.events, whiteboard: result ? { ...board, result } : board }])
   }
 }
 
@@ -360,7 +376,11 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       if (!choice) return '商品资料与页面已复核，正在等待上架确认。确认后会登记本轮结果。'
       if (choice === 'reject') return '商品资料与页面已复核，本轮选择暂不上架。上架前可修改材料，再发起新一轮检查。'
     }
-    if (completed === tasks.length) return `已完成全部 ${tasks.length} 项任务。可以问我「结果是什么？」查看本轮交付内容。`
+    if (completed === tasks.length) {
+      return hasScenarioResult(this.data.scenario.id)
+        ? `已完成全部 ${tasks.length} 项任务。本轮成果已生成，点工具栏「当前成果」查看。`
+        : `已完成全部 ${tasks.length} 项任务。可以问我「结果是什么？」查看本轮交付内容。`
+    }
     if (running) {
       const nextStep = next ? `下一步是「${next.title}」。` : '这是最后一项。'
       return `已完成 ${completed}/${tasks.length} 项。正在「${running.title}」，本项进度 ${running.progress ?? 0}%。${nextStep}`
