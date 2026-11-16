@@ -1,5 +1,7 @@
 import type { OfficeResultInput } from '@pawoffice/protocol/office-ui'
 import type { DemoScenarioId } from './demoDialogue.ts'
+import { formatWorkItems } from './demoCycles.ts'
+import type { DemoCase } from './demoCycles.ts'
 
 const listingReport = `# 折叠电脑支架上架检查
 
@@ -12,7 +14,7 @@ const listingReport = `# 折叠电脑支架上架检查
 
 ## 上架确认
 
-负责人已确认按 79 元上架（仅模拟，不连接真实店铺、不扣费）。
+负责人已确认按 79 元上架，确认结果已登记。
 
 ## 待观察事项
 
@@ -199,24 +201,23 @@ R-06,入账凭证,补编号并保留发票对应,待补
     extraArtifacts: [{ id: 'draft', kind: 'document', title: '申报草稿（待复核）', description: '已归集资料与待补凭证的申报草稿，仅供内部复核。',
       change: 'added', version: '1.0', producedAt, mimeType: 'text/markdown', content: `# 本期申报草稿（待复核）
 
-## 申报项目（模拟）
+## 申报项目
 
 | 项目 | 本期数据 | 数据来源 | 状态 |
 | --- | --- | --- | --- |
-| 销售收入（不含税） | 86,400 元（模拟） | 收支台账 9 月汇总 | 已核对 |
-| 销项税额 | 5,184 元（按 6% 模拟计算） | 销售收入 × 6% | 已核对 |
-| 进项税额 | 3,200 元（模拟；P-04 待补 800 元） | 发票明细 | 待补凭证 |
-| 本期应纳税额 | 1,984 元（模拟：5,184 − 3,200） | 销项税额 − 进项税额 | 待复核 |
+| 销售收入（不含税） | 86,400 元 | 收支台账 9 月汇总 | 已核对 |
+| 销项税额 | 5,184 元 | 销售收入 × 6% | 已核对 |
+| 进项税额 | 3,200 元（P-04 待补 800 元） | 发票明细 | 待补凭证 |
+| 本期应纳税额 | 暂计 1,984 元 | 销项税额 − 进项税额 | 待复核 |
 
 ## 缺失凭证的影响
 
-- P-04 付款凭证：待补进项 800 元。补齐后进项税额为 4,000 元，本期应纳税额相应降为 1,184 元（模拟）。
+- P-04 付款凭证：待补进项 800 元。若复核确认可抵扣，进项税额为 4,000 元，本期应纳税额相应为 1,184 元。
 - R-06 入账凭证：影响成本费用与原始发票的对应关系，补齐后复核入账口径。
 
 ## 复核状态
 
-- 以上金额均为演示模拟值，来源于本期台账与发票明细的模拟数据，未接入真实税务系统。
-- 草稿仅供内部复核，凭证补齐前不提交申报，也不代表任何真实申报行为。
+- 金额按本期台账与发票明细暂计。补齐凭证并完成复核后，再确认是否提交。
 ` }],
     checks: [
       { id: 'collect', label: '发票已按日期与来源归集', status: 'passed' },
@@ -230,101 +231,6 @@ R-06,入账凭证,补编号并保留发票对应,待补
       { id: 'draft', title: '整理申报草稿', owner: '刘市 · 申报资料', status: 'done', progress: 100 },
     ],
     next: ['补齐 P-04 付款凭证编号，并核对日期与金额。', '补齐 R-06 入账凭证编号，保留与原始发票的对应关系。', '交复核人核对草稿，由业务人员确认是否提交。'],
-    note: '以上为本地模拟数据，不接入真实税务系统，不产生申报行为。',
-  })
-}
-
-/** 自媒体运营办公室：一周内容排期。 */
-function socialResult(producedAt: string): OfficeResultInput {
-  return result({
-    producedAt,
-    team: '自媒体运营办公室',
-    title: '一周内容排期',
-    summary: '一周 3 个发布节点已排定：周一短视频、周三图文、周五评论问答；每类内容对应复盘指标已定义。',
-    verdict: '排期可执行；发布前需核对素材与封面，周五按形式分别回填完播、收藏与评论。',
-    metricsTitle: '排期概览',
-    metricsCaption: '按发布节点与内容形式组织',
-    metrics: [
-      { id: 'slots', label: '发布节点', value: '3', unit: '个', change: '周一、周三、周五' },
-      { id: 'formats', label: '内容形式', value: '3', unit: '种', change: '短视频、图文、评论问答' },
-      { id: 'review', label: '复盘维度', value: '3', unit: '项', change: '完播、收藏、评论' },
-      { id: 'status', label: '排期状态', value: '已确认', kind: 'status', tone: 'positive', change: '发布前核对素材与封面' },
-    ],
-    report: { title: '一周内容排期', description: '选题、形式与复盘安排。', content: `# 一周内容排期
-
-## 发布节点
-- 周一：短视频，用三步整理法打开话题。
-- 周三：图文，用前后对比展示结果。
-- 周五：评论问答，整理高频问题并纳入下周选题。
-
-## 复盘
-- 按内容形式分别记录完播、收藏与评论，周五统一复盘。
-` },
-    data: { title: '发布排期', description: '日期、形式与内容重点。', content: `日期,形式,内容重点,复盘指标
-周一,短视频,线材归置三步法,完播
-周三,图文,前后对比展示,收藏
-周五,评论问答,高频问题整理,评论
-` },
-    checks: [
-      { id: 'audience', label: '选题与受众关注点对齐', status: 'passed' },
-      { id: 'schedule', label: '三种内容形式已排期', status: 'passed' },
-      { id: 'metrics', label: '复盘指标已按形式定义', status: 'passed' },
-    ],
-    risks: [{ id: 'manual', title: '平台数据需人工回填', level: 'low', status: 'open', owner: '王明 · 负责人', note: '完播、收藏与评论需发布后手动记录。' }],
-    tasks: [
-      { id: 'topic', title: '梳理受众与选题', owner: '刘市 · 选题策划', status: 'done', progress: 100 },
-      { id: 'draft', title: '起草短视频和图文', owner: '陈书 · 内容制作', status: 'done', progress: 100 },
-      { id: 'schedule', title: '整理发布排期', owner: '赵审 · 运营排期', status: 'done', progress: 100 },
-    ],
-    next: ['发布前核对素材与封面。', '按周一、周三、周五节点发布。', '周五按内容形式记录完播、收藏与评论并复盘。'],
-  })
-}
-
-/** 信息采集办公室：公开资料采集、去重与来源校验。 */
-function collectionResult(producedAt: string): OfficeResultInput {
-  return result({
-    producedAt,
-    team: '信息采集办公室',
-    title: '公开资料采集与校验',
-    summary: '公开来源采集 18 条记录，合并重复后保留 15 条，其中 13 条出处已核验，2 条待核实。',
-    verdict: '已核验记录可归档使用；2 条待核实记录单独标注来源，核对主办方公告后再合入正式清单。',
-    metricsTitle: '采集与校验',
-    metricsCaption: '按记录处理阶段统计',
-    metrics: [
-      { id: 'raw', label: '原始记录', value: '18', unit: '条', change: '公开活动页与订阅来源' },
-      { id: 'kept', label: '去重后保留', value: '15', unit: '条', change: '合并 3 条重复记录', tone: 'positive' },
-      { id: 'verified', label: '出处已核验', value: '13', unit: '条', change: '保留标题、日期与来源链接' },
-      { id: 'pending', label: '待核实', value: '2', unit: '条', kind: 'text', change: '暂不并入正式清单', tone: 'negative' },
-    ],
-    report: { title: '采集与校验报告', description: '采集范围、去重规则与核验结果。', content: `# 公开资料采集与校验报告
-
-## 采集范围
-- 公开活动页与订阅来源，共 18 条记录。
-
-## 处理过程
-- 按标题、主办方与日期归并重复发布，合并 3 条后保留 15 条。
-
-## 核验结果
-- 13 条出处已核验；2 条暂无法确认，单独标注来源待核实。
-` },
-    data: { title: '记录处理清单', description: '各阶段数量与说明。', content: `阶段,数量,说明
-原始提取,18,公开活动页与订阅来源
-去重保留,15,合并 3 条重复发布
-出处已核验,13,保留标题日期主办方链接
-待核实,2,来源待主办方公告确认
-` },
-    checks: [
-      { id: 'dedupe', label: '重复发布已合并', status: 'passed' },
-      { id: 'source', label: '每条记录保留出处', status: 'passed' },
-      { id: 'separate', label: '待核实记录已单列', status: 'passed' },
-    ],
-    risks: [{ id: 'pending', title: '2 条记录出处待核实', level: 'low', status: 'open', owner: '王明 · 负责人', note: '暂不并入正式清单，等主办方公告确认。' }],
-    tasks: [
-      { id: 'sources', title: '整理待采集来源', owner: '李研 · 来源检索', status: 'done', progress: 100 },
-      { id: 'extract', title: '提取记录并去重', owner: '赵审 · 信息提取', status: 'done', progress: 100 },
-      { id: 'verify', title: '复核来源并归档', owner: '周理 · 来源校验', status: 'done', progress: 100 },
-    ],
-    next: ['复核 2 条待确认记录。', '核对主办方公告。', '合入正式清单并保留出处链接。'],
   })
 }
 
@@ -401,7 +307,7 @@ function result(spec: {
       ...(spec.extraArtifacts ?? []),
     ],
     checks: spec.checks, risks: spec.risks ?? [], decisions: [], tasks: spec.tasks, next: spec.next,
-    note: spec.note ?? '以上为本地模拟数据，不连接真实外部系统、不产生实际业务操作。',
+    note: spec.note,
   }
 }
 
@@ -412,10 +318,23 @@ export function scenarioResult(id: DemoScenarioId, at: Date): OfficeResultInput 
   if (id === 'office-analysis') return analysisResult(producedAt)
   if (id === 'office-demo-seo') return seoResult(producedAt)
   if (id === 'office-demo-tax') return taxResult(producedAt)
-  if (id === 'office-demo-social') return socialResult(producedAt)
-  if (id === 'office-demo-collection') return collectionResult(producedAt)
   if (id === 'office-demo-digest') return digestResult(producedAt)
   return undefined
+}
+
+export function cycleResult(current: DemoCase, team: string, at: Date, tasks: NonNullable<OfficeResultInput['tasks']>) {
+  const quote = (value: string) => '"' + value.replaceAll('"', '""') + '"'
+  const rows = current.items.map(item => [item.label, item.status, item.detail, item.source].map(quote).join(','))
+  return result({
+    producedAt: stamp(at), team, title: current.title, summary: current.request, verdict: current.next,
+    metricsTitle: '事项与状态', metricsCaption: '每条记录附原始依据',
+    metrics: current.items.map((item, index) => ({ id: `item-${index + 1}`, label: item.label, kind: 'status', value: item.status })),
+    report: { title: '本轮工作简报', description: '委托、处理结果与后续事项',
+      content: `# ${current.title}\n\n${current.request}\n\n${formatWorkItems(current.items)}\n\n## 下一步\n\n${current.next}` },
+    data: { title: '事项明细', description: '逐条查看状态、说明与出处', content: ['事项,状态,说明,出处', ...rows].join('\n') },
+    checks: [{ id: 'sources', label: '逐项标注依据及后续状态', status: 'passed' }],
+    tasks, next: [current.next],
+  })
 }
 
 /** 电商运营团队：核对资料与页面后确认上架，交付上架检查清单。 */
@@ -466,7 +385,6 @@ function listingResult(producedAt: string): OfficeResultInput {
       '把尺寸、机型相关咨询单列，下一轮对比数量。',
       '补拍折叠前后尺寸照片；承重与散热补齐测试材料后再作为卖点。',
     ],
-    note: '以上为本地模拟数据，不连接真实店铺、不产生费用。',
   }
 }
 
@@ -515,7 +433,7 @@ function analysisResult(producedAt: string): OfficeResultInput {
       '下一轮单独统计尺寸与机型咨询，与本轮 6/10 条对比。',
       '观察结论稳定后，再评估是否扩大推广或调整价格。',
     ],
-    note: '以上为本地模拟数据，不连接真实店铺、不产生费用；两轮窗口无对照组，结论仅用于演示。',
+    note: '两轮观察缺少对照组，成交变化的原因仍待验证。',
   }
 }
 

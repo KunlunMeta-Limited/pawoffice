@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import type { DemoScenarioId } from './demoDialogue.ts'
+import type { SingleRunOfficeId } from './demoDialogue.ts'
+import type { DemoCase } from './demoCycles.ts'
 
 const label = z.string().min(1).max(80)
 const text = z.string().min(1).max(500)
@@ -17,7 +18,7 @@ const reportSchema = z.object({
   }),
   findings: z.array(z.object({ title: label, detail: text })).min(1).max(3),
   next: text,
-  note: text,
+  note: z.string().max(500).default(''),
 })
 
 export type DemoReport = z.infer<typeof reportSchema>
@@ -30,11 +31,31 @@ function encodeReport(report: DemoReport) {
 }
 
 export function readDemoReport(content: string): DemoReport | undefined {
-  if (!content.startsWith(reportStart) || !content.endsWith(reportEnd)) return
+  const offset = content.startsWith(reportStart) ? 0 : content.indexOf('\n\n' + reportStart)
+  if (offset < 0 || !content.endsWith(reportEnd)) return
+  const start = offset === 0 ? 0 : offset + 2
   try {
-    const result = reportSchema.safeParse(JSON.parse(content.slice(reportStart.length, -reportEnd.length)))
-    if (result.success) return result.data
+    const result = reportSchema.safeParse(JSON.parse(content.slice(start + reportStart.length, -reportEnd.length)))
+    if (result.success) {
+      const report = result.data
+      const oldFooter = /^(指标与结论来自此案例的预设资料|事项和出处来自本轮样例资料|报告采用本地模拟数据)/.test(report.note)
+      return oldFooter ? { ...report, note: '' } : report
+    }
   } catch { /* An incomplete or unrecognized block falls back to Markdown. */ }
+}
+
+export function cycleChatReport(current: DemoCase, team: string, status: string, progress: string) {
+  const counts = new Map<string, number>()
+  for (const item of current.items) counts.set(item.status, (counts.get(item.status) ?? 0) + 1)
+  return encodeReport({
+    scope: team, title: current.title, tone: team === '自媒体运营办公室' ? 'amber' : 'teal',
+    status, summary: progress,
+    metrics: current.items.map(item => ({ label: item.label, value: item.status, detail: item.label + '事项' })),
+    chart: { title: '待跟进状态分布', unit: '项', rows: [...counts].map(([label, value]) => ({ label, value })) },
+    findings: current.items.map(item => ({ title: item.label, detail: `${item.detail} 依据：${item.source}。` })),
+    next: current.next,
+    note: '',
+  })
 }
 
 export function demoReportMarkdown(report: DemoReport) {
@@ -44,7 +65,7 @@ export function demoReportMarkdown(report: DemoReport) {
     `## ${report.chart.title}`, report.chart.rows.map(row => `- ${row.label} ${row.value} ${report.chart.unit}`).join('\n'),
     '## 主要发现', report.findings.map(item => `- **${item.title}** ${item.detail}`).join('\n'),
     '## 下一步', report.next, report.note,
-  ].join('\n\n')
+  ].filter(Boolean).join('\n\n')
 }
 
 export function isDemoReportQuestion(question: string) {
@@ -142,42 +163,6 @@ const scenarioReports = {
     ],
     next: '补齐两条编号后交复核人核对草稿，再由业务人员确认是否提交。',
   },
-  'office-demo-social': {
-    scope: '内容运营 · 一周排期',
-    title: '工作台整理内容运营报告',
-    tone: 'amber',
-    metrics: [
-      { label: '发布节点', value: '03 个', detail: '周一、周三、周五' },
-      { label: '内容形式', value: '03 种', detail: '短视频、图文、评论问答' },
-      { label: '复盘维度', value: '03 项', detail: '完播、收藏、评论' },
-    ],
-    chart: { title: '本周发布安排', unit: '项', rows: [
-      { label: '周一 · 短视频', value: 1 }, { label: '周三 · 图文', value: 1 }, { label: '周五 · 问答', value: 1 },
-    ] },
-    findings: [
-      { title: '教程负责打开话题', detail: '短视频用三步整理法介绍线材归置，周中图文用前后对比展示结果。' },
-      { title: '问答用于收集需求', detail: '周五整理高频评论，把用户提到的空间和收纳限制纳入下周选题。' },
-    ],
-    next: '发布前核对素材和封面。周五按内容形式分别记录完播、收藏和评论反馈。',
-  },
-  'office-demo-collection': {
-    scope: '公开信息 · 采集与校验',
-    title: '公开活动信息采集报告',
-    tone: 'teal',
-    metrics: [
-      { label: '原始记录', value: '18 条', detail: '公开活动页与订阅来源' },
-      { label: '去重后保留', value: '15 条', detail: '合并 3 条重复记录' },
-      { label: '出处已核验', value: '13 条', detail: '另有 2 条待核实' },
-    ],
-    chart: { title: '记录处理漏斗', unit: '条', rows: [
-      { label: '原始提取', value: 18 }, { label: '去重保留', value: 15 }, { label: '已核验', value: 13 },
-    ] },
-    findings: [
-      { title: '重复发布合并', detail: '按活动标题、主办方和日期对照重复发布，保留信息更完整的一条。' },
-      { title: '出处随记录保留', detail: '每条记录保留标题、日期、主办方和来源链接。暂时无法确认的两条单列。' },
-    ],
-    next: '复核待确认的两条记录，核对主办方公告后再合入正式清单。',
-  },
   'office-demo-digest': {
     scope: '跨入口归纳 · 项目简报',
     title: '样品册项目多入口汇总报告',
@@ -196,12 +181,12 @@ const scenarioReports = {
     ],
     next: '按周三交付时间准备，逐条确认封面、改期建议与验收人，并补记出处。',
   },
-} satisfies Record<DemoScenarioId, Omit<DemoReport, 'status' | 'summary' | 'note'>>
+} satisfies Record<SingleRunOfficeId, Omit<DemoReport, 'status' | 'summary' | 'note'>>
 
-export function scenarioDemoReport(id: DemoScenarioId, status: string, progress: string) {
+export function scenarioDemoReport(id: SingleRunOfficeId, status: string, progress: string) {
   return encodeReport({
     ...scenarioReports[id], status, summary: progress,
-    note: '指标与结论来自此案例的预设资料。上方进度反映当前办公室的任务状态。',
+    note: '',
   })
 }
 
