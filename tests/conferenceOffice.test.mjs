@@ -157,8 +157,8 @@ test('all eight offices answer the current question using their own keywords', a
     [['成交率怎么算？', /2\.5%.+4\.0%/], ['购买咨询主要是什么问题？', /10 条.+6 条/]],
     [['Ｈ１ 标题怎么写？', /H1.+「折叠电脑支架」/], ['关键词和内链怎么安排？', /便携笔记本支架.+六档调节支架/]],
     [['要准备哪些材料？', /收入与支出台账|收支台账/], ['哪几条凭证要补？', /P-04.+付款凭证编号.+R-06.+入账凭证编号/]],
-    [['短视频的脚本是什么？', /整理线材/], ['周几发，排期怎么安排？', /周一.+周三.+周五/]],
-    [['从哪里采集？', /园区活动页、主办方公告和订阅简报/], ['有多少条，去重了吗？', /3 条重复记录.+15 条|15 条.+3 条是重复记录/]],
+    [['小红书这条具体改了什么？', /13–16 英寸/], ['哪些内容还没发布？', /待审核/]],
+    [['彩排几点？', /周四 14:00/], ['彩排在哪儿？', /A201.+B105/]],
     [['群聊说了什么？', /B 版封面|封面换成 B 版/], ['延期时以哪个时间为准？', /周三 15:00/]],
   ]
   for (const round of [0, 1]) {
@@ -219,12 +219,18 @@ test('all eight offices produce their own themed reports in the main chat', asyn
   const reports = answers.map(readDemoReport)
   assert.ok(reports.every(report => report?.metrics.length === 3 && report.chart.rows.length > 0))
   assert.equal(new Set(reports.map(report => report.title)).size, 8)
+  assert.ok(reports.every(report => report.note === ''))
+  const legacyNote = '指标与结论来自此案例的预设资料。上方进度反映当前办公室的任务状态。'
+  const archived = answers[3].replace('"note":""', `"note":${JSON.stringify(legacyNote)}`)
+  assert.notEqual(archived, answers[3])
+  assert.equal(readDemoReport(archived).note, '')
+  assert.ok(!demoReportMarkdown(readDemoReport(archived)).includes(legacyNote))
   assert.equal(reports[0].status, '交付内容的预览')
   assert.equal(reports[0].metrics[0].value, '79 元')
   assert.equal(reports[1].metrics[1].value, '13–16 英寸')
   assert.deepEqual(reports[2].chart.rows.map(row => row.value), [2.5, 4])
   assert.match(reports[4].findings[0].detail, /P-04/)
-  assert.equal(reports[6].chart.rows[2].value, 13)
+  assert.match(reports[6].findings[1].detail, /A201.+B105/)
   const html = renderToStaticMarkup(createElement(DemoReportCard, { report: reports[3] }))
   assert.match(html, /<h2>产品页 SEO 优化调研报告<\/h2>/)
   assert.match(html, /<figure class="demo-report-chart">/)
@@ -250,12 +256,26 @@ test('demo chat waits a randomized interval before its first reply and can be ca
   await flush()
   assert.equal(received, false)
   t.mock.timers.tick(1)
-  assert.deepEqual(await first, { type: 'delta', text: '答复' })
+  assert.deepEqual(await first, { type: 'delta', text: '答' })
+  const next = response.next()
+  t.mock.timers.tick(24)
+  assert.deepEqual((await next).value, { type: 'delta', text: '复' })
+  assert.deepEqual((await response.next()).value, { type: 'done' })
 
-  const waiting = source.stream({ messages: [] }, controller.signal)
+  const interrupted = source.stream({ messages: [] }, controller.signal)
+  await interrupted.next()
+  const firstChunk = interrupted.next()
+  t.mock.timers.tick(1750)
+  assert.equal((await firstChunk).value.text, '答')
+  const interruptedChunk = interrupted.next()
+  controller.abort()
+  await assert.rejects(interruptedChunk, { name: 'AbortError' })
+
+  const waitingController = new AbortController()
+  const waiting = source.stream({ messages: [] }, waitingController.signal)
   await waiting.next()
   const pending = waiting.next()
-  controller.abort()
+  waitingController.abort()
   await assert.rejects(pending, { name: 'AbortError' })
 })
 
@@ -297,13 +317,50 @@ test('each of the eight offices waits for the leader handoff and can stop and re
       assert.deepEqual(statuses(), ['completed', 'completed', 'queued'])
       assert.ok(await decisions.choose(office.id, decision.id, 'confirm'))
     }
-    advanceUntil(hosts[index], () => !office.session.simulation.isDemoRunning)
+    advanceUntil(hosts[index], () => statuses().every(status => status === 'completed'))
     await refresh()
     assert.equal((await office.source.getSnapshot()).whiteboard.status, 'completed')
-    assert.equal(office.session.simulation.isDemoRunning, false)
+    assert.equal(office.session.simulation.isDemoRunning, Boolean(office.source.currentCase))
+    office.session.simulation.setDemo(false)
     assert.deepEqual(await Promise.all(others.map(({ source }) => source.getSnapshot())), before)
   }
   assert.equal(groups.size, 8)
+})
+
+test('the two exhibit offices rotate five matching cases, keep the result between rounds, and stop on demand', async t => {
+  const { offices, hosts } = await setup(t, conferenceLocalOffices())
+  for (const index of [5, 6]) {
+    const { source, session } = offices[index]
+    const host = hosts[index]
+    const title = () => source.getConversations()[0].title
+    const board = () => source.getConversations()[0].whiteboard
+    const first = title(), seen = new Set()
+    session.simulation.demoSource.startAutomatically()
+    for (let round = 0; round < 5; round++) {
+      const current = title()
+      seen.add(current)
+      advanceUntil(host, () => board().status === 'completed')
+      const report = readDemoReport(session.simulation.demoSource.reply({ messages: [{ role: 'user', content: '给我本轮报告' }] }))
+      assert.equal(report.title, current)
+      assert.equal(board().result.title, current)
+      assert.ok(board().result.artifacts[1].content.includes(source.currentCase.items[0].source))
+      for (let elapsed = 0; elapsed < 19_950; elapsed += 50) host.advance(50)
+      assert.equal(title(), current)
+      assert.equal(board().result.title, current)
+      host.advance(50)
+      assert.notEqual(title(), current)
+    }
+    assert.equal(seen.size, 5)
+    assert.equal(title(), first)
+    assert.equal(session.simulation.isDemoRunning, true)
+    session.simulation.setDemo(false)
+    session.simulation.demoSource.startAutomatically()
+    host.advance(60_000)
+    assert.equal(session.simulation.isDemoRunning, false)
+    assert.equal(title(), first)
+  }
+  assert.ok(offices.slice(0, 5).every(({ session }) => !session.simulation.isDemoRunning))
+  assert.equal(offices[7].session.simulation.isDemoRunning, false)
 })
 
 test('backend initialization, reconnection reconciliation and restart leave independent demos intact, even with identical raw IDs', async t => {

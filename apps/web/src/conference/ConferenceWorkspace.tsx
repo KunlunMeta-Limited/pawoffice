@@ -1,10 +1,12 @@
 // Temporary composition. Removal: restore main.tsx's App import and delete this directory.
 // This presentation is installed only in local demo frames.
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { RefObject } from 'react'
 import { ArrowUp, Bell, ChevronLeft, Clapperboard, Grid2X2, MessageCircle, Play } from 'lucide-react'
 import App, { OfficeApp } from '../App.tsx'
 import { ChatTranscriptPresentation } from '../components/ChatTranscript.tsx'
+import { ResultBodyPresentation } from '../results/bodyPresentation.ts'
+import type { ResultBodyProps } from '../results/bodyPresentation.ts'
 import { SseMessageTransport } from '@pawoffice/runtime/adapters/sse'
 import { officeIntegrationPaths } from '@pawoffice/protocol/office-integration'
 import { chatPath } from '@pawoffice/protocol/chat'
@@ -29,9 +31,11 @@ import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
 import { captureScene, formalFrame, formalPlaceholder, frameParameter, frameScope, localOfficePreview, localOfficeSession, officeKey, previewOf } from './frameRuntime.ts'
 import type { FrameCommand, FrameReport, OfficePreview } from './frameRuntime.ts'
-import { conferenceLocalOffices, ScenarioOfficeDataSource } from './demoScenarios.ts'
-import { ConferenceChatSource } from './ConferenceChatSource.ts'
+import { conferenceLocalOffices, ScenarioDemoSource, ScenarioOfficeDataSource } from './demoScenarios.ts'
+import { demoDialogues } from './demoDialogue.ts'
+import { cycleQuestions, isCycleOffice } from './demoCycles.ts'
 import { DemoReportCard } from './DemoReportCard.tsx'
+import { WhiteboardNotes } from './WhiteboardNotes.tsx'
 import { demoReportMarkdown, readDemoReport } from './demoReports.ts'
 import './ConferenceWorkspace.css'
 
@@ -44,6 +48,8 @@ const demoTranscript = {
 }
 
 const noop = () => {}, noAction = async () => {}
+const renderWhiteboardNotes = (props: ResultBodyProps) => <WhiteboardNotes {...props} />
+const noCase = () => undefined
 const statuses = { unknown: '未同步', attention: '待处理', running: '运行中', completed: '已完成', idle: '空闲' }
 const frameUrl = (frameId: string) => { const url = new URL(location.href); url.searchParams.set(frameParameter, frameId); return url.href }
 const sendReport = (frameId: string, report: FrameReport) => parent.postMessage({ scope: frameScope, frameId, report }, location.origin)
@@ -137,10 +143,44 @@ function LocalOfficeFrame({ frameId }: { frameId: string }) {
     if (value.type === 'resolve') void session.decisions.choose(session.runtime.sceneId, value.decisionId, value.choiceId, value.customText)
   }, office?.source instanceof ScenarioOfficeDataSource)
   useHostedSessions(sessions, view.active)
-  return <div className="conference-frame" data-frame-office={office && officeKey(false, office.id)}>
-    {session ? <ChatTranscriptPresentation value={session.chat.source instanceof ConferenceChatSource ? demoTranscript : undefined}>
-      <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
-        pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
+  const frame = useRef<HTMLDivElement>(null)
+  const demo = session?.simulation.demoSource
+  useEffect(() => {
+    if (!(demo instanceof ScenarioDemoSource) || demo.startupDelayMs === undefined || !frame.current) return
+    const root = frame.current
+    const delay = demo.startupDelayMs
+    let timer: number | undefined
+    const onReady = () => {
+      if (!root.querySelector('[data-scene-initialization="ready"]')) return
+      observer.disconnect()
+      timer = window.setTimeout(() => demo.startAutomatically(), delay)
+    }
+    const observer = new MutationObserver(onReady)
+    observer.observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-scene-initialization'] })
+    onReady()
+    return () => { observer.disconnect(); window.clearTimeout(timer) }
+  }, [demo])
+
+  const source = office?.source instanceof ScenarioOfficeDataSource ? office.source : undefined
+  const scenarioId = source?.scenario.id
+  const subscribeToCase = useCallback((listener: () => void) => source?.subscribe(listener) ?? noop, [source])
+  const readCurrentCase = useCallback(() => source?.currentCase, [source])
+  const currentCase = useSyncExternalStore(subscribeToCase, readCurrentCase, noCase)
+  const questions = scenarioId && currentCase ? cycleQuestions(scenarioId, currentCase)
+    : scenarioId && !isCycleOffice(scenarioId) ? demoDialogues[scenarioId].topics.slice(0, 3).map(topic => topic.question) : undefined
+  const presentation = questions ? {
+    ...demoTranscript,
+    renderSuggestions: (send: (text: string) => void, disabled: boolean) =>
+      <div className="conference-chat-suggestions" role="group" aria-label="推荐提问">
+        {questions.map(question => <button key={question} type="button" disabled={disabled} onClick={() => send(question)}>{question}</button>)}
+      </div>,
+  } : undefined
+  return <div ref={frame} className="conference-frame" data-demo-whiteboard={source ? true : undefined} data-frame-office={office && officeKey(false, office.id)}>
+    {session ? <ChatTranscriptPresentation value={presentation}>
+      <ResultBodyPresentation.Provider value={source ? renderWhiteboardNotes : null}>
+        <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
+          pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
+      </ResultBodyPresentation.Provider>
     </ChatTranscriptPresentation>
       : <div className="conference-empty" role="status">办公室未找到，请返回总览。</div>}
   </div>
@@ -218,7 +258,7 @@ function OfficePreview({ office, image, viewport }: { office: OfficePreview; ima
     fit(); const observer = new ResizeObserver(fit); observer.observe(container); return () => observer.disconnect()
   }, [viewport.width, viewport.height])
   return <div ref={root} className="dispatch-live-preview" aria-hidden="true" inert>
-    <div ref={page} className="dispatch-live-page" style={viewport}><OfficePreviewPage office={office} image={image} /></div>
+    <div ref={page} className="dispatch-live-page" data-local={office.connected ? undefined : true} style={viewport}><OfficePreviewPage office={office} image={image} /></div>
   </div>
 }
 
@@ -354,7 +394,7 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, onClose,
         {offices.map(office => <article className="dispatch-office-card" key={office.id} data-office={office.id} data-running={office.activity.running || undefined}
           data-current={office.id === selectedId || undefined} data-status={office.activity.status}>
           <div role="button" tabIndex={0} className="dispatch-card-enter" aria-label={`进入${office.name}`} aria-pressed={office.id === selectedId}
-            title={[office.name, office.connected ? `正式连接 · ${office.connection}` : '本地演示', statuses[office.activity.status], office.activity.goal, office.activity.latestActivity].filter(Boolean).join('\n')}
+            title={[office.name, office.connected ? `正式连接 · ${office.connection}` : undefined, statuses[office.activity.status], office.activity.goal, office.activity.latestActivity].filter(Boolean).join('\n')}
             onClick={event => enter(office, event.currentTarget.querySelector<HTMLElement>('.dispatch-preview'))}
             onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); enter(office, event.currentTarget.querySelector<HTMLElement>('.dispatch-preview')) } }}>
             <div className="dispatch-preview"><OfficePreview office={office} image={images[office.id]} viewport={viewport} /></div>
@@ -463,7 +503,7 @@ function MultiOfficeWorkspace() {
         const active = frameId === activeFrame
         command(frameId, { type: 'view', active, rendering: !optimized || active, sampling })
       }} />)}</div>
-    <span className="conference-current-source" data-connected={current.connected || undefined}>{current.connected ? `正式连接 · ${current.connection}` : '本地演示'}</span>
+    {current.connected && <span className="conference-current-source" data-connected>正式连接 · {current.connection}</span>}
     {current.activity.running && <div className="dispatch-running-frame" aria-hidden="true" />}
     <button ref={trigger} type="button" className="dispatch-ring-button" data-running={running > 0 || undefined} aria-label={label} title={label}
       disabled={starting} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOverview('browse')}><span aria-hidden="true" data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>

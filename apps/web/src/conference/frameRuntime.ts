@@ -61,7 +61,8 @@ export function localOfficeSession(office: OfficeTeamDefinition, storage?: Stora
   // Keep the five existing scenarios' archives. The three replacements use
   // a separate key so they don't restore the classic commerce conversations.
   const historyKey = office.id.startsWith('office-demo-') ? 'commerce-demo-v1' : undefined
-  const chatSource = demo ? new ConferenceChatSource(request => demo.reply(request), historyKey) : new PreviewChatSource()
+  const chatSource = demo ? new ConferenceChatSource(request => demo.reply(request), historyKey)
+    : new PreviewChatSource(() => '收到。当前会话还没有任务资料，可以先补充目标和相关背景。')
   const simulation = demo ? new OfficeSimulation(runtime, demo, { idleCoffee: {} }) : undefined
   const session: OfficeTeamSession = new OfficeTeamSession(runtime, source, {
     chatSource, simulation, decisionPreview: !scenario,

@@ -6,7 +6,7 @@ import type { ChatWorkspace, ChatWorkspaceSnapshot, ConversationEntry } from '..
 import type { DecisionSession } from '../application/decisions/DecisionSession.ts'
 import type { DecisionSnapshot } from '../application/decisions/DecisionSession.ts'
 import { OfficeDecisionPanel } from '../ui/decisions/OfficeDecisionPanel.tsx'
-import { ChatTranscript } from './ChatTranscript.tsx'
+import { ChatSuggestions, ChatTranscript } from './ChatTranscript.tsx'
 import type { ChatTranscriptHandle } from './ChatTranscript.tsx'
 import { ConversationTabs } from './OfficeConversations.tsx'
 import './OfficeChat.css'
@@ -70,10 +70,10 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
   const bottom = () => {
     setAtBottom(true); transcript.current?.toBottom()
   }
-  const submit = () => {
-    if (!canSend || busy || !draft.trim()) return
+  const submit = (text = draft) => {
+    if (!canSend || busy || !text.trim()) return
     onExpandedChange(true); setAtBottom(true)
-    void session.send(draft); textarea.current?.focus()
+    void session.send(text); textarea.current?.focus()
   }
   const collapse = () => { setConversationMenuOpen(false); onExpandedChange(false); textarea.current?.focus() }
 
@@ -90,6 +90,7 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     <OfficeDecisionPanel preview={decisionPreview} openToken={decisionOpenToken} snapshot={decisions} onResolve={(decisionId, choiceId, customText) => { void decisionSession.choose(decisionSession.teamId, decisionId, choiceId, customText) }}
       onReset={onReplayDemo ?? (() => decisionSession.reset())} />
     <form ref={composer} className="office-chat-composer" data-busy={busy} aria-label="发送消息" onSubmit={event => { event.preventDefault(); submit() }}>
+      <ChatSuggestions send={submit} disabled={!canSend || busy} />
       <button type="button" className="office-chat-history is-session" aria-label={expanded ? `切换会话：${entry.title}` : '展开对话'} title={entry.title} aria-expanded={expanded && conversationMenuOpen} aria-controls={expanded ? conversationMenuId : panelId} onClick={() => { if (expanded) setConversationMenuOpen(true); else onExpandedChange(true) }}><MessageCircle size={15} /><span>{entry.title}</span></button>
       <textarea ref={textarea} value={draft} rows={1} maxLength={4000} disabled={!chat.ready} aria-label="给办公室发送消息" placeholder={expanded ? '继续当前会话，或安排办公室成员执行任务…' : '和办公室聊一聊…'} onClick={() => onExpandedChange(true)} onChange={event => setDraft(event.target.value)} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !composing.current && event.keyCode !== 229) { event.preventDefault(); submit() }

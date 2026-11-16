@@ -11,8 +11,10 @@ import type { OfficeTeamDefinition } from '../dashboard/officeDirectory.ts'
 import { dashboardWhiteboardTaskBoard } from '../dashboard/whiteboard.ts'
 import { demoDialogues, isDemoStartCommand, matchesDemoKeyword, normalizeDemoQuestion } from './demoDialogue.ts'
 import type { DemoReplyPool, DemoScenarioId } from './demoDialogue.ts'
-import { isDemoReportQuestion, scenarioDemoReport } from './demoReports.ts'
-import { hasScenarioResult, scenarioResult } from './demoResults.ts'
+import { cycleChatReport, isDemoReportQuestion, scenarioDemoReport } from './demoReports.ts'
+import { cycleResult, hasScenarioResult, scenarioResult } from './demoResults.ts'
+import { cycleQuestions, demoCycle, demoCycles, formatWorkItems, isCycleOffice } from './demoCycles.ts'
+import type { DemoCase } from './demoCycles.ts'
 
 type ScenarioStep = { title: string; role: string; summary: string; assigneeId: string }
 type Scenario = {
@@ -88,23 +90,23 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'office-demo-social',
     name: '自媒体运营办公室',
-    conversationTitle: '一周内容排期',
-    goal: '规划一周内容选题与发布节奏，形成可执行的排期。',
+    conversationTitle: '多平台内容维护',
+    goal: '检查抖音、小红书和微信公众号的已有内容，逐项处理和记录更新。',
     steps: [
-      { title: '梳理受众与选题', role: '选题策划', summary: '从评论中整理受众感兴趣的话题。', assigneeId: 'review-agent' },
-      { title: '起草短视频和图文', role: '内容制作', summary: '为技巧视频与案例图文拟定提纲。', assigneeId: 'app-agent' },
-      { title: '整理发布排期', role: '运营排期', summary: '安排发布顺序与互动复盘时间。', assigneeId: 'data-agent' },
+      { title: '核对旧内容和留言', role: '平台巡检', summary: '对照平台原文、留言和产品资料。', assigneeId: 'review-agent' },
+      { title: '按平台起草更新内容', role: '内容维护', summary: '分别整理视频、图文和公众号修改稿。', assigneeId: 'app-agent' },
+      { title: '汇总更新清单', role: '运营交付', summary: '按平台记录修改项、依据和待跟进状态。', assigneeId: 'data-agent' },
     ],
   },
   {
     id: 'office-demo-collection',
     name: '信息采集办公室',
-    conversationTitle: '公开资料采集与校验',
-    goal: '采集公开资料、去重并核验来源，归档可追溯的记录。',
+    conversationTitle: '受托信息汇总',
+    goal: '根据用户委托收集和核对材料，交付带出处的行动简报。',
     steps: [
-      { title: '整理待采集来源', role: '来源检索', summary: '汇总公告、公开网页和订阅条目。', assigneeId: 'code-agent' },
-      { title: '提取记录并去重', role: '信息提取', summary: '提取标题、日期和链接，合并重复记录。', assigneeId: 'data-agent' },
-      { title: '复核来源并归档', role: '来源校验', summary: '核对出处，单独标注来源待核实的记录。', assigneeId: 'file-agent' },
+      { title: '按委托收集资料', role: '资料收集', summary: '按问题找原始邮件、纪要和登记表。', assigneeId: 'code-agent' },
+      { title: '核对信息和冲突', role: '信息核对', summary: '交叉核对来源，列出缺失和说法不一致的事项。', assigneeId: 'data-agent' },
+      { title: '整理并交付一页简报', role: '简报整理', summary: '列出关键结论、负责人、待办和出处。', assigneeId: 'file-agent' },
     ],
   },
   {
@@ -123,19 +125,25 @@ const scenarios: readonly Scenario[] = [
 const ticksPerStep = 5
 const tickDurationMs = 700
 const handoffSpeechMs = 800
+const betweenRoundsMs = 20_000
 const progressKeywords = ['进度', '做到哪', '处理到哪', '做完了', '完成了', '跑完了', '下一步', '还剩', '什么时候完成']
 const resultKeywords = ['结果', '成果', '交付物', '总结', '完整清单', '完整报告', '项目简报']
 const sampleKeywords = ['成果预览', '预览成果', '交付预览', '样例结果', '结果样例', '成果样例', '成果示例', '样例报告', '报告样例']
 const helpLeads = ['可以问我', '如果想了解细节，可以问我', '想接着看具体做法的话，可以问我'] as const
+const finishedCaseLeads = ['本轮已整理好以下事项。', '这是本轮的核对结果。'] as const
+const socialDraftLeads = ['以下是本轮拟更新的内容。', '本轮计划处理以下更新。'] as const
+const collectionDraftLeads = ['以下是本轮资料中的事项，简报仍在整理。', '简报还在整理，先看这轮的资料和依据。'] as const
 
 export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
   readonly scenario: Scenario
+  private roundIndex = 0
 
   constructor(scenario: Scenario) {
     const roles = Object.fromEntries(scenario.steps.map(step => [step.assigneeId, step.role]))
+    const first = demoCycle(scenario.id)?.cases[0]
     super(new Date(), {
       workspace: { id: scenario.id, name: scenario.name },
-      conversationTitle: scenario.conversationTitle,
+      conversationTitle: first?.title ?? scenario.conversationTitle,
       roles: { 'review-agent': '成果复核', 'data-agent': '资料归档', ...roles },
       tasks: scenario.steps.map((step, index) => ({
         id: `scenario-step-${index + 1}`,
@@ -147,6 +155,14 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       })),
     })
     this.scenario = scenario
+    if (first) this.showProgress(-1, new Set())
+  }
+
+  get currentCase() { return demoCycle(this.scenario.id)?.cases[this.roundIndex] }
+
+  advanceRound() {
+    const cycle = demoCycle(this.scenario.id)
+    if (cycle) this.roundIndex = (this.roundIndex + 1) % cycle.cases.length
   }
 
   showProgress(tick: number, delivered: ReadonlySet<string>) {
@@ -179,12 +195,18 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       tasks,
       events: events.slice(0, 100),
     }
-    const board = { ...dashboardWhiteboardTaskBoard(snapshot), description: this.scenario.goal }
+    const current = this.currentCase
+    const board = { ...dashboardWhiteboardTaskBoard(snapshot),
+      ...(current ? { title: current.title } : {}), description: current?.request ?? this.scenario.goal }
     // Only a finished walkthrough that really ends in a report carries a result; everything else
     // keeps the board-only state so the reader's empty fallback stays truthful.
     const finished = tasks.length > 0 && tasks.every(task => task.status === 'completed')
-    const result = finished ? scenarioResult(this.scenario.id, new Date()) : undefined
-    this.replaceConversations([{ ...main, tasks, events: snapshot.events, whiteboard: result ? { ...board, result } : board }])
+    const result = finished && current ? cycleResult(current, this.scenario.name, new Date(), tasks.map((task, index) => ({
+      id: task.id, title: task.title, status: 'done', progress: 100,
+      owner: `${main.employees.find(employee => employee.id === task.assigneeId)?.name ?? '成员'} · ${this.scenario.steps[index].role}`,
+    }))) : finished ? scenarioResult(this.scenario.id, new Date()) : undefined
+    this.replaceConversations([{ ...main, title: current?.title ?? main.title,
+      tasks, events: snapshot.events, whiteboard: result ? { ...board, result } : board }])
   }
 }
 
@@ -202,6 +224,8 @@ export class ScenarioDemoSource extends OfficeDemoSource {
   private elapsedMs = 0
   private shownTick = 0
   private approval?: { id: string; choice?: string }
+  private started = false
+  private restMs?: number
 
   constructor(scene: SceneRuntime, data: ScenarioOfficeDataSource, getSession: () => OfficeTeamSession) {
     super(scene, { automatic: false })
@@ -215,6 +239,14 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     return this.isRunning && this.assigning
   }
 
+  get startupDelayMs() { return demoCycle(this.data.scenario.id)?.startupDelayMs }
+
+  startAutomatically() {
+    if (this.startupDelayMs === undefined || this.started) return
+    try { this.setEnabled(true) }
+    catch (error) { this.fail(error instanceof Error ? error.message : '暂时无法开始演示') }
+  }
+
   override setEnabled(enabled: boolean) {
     if (enabled === this.isRunning) return
     if (!enabled) this.handoffs.stop()
@@ -222,16 +254,22 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     this.resetProgress()
     if (!enabled) return
 
+    this.started = true
     // The walkthrough belongs to the scenario's main conversation. Selecting it on start keeps the
     // running tasks visible no matter which conversation the user typed the start command in.
     const chat = this.getSession().chat
     const focusScenarioConversation = () => chat.restorePreviewConversation('main')
     if (chat.getSnapshot().ready) focusScenarioConversation()
     else void chat.ready.then(() => { if (this.isRunning) focusScenarioConversation() })
+    this.dispatchRound()
+  }
+
+  private dispatchRound() {
     this.assigning = true
-    const stops = this.data.scenario.steps.map(step => ({
+    const current = this.data.currentCase
+    const stops = this.data.scenario.steps.map((step, index) => ({
       hostId: step.assigneeId,
-      message: `请${step.title}。`,
+      message: current && index === 0 ? `本轮是「${current.title}」，请${step.title}。` : `请${step.title}。`,
       reply: `收到，${step.role}交给我。`,
     }))
     this.handoffs.visit(stops, handoffSpeechMs, actorId => {
@@ -247,11 +285,21 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     this.delivered.clear()
     this.elapsedMs = 0
     this.shownTick = 0
+    this.restMs = undefined
     this.data.showProgress(-1, this.delivered)
   }
 
   override tick(elapsedMs: number) {
     if (!this.isRunning || this.scene.isEditing) return
+    if (this.restMs !== undefined) {
+      this.restMs = Math.max(0, this.restMs - elapsedMs)
+      // Finish an in-flight reply before changing the case it describes.
+      if (this.restMs > 0 || this.getSession().chat.getSnapshot().conversations.some(({ session }) => session.getSnapshot().phase !== 'idle')) return
+      this.data.advanceRound()
+      this.resetProgress()
+      this.dispatchRound()
+      return
+    }
     const step = Math.floor(this.shownTick / ticksPerStep)
     const assignee = this.data.scenario.steps[step]?.assigneeId
     const canAdvance = assignee !== undefined && this.delivered.has(assignee)
@@ -275,7 +323,10 @@ export class ScenarioDemoSource extends OfficeDemoSource {
         this.data.showProgress(tick, this.delivered)
       }
     }
-    if (!this.assigning && this.shownTick >= this.data.scenario.steps.length * ticksPerStep) super.setEnabled(false)
+    if (!this.assigning && this.shownTick >= this.data.scenario.steps.length * ticksPerStep) {
+      if (this.data.currentCase) this.restMs = betweenRoundsMs
+      else super.setEnabled(false)
+    }
   }
 
   private listingChoice() {
@@ -326,18 +377,23 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     const last = request.messages.at(-1)
     const question = normalizeDemoQuestion(last?.role === 'user' ? last.content : '')
     const scenario = this.data.scenario
-    const dialogue = demoDialogues[scenario.id]
+    const id = scenario.id
+    const current = this.data.currentCase
+    const startPhrases = isCycleOffice(id) ? demoCycles[id].startPhrases : demoDialogues[id].startPhrases
     // Only an explicit command can start the workflow. Questions can mention the same words.
-    if (isDemoStartCommand(question, dialogue.startPhrases)) {
+    if (isDemoStartCommand(question, startPhrases)) {
       if (this.isRunning) return this.progressReply(this.data.getConversations()[0].tasks)
       try {
         this.setEnabled(true)
       } catch (error) {
         return error instanceof Error ? error.message : '暂时无法开始处理，请稍后再试。'
       }
-      return `已开始「${scenario.conversationTitle}」，王明正在逐项交代任务。先${scenario.steps[0].title}，再${scenario.steps[1].title}，最后${scenario.steps[2].title}。可以随时问我「现在进度如何？」`
+      return `已开始「${current?.title ?? scenario.conversationTitle}」，王明正在逐项交代任务。先${scenario.steps[0].title}，再${scenario.steps[1].title}，最后${scenario.steps[2].title}。可以随时问我「现在进度如何？」`
     }
 
+    if (isCycleOffice(id)) return this.replyAboutCase(current ?? demoCycles[id].cases[0], question)
+
+    const dialogue = demoDialogues[id]
     const topics = dialogue.topics.filter(topic => matchesDemoKeyword(question, topic.keywords))
     const answers: string[] = []
     if (isDemoReportQuestion(question) || matchesDemoKeyword(question, sampleKeywords)) {
@@ -348,7 +404,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
         if (!choice) status = '待确认上架'
         else if (choice === 'reject') status = '暂不上架'
       }
-      return scenarioDemoReport(scenario.id, status, this.progressReply(tasks))
+      return scenarioDemoReport(id, status, this.progressReply(tasks))
     }
     if (matchesDemoKeyword(question, progressKeywords)) {
       answers.push(this.progressReply(this.data.getConversations()[0].tasks))
@@ -363,6 +419,34 @@ export class ScenarioDemoSource extends OfficeDemoSource {
 
     const examples = dialogue.topics.slice(0, 3).map(topic => `「${topic.question}」`).join('、')
     return `${dialogue.brief}\n\n${this.pickReply(helpLeads)}${examples}。准备好了就告诉我「开始处理」。`
+  }
+
+  private replyAboutCase(current: DemoCase, question: string) {
+    const { id, name } = this.data.scenario
+    const tasks = this.data.getConversations()[0].tasks
+    const complete = tasks.every(task => task.status === 'completed')
+    const progress = this.progressReply(tasks)
+    if (isDemoReportQuestion(question) || matchesDemoKeyword(question, sampleKeywords)) {
+      return cycleChatReport(current, name, complete ? '本轮完成' : this.isRunning ? '处理中' : '本轮预览', progress)
+    }
+    if (matchesDemoKeyword(question, ['怎么做', '下一步', '需要我做', '我该做'])) return `**${current.title}**\n\n${current.next}`
+    const social = id === 'office-demo-social'
+    const items = current.items.filter(item => question.includes(normalizeDemoQuestion(item.label))
+      || item.label === '彩排地点' && /哪儿|在哪|哪里|场地/.test(question)
+      || item.label === '彩排时间' && /几点|什么时候彩排/.test(question))
+    const open = current.items.filter(item => item.status.startsWith('待'))
+    const pending = /没确认|未确认|待确认|没发布|待跟进|还差|缺|冲突|拍板|我决定|我确认/.test(question)
+    const decision = /拍板|我决定/.test(question)
+    if (!items.length && !pending && matchesDemoKeyword(question, progressKeywords)) return progress
+    const records = items.length ? items : decision ? open.filter(item => item.status === '待你决定') : pending ? open : current.items
+    if (!records.length) return `**${current.title}**\n\n本轮没有对应的待处理事项。`
+    const heading = `**${current.title}**\n\n`
+    if (items.length || pending || /重点|维护|改了什么|改什么|有哪些|材料|来源|依据|进度|结果|成果/.test(question)) {
+      const intro = this.pickReply(complete ? finishedCaseLeads : social ? socialDraftLeads : collectionDraftLeads)
+      return `${heading}${intro}\n\n${formatWorkItems(records)}`
+    }
+    const examples = cycleQuestions(id, current).map(example => `「${example}」`).join('、')
+    return `${heading}${current.request}\n\n可以问我${examples}。`
   }
 
   private pickReply(pool: DemoReplyPool) {
@@ -384,7 +468,8 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       if (choice === 'reject') return '商品资料与页面已复核，本轮选择暂不上架。上架前可修改材料，再发起新一轮检查。'
     }
     if (completed === tasks.length) {
-      return hasScenarioResult(this.data.scenario.id)
+      if (this.restMs !== undefined) return '本轮工作已完成，成果已生成。办公室稍后会开始处理下一项工作。'
+      return (this.data.currentCase || hasScenarioResult(this.data.scenario.id))
         ? `已完成全部 ${tasks.length} 项任务。本轮成果已生成，点工具栏「当前成果」查看。`
         : `已完成全部 ${tasks.length} 项任务。可以问我「结果是什么？」查看本轮交付内容。`
     }
