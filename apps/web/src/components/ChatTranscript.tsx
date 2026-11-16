@@ -13,11 +13,16 @@ export type ChatTranscriptHandle = { toBottom: () => void }
 type TranscriptPresentation = {
   pendingLabel: string
   renderReply: (content: string) => { body: ReactNode; copyText: string; scrollToStart?: boolean } | undefined
+  renderSuggestions?: (send: (text: string) => void, disabled: boolean) => ReactNode
 }
 const PresentationContext = createContext<TranscriptPresentation | undefined>(undefined)
 
 export function ChatTranscriptPresentation({ value, children }: { value?: TranscriptPresentation; children: ReactNode }) {
   return <PresentationContext.Provider value={value}>{children}</PresentationContext.Provider>
+}
+
+export function ChatSuggestions({ send, disabled }: { send: (text: string) => void; disabled: boolean }) {
+  return useContext(PresentationContext)?.renderSuggestions?.(send, disabled)
 }
 
 export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit, deliveries, onOpenDelivery }: {

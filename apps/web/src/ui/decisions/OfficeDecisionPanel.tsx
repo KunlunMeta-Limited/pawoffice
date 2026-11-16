@@ -53,7 +53,7 @@ export function DecisionCard({ request, count, onResolve, onCollapse, preview = 
     <header className="office-decision-header">
       <CharacterAvatar appearanceId={request.requester.appearanceId} />
       <div><strong>{request.requester.name}</strong><span>请求你的决定</span></div>
-      <small role="status">{preview && '本地演示 · '}{count} 项待处理</small>
+      <small role="status">{preview && <span className="office-decision-preview-label">本地演示 · </span>}{count} 项待处理</small>
       <button type="button" title="稍后处理" aria-label="收起待决定面板" onClick={onCollapse}><ChevronDown size={18} /></button>
     </header>
     <h3 id={titleId}>{request.title}</h3>

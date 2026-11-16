@@ -123,8 +123,8 @@ const expectedResults = {
   'office-analysis': '折叠电脑支架转化复盘',
   'office-demo-seo': '产品页 SEO 优化清单',
   'office-demo-tax': '本期申报资料核对',
-  'office-demo-social': '一周内容排期',
-  'office-demo-collection': '公开资料采集与校验',
+  'office-demo-social': '折叠电脑支架 · 适用尺寸更新',
+  'office-demo-collection': '周四彩排 · 会前准备简报',
   'office-demo-digest': '跨入口项目简报',
 }
 
@@ -139,10 +139,11 @@ test('8 个演示场景全部产出可阅读的成果页', () => {
     assert.equal(result.status, 'ready', office.id)
     assert.equal(result.artifacts.length, office.id === 'office-demo-tax' ? 3 : 2, `${office.id} 交付物`)
     assert(result.artifacts.some(artifact => artifact.kind === 'data'), office.id)
-    assert.equal(result.checks.length, 3, `${office.id} 检查项`)
+    assert.equal(result.checks.length, office.source.currentCase ? 1 : 3, `${office.id} 检查项`)
     assert.equal(result.tasks.length, 3, `${office.id} 任务记录`)
-    assert.equal(result.next.length, 3, `${office.id} 下一步`)
+    assert.equal(result.next.length, office.source.currentCase ? 1 : 3, `${office.id} 下一步`)
     assert(result.summary.length > 0 && result.verdict.length > 0, office.id)
+    assert.doesNotMatch(JSON.stringify(result), /模拟数据|模拟业务数据|仅模拟|演示模拟值|仅用于演示|申报项目（模拟）/, office.id)
     assert.equal(resultHasContent(result), true, office.id)
     assert.equal(resultReadingMode(result), 'delivery', office.id)
     assert.equal(resultPresentation(board, result).label, '已交付', `${office.id} 状态`)
@@ -154,8 +155,8 @@ test('每个场景都有与自身语义对应的关键内容', () => {
     'office-content': ['图片清单', '素材审核清单', '13–16 英寸'],
     'office-demo-seo': ['产品页 SEO 优化清单', '核心搜索词', '内链建议'],
     'office-demo-tax': ['待补凭证', 'P-04', 'R-06', '申报草稿（待复核）'],
-    'office-demo-social': ['发布节点', '周一', '复盘维度'],
-    'office-demo-collection': ['原始记录', '出处已核验', '待核实'],
+    'office-demo-social': ['小红书', '13–16 英寸', '待审核'],
+    'office-demo-collection': ['周四 14:00', 'A201', 'B105', '待确认'],
     'office-demo-digest': ['信息入口', '周三 15:00', '待确认'],
   }
   for (const [id, needles] of Object.entries(expectations)) {

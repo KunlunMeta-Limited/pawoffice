@@ -36,7 +36,7 @@ export function DemoReportCard({ report }: { report: DemoReport }) {
     </div>
     <footer className="demo-report-footer">
       <div><strong>下一步</strong><p>{report.next}</p></div>
-      <small>{report.note}</small>
+      {report.note && <small>{report.note}</small>}
     </footer>
   </section>
 }

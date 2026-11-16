@@ -1,3 +1,4 @@
+import { Fragment, useContext } from 'react'
 import type { ReactNode } from 'react'
 import {
   ArrowRight, Check, Clock3, FileText, GitBranch, Info, ListChecks, ShieldAlert, UserRound, Users,
@@ -21,6 +22,7 @@ import {
   resultDocumentMetadata, resultSectionArtifact,
 } from '../results/board.ts'
 import { resultReadingMode } from '../results/readingMode.ts'
+import { ResultBodyPresentation } from '../results/bodyPresentation.ts'
 import './ResultWorkspace.css'
 
 /** Kept for source compatibility with callers that still provide initialTab/onTabChange. No tabs are rendered. */
@@ -104,6 +106,7 @@ export function ResultWorkspace(props: WorkspaceProps) {
 }
 
 function ResultWorkspaceBody({ board, result, historical, executionKnown }: WorkspaceProps & { historical: boolean; executionKnown: boolean }) {
+  const renderBody = useContext(ResultBodyPresentation)
   const statusKnown = executionKnown && typeof board.status === 'string'
   const boardStatus: BoardStatus = board.status ?? 'queued'
   const presentation = resultPresentation(board, result)
@@ -197,16 +200,36 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
     </li>)}</ol>
   </section> : null
 
+  const stages = statusKnown && board.steps.length > 0 ? <StageSteps steps={board.steps} status={boardStatus} /> : null
+  const taskDetails = board.detailSections?.length ? <WhiteboardBoardView sections={board.detailSections} /> : null
   const trailBlock = hasTrail ? <section className="result-workspace-trail" aria-label="执行过程与任务详情">
-    {statusKnown && board.steps.length > 0 && <details className="result-workspace-disclosure">
+    {stages && <details className="result-workspace-disclosure">
       <summary><ArrowRight size={14} strokeWidth={2} aria-hidden="true" />执行阶段<span>{board.steps.length}</span></summary>
-      <StageSteps steps={board.steps} status={boardStatus} />
+      {stages}
     </details>}
-    {Boolean(board.detailSections?.length) && <details className="result-workspace-disclosure">
+    {taskDetails && <details className="result-workspace-disclosure">
       <summary><FileText size={14} strokeWidth={2} aria-hidden="true" />任务详情与协作</summary>
-      <WhiteboardBoardView sections={board.detailSections ?? []} />
+      {taskDetails}
     </details>}
   </section> : null
+
+  const conclusion = <section className="result-workspace-abstract" aria-label="本轮结论">
+    {summary
+      ? dataLed && !renderBody
+        ? <details className="result-workspace-summary-disclosure"><summary>摘要</summary><p className="result-workspace-conclusion">{summary}</p></details>
+        : <p className="result-workspace-conclusion">{summary}</p>
+      : <p className="result-workspace-conclusion is-neutral">
+        {hasResult ? '本轮成果未提供摘要，请从下方的交付内容与验证记录开始阅读。' : presentation.description}
+      </p>}
+    {showGoal && <p className="result-workspace-goal"><span>任务目标</span>{goal}</p>}
+    {result.verdict && <p className="result-workspace-verdict" data-state={presentation.key}>
+      <span className="result-workspace-verdict-label">验收意见</span>{result.verdict}
+    </p>}
+    {attentionCount > 0 && <p className="result-workspace-glance">
+      <ShieldAlert size={14} strokeWidth={2} aria-hidden="true" />
+      <span><strong>需要关注 {attentionCount} 项</strong>：{attentionParts.join(' · ')}</span>
+    </p>}
+  </section>
 
   return <div className="result-workspace" data-result-status={presentation.key} data-status={boardStatus}
     data-reading-mode={readingMode} data-lead={dataLed ? 'data' : undefined} data-historical={historical ? 'true' : undefined}>
@@ -235,35 +258,25 @@ function ResultWorkspaceBody({ board, result, historical, executionKnown }: Work
       </span>
     </p>
 
-    <section className="result-workspace-abstract" aria-label="本轮结论">
-      {summary
-        ? dataLed
-          // Data-led results already show the key numbers in the metric band; keep the prose summary
-          // available but collapsed so the first screen is not a duplicate wall of text.
-          ? <details className="result-workspace-summary-disclosure"><summary>摘要</summary><p className="result-workspace-conclusion">{summary}</p></details>
-          : <p className="result-workspace-conclusion">{summary}</p>
-        : <p className="result-workspace-conclusion is-neutral">
-          {hasResult ? '本轮成果未提供摘要，请从下方的交付内容与验证记录开始阅读。' : presentation.description}
-        </p>}
-      {showGoal && <p className="result-workspace-goal"><span>任务目标</span>{goal}</p>}
-      {result.verdict && <p className="result-workspace-verdict" data-state={presentation.key}>
-        <span className="result-workspace-verdict-label">验收意见</span>{result.verdict}
-      </p>}
-      {attentionCount > 0 && <p className="result-workspace-glance">
-        <ShieldAlert size={14} strokeWidth={2} aria-hidden="true" />
-        <span><strong>需要关注 {attentionCount} 项</strong>：{attentionParts.join(' · ')}</span>
-      </p>}
-    </section>
-
-    {readingMode === 'delivery'
-      ? dataLed
-        ? <>{metricsBlock}{deliveryBlock}{reviewBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
-        : <>{deliveryBlock}{reviewBlock}{metricsBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
-      : dataLed
-        ? <>{metricsBlock}{sectionsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>
-        : <>{sectionsBlock}{metricsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>}
-
-    {trailBlock}
+    {renderBody ? <Fragment key={JSON.stringify([historical, result.runId, title])}>
+      {renderBody({
+        board, result, readingMode, executionKnown: statusKnown, description: presentation.description, attentionCount, attentionParts,
+        sectionTitles: sections.map(section => section.title),
+        blocks: { conclusion, delivery: deliveryBlock, metrics: metricsBlock, review: reviewBlock,
+          stages, records: recordsBlock, taskDetails, sections: sectionsBlock, next: nextBlock },
+      })}
+    </Fragment>
+      : <>
+        {conclusion}
+        {readingMode === 'delivery'
+          ? dataLed
+            ? <>{metricsBlock}{deliveryBlock}{reviewBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
+            : <>{deliveryBlock}{reviewBlock}{metricsBlock}{sectionsBlock}{recordsBlock}{nextBlock}</>
+          : dataLed
+            ? <>{metricsBlock}{sectionsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>
+            : <>{sectionsBlock}{metricsBlock}{reviewBlock}{recordsBlock}{nextBlock}</>}
+        {trailBlock}
+      </>}
     {result.note && <p className="result-workspace-note"><Info size={14} strokeWidth={2} aria-hidden="true" /><span>{result.note}</span></p>}
     {!hasResult && <p className="result-workspace-empty">当前没有可阅读的成果内容。任务推进并交付后，结果会显示在这里。</p>}
   </div>
