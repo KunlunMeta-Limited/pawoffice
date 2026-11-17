@@ -15,6 +15,7 @@ import { cycleChatReport, isDemoReportQuestion, scenarioDemoReport } from './dem
 import { cycleResult, hasScenarioResult, scenarioResult } from './demoResults.ts'
 import { cycleQuestions, demoCycle, demoCycles, formatWorkItems, isCycleOffice } from './demoCycles.ts'
 import type { DemoCase } from './demoCycles.ts'
+import { editorialReply } from './demoEditorial.ts'
 
 type ScenarioStep = { title: string; role: string; summary: string; assigneeId: string }
 type Scenario = {
@@ -23,6 +24,8 @@ type Scenario = {
   conversationTitle: string
   /** One-sentence goal, shown as the board's 任务目标 on the result page. */
   goal: string
+  /** Local showcase: keep a completed delivery available without a timed walkthrough. */
+  resultOnly?: boolean
   steps: readonly [ScenarioStep, ScenarioStep, ScenarioStep]
   listingApproval?: { title: string; description: string }
 }
@@ -69,11 +72,12 @@ const scenarios: readonly Scenario[] = [
     id: 'office-demo-seo',
     name: 'SEO优化办公室',
     conversationTitle: '产品页 SEO 检查',
-    goal: '检查产品页标题、描述与内链，输出可执行的优化清单。',
+    resultOnly: true,
+    goal: '审查产品页、对比页和测量指南，交付完整改写稿、关键词与内链方案，以及发布验收计划。',
     steps: [
-      { title: '检查页面标题与描述', role: '页面审查', summary: '检查产品页的标题、描述与主标题。', assigneeId: 'code-agent' },
-      { title: '整理关键词与内链', role: '关键词分析', summary: '按搜索意图整理关键词与页面间的链接。', assigneeId: 'review-agent' },
-      { title: '输出优化清单', role: '优化方案', summary: '按影响范围排序并整理改动草稿。', assigneeId: 'app-agent' },
+      { title: '检查页面标题与描述', role: '页面审查', summary: '完成 3 个页面样稿审查，记录 6 项问题及原始依据。', assigneeId: 'code-agent' },
+      { title: '整理关键词与内链', role: '关键词分析', summary: '完成 6 组查询词映射和 3 条上下文内链的配置。', assigneeId: 'review-agent' },
+      { title: '输出优化清单', role: '优化方案', summary: '交付正文、FAQ、问题台账和发布验收计划，共 6 份文件。', assigneeId: 'app-agent' },
     ],
   },
   {
@@ -90,12 +94,12 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'office-demo-social',
     name: '自媒体运营办公室',
-    conversationTitle: '多平台内容维护',
-    goal: '检查抖音、小红书和微信公众号的已有内容，逐项处理和记录更新。',
+    conversationTitle: '国内自媒体图文编辑',
+    goal: '为「一平米办公笔记」按国内平台分别写文字与图文稿，核对来源、交付配图分镜及待审核排期。',
     steps: [
-      { title: '核对旧内容和留言', role: '平台巡检', summary: '对照平台原文、留言和产品资料。', assigneeId: 'review-agent' },
-      { title: '按平台起草更新内容', role: '内容维护', summary: '分别整理视频、图文和公众号修改稿。', assigneeId: 'app-agent' },
-      { title: '汇总更新清单', role: '运营交付', summary: '按平台记录修改项、依据和待跟进状态。', assigneeId: 'data-agent' },
+      { title: '核对选题与素材来源', role: '选题与事实核对', summary: '核对读者问题、原始资料和旧内容，明确哪些可以写、哪些还需确认。', assigneeId: 'review-agent' },
+      { title: '分平台写稿与编排图文', role: '文字与图文编辑', summary: '交付各平台正文、标题与每页配图文字，按读者和内容形式分别改写。', assigneeId: 'app-agent' },
+      { title: '校稿并交付发布排期', role: '排期与复盘登记', summary: '逐篇记录审核意见、拟发布时间、图片缺口和回访口径；未发布稿件不填写成绩。', assigneeId: 'data-agent' },
     ],
   },
   {
@@ -123,7 +127,7 @@ const scenarios: readonly Scenario[] = [
 ]
 
 const ticksPerStep = 5
-const tickDurationMs = 700
+const roundDurationMs = 5 * 60_000
 const handoffSpeechMs = 800
 const betweenRoundsMs = 20_000
 const progressKeywords = ['进度', '做到哪', '处理到哪', '做完了', '完成了', '跑完了', '下一步', '还剩', '什么时候完成']
@@ -155,7 +159,8 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       })),
     })
     this.scenario = scenario
-    if (first) this.showProgress(-1, new Set())
+    if (scenario.resultOnly) this.showProgress(scenario.steps.length * ticksPerStep, new Set(scenario.steps.map(step => step.assigneeId)))
+    else if (first) this.showProgress(-1, new Set())
   }
 
   get currentCase() { return demoCycle(this.scenario.id)?.cases[this.roundIndex] }
@@ -167,6 +172,7 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
 
   showProgress(tick: number, delivered: ReadonlySet<string>) {
     const [main] = this.getConversations()
+    const current = this.currentCase
     const at = new Date().toISOString()
     const events = tick < 0 ? main.events.filter(event => !event.id.startsWith('scenario-progress-')) : main.events
     const tasks: DashboardConversation['tasks'] = main.tasks.map((task, index) => {
@@ -185,8 +191,9 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
           occurredAt: at,
         })
       }
-      if (task.status === status && task.progress === progress) return task
-      return { ...task, status, progress, updatedAt: at }
+      const summary = current?.handoffs?.[index] ?? this.scenario.steps[index].summary
+      if (task.status === status && task.progress === progress && task.summary === summary) return task
+      return { ...task, summary, status, progress, updatedAt: at }
     })
     const snapshot = {
       schemaVersion: '1.0' as const,
@@ -195,7 +202,6 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       tasks,
       events: events.slice(0, 100),
     }
-    const current = this.currentCase
     const board = { ...dashboardWhiteboardTaskBoard(snapshot),
       ...(current ? { title: current.title } : {}), description: current?.request ?? this.scenario.goal }
     // Only a finished walkthrough that really ends in a report carries a result; everything else
@@ -222,6 +228,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
   private readonly lastReply = new WeakMap<DemoReplyPool, number>()
   private assigning = false
   private elapsedMs = 0
+  private stepStartedMs?: number
   private shownTick = 0
   private approval?: { id: string; choice?: string }
   private started = false
@@ -248,6 +255,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
   }
 
   override setEnabled(enabled: boolean) {
+    if (this.data.scenario.resultOnly) return
     if (enabled === this.isRunning) return
     if (!enabled) this.handoffs.stop()
     super.setEnabled(enabled)
@@ -269,7 +277,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     const current = this.data.currentCase
     const stops = this.data.scenario.steps.map((step, index) => ({
       hostId: step.assigneeId,
-      message: current && index === 0 ? `本轮是「${current.title}」，请${step.title}。` : `请${step.title}。`,
+      message: current?.handoffs?.[index] ?? (current && index === 0 ? `本轮是「${current.title}」，请${step.title}。` : `请${step.title}。${step.summary}`),
       reply: `收到，${step.role}交给我。`,
     }))
     this.handoffs.visit(stops, handoffSpeechMs, actorId => {
@@ -284,6 +292,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     this.assigning = false
     this.delivered.clear()
     this.elapsedMs = 0
+    this.stepStartedMs = undefined
     this.shownTick = 0
     this.restMs = undefined
     this.data.showProgress(-1, this.delivered)
@@ -311,17 +320,22 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       this.fail(error instanceof Error ? error.message : '暂时无法完成任务交接')
       return
     }
+    const { steps, listingApproval } = this.data.scenario
+    if (canAdvance && listingApproval && step === steps.length - 1 && !this.checkListingApproval(listingApproval)) return
+    // Include handoffs in the five-minute round, but pause its clock for human approval.
+    this.elapsedMs += elapsedMs
     if (canAdvance) {
-      const { steps, listingApproval } = this.data.scenario
-      if (listingApproval && step === steps.length - 1 && !this.checkListingApproval(listingApproval)) return
-      // An acknowledgement starts the work clock on the following tick.
-      const stepEnd = (step + 1) * ticksPerStep * tickDurationMs
-      this.elapsedMs = Math.min(this.elapsedMs + elapsedMs, stepEnd)
-      const tick = Math.floor(this.elapsedMs / tickDurationMs)
+      const workDurationMs = roundDurationMs - (this.data.currentCase ? betweenRoundsMs : 0)
+      const stepEnd = (step + 1) * workDurationMs / steps.length
+      // Only begin showing work after this member has acknowledged the handoff.
+      this.stepStartedMs ??= this.elapsedMs - elapsedMs
+      const progress = Math.min(1, (this.elapsedMs - this.stepStartedMs) / Math.max(1, stepEnd - this.stepStartedMs))
+      const tick = step * ticksPerStep + Math.floor(progress * ticksPerStep)
       if (tick !== this.shownTick) {
         this.shownTick = tick
         this.data.showProgress(tick, this.delivered)
       }
+      if (progress === 1) this.stepStartedMs = undefined
     }
     if (!this.assigning && this.shownTick >= this.data.scenario.steps.length * ticksPerStep) {
       if (this.data.currentCase) this.restMs = betweenRoundsMs
@@ -382,6 +396,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     const startPhrases = isCycleOffice(id) ? demoCycles[id].startPhrases : demoDialogues[id].startPhrases
     // Only an explicit command can start the workflow. Questions can mention the same words.
     if (isDemoStartCommand(question, startPhrases)) {
+      if (scenario.resultOnly) return 'SEO 成果已经完整交付，打开「当前成果」即可查看诊断、修改前后对照、关键词与内链，以及 6 份文件。本办公室固定展示结果，不再启动计时流程。'
       if (this.isRunning) return this.progressReply(this.data.getConversations()[0].tasks)
       try {
         this.setEnabled(true)
@@ -426,6 +441,10 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     const tasks = this.data.getConversations()[0].tasks
     const complete = tasks.every(task => task.status === 'completed')
     const progress = this.progressReply(tasks)
+    if (current.editorial) {
+      const answer = editorialReply(current.editorial, question)
+      if (answer) return answer
+    }
     if (isDemoReportQuestion(question) || matchesDemoKeyword(question, sampleKeywords)) {
       return cycleChatReport(current, name, complete ? '本轮完成' : this.isRunning ? '处理中' : '本轮预览', progress)
     }

@@ -67,7 +67,7 @@ export function createReferenceOfficePresentation(options: { taskForActor?: (id:
     loadBackground: loadReferenceOfficeBackground,
     async loadObjects(report) {
       await Promise.all([base.loadObjects(report), loadReferenceOfficeObjects(part => report(`reference:${part}`)),
-        loadOfficeTexture('office-sleeping-cat', 'ambient/sleeping-cat').then(texture => { catTexture = texture; report('office-sleeping-cat') }),
+        loadOfficeTexture('office-sleeping-cat', 'ambient/sleeping-cat-bed-v1').then(texture => { catTexture = texture; report('office-sleeping-cat') }),
         workEffects ? loadOfficeTexture('office-work-crafting-lite-v1', 'effects/work-crafting-lite-v1').then(texture => { workEffectTexture = texture; report('office-work-crafting-lite-v1') }) : undefined])
     },
     createPropViews: () => createReferenceOfficePropViews(options.whiteboardProgress),

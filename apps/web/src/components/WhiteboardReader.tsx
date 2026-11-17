@@ -6,6 +6,7 @@ import { stringifyDocumentObject } from '@pawoffice/protocol/schema'
 import { officeResultSchema } from '@pawoffice/protocol/office-ui'
 import type { OfficeResult, WhiteboardTaskBoardData } from '@pawoffice/protocol/office-ui'
 import { ResultWorkspace } from './ResultWorkspace.tsx'
+import { OfficeWhiteboardSurface } from './OfficeWhiteboardSurface.tsx'
 import { resultFileBase } from '../results/format.ts'
 import './WhiteboardReader.css'
 
@@ -44,6 +45,7 @@ export function ResultReaderDialog({ board, result, boardId = 'result-reader', i
       const rect = event.currentTarget.getBoundingClientRect()
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose()
     }}>
+    <OfficeWhiteboardSurface />
     <header>
       <div className="whiteboard-reader-heading"><h2 id="whiteboard-reader-title">{initialDeliveryId ? '历史交付' : '本轮成果'}</h2></div>
       <div className="whiteboard-reader-actions">

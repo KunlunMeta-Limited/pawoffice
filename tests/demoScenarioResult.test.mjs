@@ -5,17 +5,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
 /**
- * The 8 conference demo walkthroughs used to end with "任务已完成, 成果尚未交付" because the
- * generated whiteboard never carried a result. This round only the 经营分析团队 (office-analysis)
- * walkthrough was given a semantic result sample, built from the same data as its chat report:
- * two 24h observation windows, 360→350 visits, 9→14 orders and 6/10 size questions.
- *
- * These tests pin two things:
- * 1. the finished analysis walkthrough produces a readable delivery result;
- * 2. the other seven walkthroughs still show the honest empty fallback (no invented result).
+ * All eight conference walkthroughs deliver structured results from their scenario data.
+ * Verify their content, shared reader, and visible whiteboard summary without mutating the input.
  */
 
-let server, conferenceLocalOffices, resultPresentation, resultReadingMode, resultHasContent, ResultWorkspace
+let server, conferenceLocalOffices, resultPresentation, resultReadingMode, resultHasContent, ResultWorkspace, ResultBodyPresentation, WhiteboardNotes
 before(async () => {
   server = await createTestServer()
   ;({ conferenceLocalOffices } = await server.ssrLoadModule('/apps/web/src/conference/demoScenarios.ts'))
@@ -23,6 +17,8 @@ before(async () => {
   ;({ resultReadingMode } = await server.ssrLoadModule('/apps/web/src/results/readingMode.ts'))
   ;({ resultHasContent } = await server.ssrLoadModule('/apps/web/src/results/format.ts'))
   ;({ ResultWorkspace } = await server.ssrLoadModule('/apps/web/src/components/ResultWorkspace.tsx'))
+  ;({ ResultBodyPresentation } = await server.ssrLoadModule('/apps/web/src/results/bodyPresentation.ts'))
+  ;({ WhiteboardNotes } = await server.ssrLoadModule('/apps/web/src/conference/WhiteboardNotes.tsx'))
 })
 after(() => server?.close())
 
@@ -123,7 +119,7 @@ const expectedResults = {
   'office-analysis': '折叠电脑支架转化复盘',
   'office-demo-seo': '产品页 SEO 优化清单',
   'office-demo-tax': '本期申报资料核对',
-  'office-demo-social': '折叠电脑支架 · 适用尺寸更新',
+  'office-demo-social': '小桌面支架怎么选 · 三平台图文稿',
   'office-demo-collection': '周四彩排 · 会前准备简报',
   'office-demo-digest': '跨入口项目简报',
 }
@@ -137,9 +133,9 @@ test('8 个演示场景全部产出可阅读的成果页', () => {
     const result = board.result
     assert.equal(result.title, expectedResults[office.id], `${office.id} 成果标题`)
     assert.equal(result.status, 'ready', office.id)
-    assert.equal(result.artifacts.length, office.id === 'office-demo-tax' ? 3 : 2, `${office.id} 交付物`)
+    assert.equal(result.artifacts.length, office.id === 'office-demo-seo' ? 6 : office.id === 'office-demo-social' ? 5 : office.id === 'office-demo-tax' ? 3 : 2, `${office.id} 交付物`)
     assert(result.artifacts.some(artifact => artifact.kind === 'data'), office.id)
-    assert.equal(result.checks.length, office.source.currentCase ? 1 : 3, `${office.id} 检查项`)
+    assert.equal(result.checks.length, office.id === 'office-demo-seo' ? 8 : office.id === 'office-demo-social' ? 4 : office.source.currentCase ? 1 : 3, `${office.id} 检查项`)
     assert.equal(result.tasks.length, 3, `${office.id} 任务记录`)
     assert.equal(result.next.length, office.source.currentCase ? 1 : 3, `${office.id} 下一步`)
     assert(result.summary.length > 0 && result.verdict.length > 0, office.id)
@@ -183,4 +179,40 @@ test('成果能够渲染到单页阅读器（SSR）', () => {
     assert(listingHtml.includes(text), `阅读器应显示「${text}」`)
   }
   assert(!listingHtml.includes('当前没有可阅读的成果内容'))
+})
+
+function renderBoardSummary(board) {
+  const html = renderToStaticMarkup(createElement(ResultBodyPresentation.Provider,
+    { value: props => createElement(WhiteboardNotes, props) },
+    createElement(ResultWorkspace, { board, result: board.result })))
+  const summary = html.match(/<section class="whiteboard-summary"[^>]*>([\s\S]*?)<\/section>/)?.[1]
+  assert(summary, '便签打开前，白板上就应有可见总结')
+  assert(html.indexOf('class="whiteboard-summary"') < html.indexOf('class="whiteboard-notes"'))
+  return summary
+}
+
+test('白板直接呈现 8 个场景已有的摘要、目标与结论，不修改成果数据', () => {
+  for (const office of conferenceLocalOffices()) {
+    const board = finishWalkthrough(office)
+    const before = JSON.stringify(board)
+    const summary = renderBoardSummary(board)
+    for (const text of [board.result.summary, board.description, board.result.verdict]) {
+      const escaped = renderToStaticMarkup(createElement('span', null, text)).slice(6, -7)
+      assert(summary.includes(escaped), `${office.id} 的白板总结应包含「${text}」`)
+    }
+    assert.equal(JSON.stringify(board), before)
+  }
+})
+
+test('缺少摘要时使用已有结论或任务目标，相同内容只展示一次', () => {
+  const source = finishWalkthrough(officeById('office-demo-digest'))
+  const board = { ...source, description: '已有任务目标', result: { ...source.result, summary: '', verdict: '已有结论' } }
+  const summary = renderBoardSummary(board)
+  assert(summary.includes('当前概况'))
+  assert(summary.includes('已有任务目标'))
+  assert.equal(summary.split('已有结论').length - 1, 1)
+
+  const goalOnly = renderBoardSummary({ ...board, result: { ...board.result, verdict: '' } })
+  assert.equal(goalOnly.split('已有任务目标').length - 1, 1)
+  assert(!goalOnly.includes('本轮总结'))
 })

@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ArrowRight, ArrowUpRight, ChartNoAxesColumn, ClipboardList, FileText, FolderOpen, ListChecks, Pin, X } from 'lucide-react'
 import type { ResultBodyProps } from '../results/bodyPresentation.ts'
+import { resultBoardSections, resultSectionArtifact } from '../results/board.ts'
+import { ResultSectionCard } from '../components/ResultSectionCard.tsx'
 import './WhiteboardNotes.css'
 
 type NoteTone = 'blue' | 'sand' | 'green' | 'lilac' | 'rose' | 'white' | 'folder'
@@ -58,7 +60,12 @@ function Note({ title, tone, icon, preview, children }: {
   </>
 }
 
-export function WhiteboardNotes({ board, result, readingMode, executionKnown, description, attentionCount, attentionParts, sectionTitles, blocks }: ResultBodyProps) {
+export function WhiteboardNotes({ board, result, executionKnown, description, attentionCount, attentionParts, blocks }: ResultBodyProps) {
+  const sections = resultBoardSections(result)
+  const summary = result.summary.trim(), goal = board.description?.trim(), verdict = result.verdict.trim()
+  const overview = summary || verdict || goal || description
+  const showGoal = Boolean(goal && goal !== overview)
+  const showVerdict = Boolean(verdict && verdict !== overview && verdict !== goal)
   const processPreview = (executionKnown && board.steps.length ? board.steps : result.tasks)
     .slice(0, 3).map(step => step.title).join(' · ')
   const processCounts = [
@@ -66,9 +73,23 @@ export function WhiteboardNotes({ board, result, readingMode, executionKnown, de
     result.versions.length ? `版本 ${result.versions.length} 项` : '',
   ].filter(Boolean).join(' · ')
 
-  return <div className="whiteboard-notes">
-    <Note title="本轮结论" tone="blue" icon={<Pin size={17} />}
-      preview={result.summary.trim() || board.description?.trim() || result.verdict || description}>{blocks.conclusion}</Note>
+  return <>
+    <section className="whiteboard-summary" aria-label="白板总结">
+      <h3>{summary ? '本轮总结' : '当前概况'}</h3>
+      <p className="whiteboard-summary-lead">{overview}</p>
+      {(showGoal || showVerdict) && <dl>
+        {showGoal && <div><dt>目标</dt><dd>{goal}</dd></div>}
+        {showVerdict && <div><dt>结论</dt><dd>{verdict}</dd></div>}
+      </dl>}
+      {attentionCount > 0 && <p className="whiteboard-summary-attention">需关注 {attentionCount} 项 · {attentionParts.join(' · ')}</p>}
+    </section>
+    <div className="whiteboard-notes">
+    {sections.map((section, index) => <Note key={section.id} title={section.title} tone={(['blue', 'green', 'lilac'] as const)[index % 3]}
+      icon={<FileText size={17} />} preview={section.caption}>
+      <ResultSectionCard section={section} artifacts={result.artifacts} sourceArtifact={resultSectionArtifact(result, section)} />
+    </Note>)}
+    {!sections.length && <Note title="本轮结论" tone="blue" icon={<Pin size={17} />}
+      preview={result.summary.trim() || board.description?.trim() || result.verdict || description}>{blocks.conclusion}</Note>}
     {blocks.delivery && <Note title="交付文件" tone="folder" icon={<FolderOpen size={17} />}
       preview={<><strong>{result.artifacts.length} 份文件</strong><span>{result.artifacts.slice(0, 2).map(file => file.title).join(' · ')}</span></>}>
       {blocks.delivery}
@@ -87,10 +108,7 @@ export function WhiteboardNotes({ board, result, readingMode, executionKnown, de
       preview={attentionCount ? <><strong>{attentionCount} 项需要关注</strong><span>{attentionParts.join(' · ')}</span></> : result.verdict || description}>
       {blocks.review}
     </Note>}
-    {blocks.sections && <Note title={readingMode === 'fact' ? '说明与结论' : '详细内容'} tone="white" icon={<FileText size={17} />}
-      preview={sectionTitles.filter(Boolean).slice(0, 3).join(' · ')}>
-      {blocks.sections}
-    </Note>}
     {blocks.next && <Note title="下一步" tone="sand" icon={<ArrowRight size={17} />} preview={result.next[0]}>{blocks.next}</Note>}
-  </div>
+    </div>
+  </>
 }

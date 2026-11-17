@@ -34,6 +34,7 @@ dist/
 /public/assets/office/effects/work-crafting-lite-v1.webp
 /public/assets/office/effects/*.tmp-*
 /public/assets/office/ambient/sleeping-cat.webp
+/public/assets/office/ambient/sleeping-cat-bed-v1.webp
 /public/assets/office/ambient/*.tmp-*
 
 # Local character authoring and publication workspaces

@@ -25,17 +25,24 @@ export type Activity = { running: boolean; status: 'unknown' | 'attention' | 'ru
 export type OfficePreview = {
   id: string; frameId: string; rawId: string; name: string; connected: boolean; connection: string
   dashboard: DashboardSnapshot | null; appearances: Record<string, string>; layout: OfficeLayoutId
+  rosterActors: { id: string; name: string }[]
   conversationTitle: string; activity: Activity; decisionCount: number; pendingDecision?: DecisionRequest; ready: boolean
   initialized?: boolean
   decisionSubmittingId?: string; decisionError?: string
 }
 export type FrameCommand =
   | { type: 'view'; active: boolean; rendering: boolean; sampling: boolean }
+  | { type: 'overview'; summary: OfficeOverviewSummary }
+  | { type: 'overview.focus' }
   | { type: 'select' | 'decisions'; officeId: string }
   | { type: 'resolve'; officeId: string; decisionId: string; choiceId: string; customText?: string }
 export type FrameReport =
   | { type: 'state'; offices: OfficePreview[] }
+  | { type: 'overview.open'; origin?: OverviewOrigin }
   | { type: 'image'; officeId: string; image: Blob | string }
+
+export type OfficeOverviewSummary = { running: number; total: number; pending: number; open: boolean; disabled: boolean }
+export type OverviewOrigin = { top: number; left: number; width: number; height: number; radius: number }
 
 export function officeActivity(conversations: readonly Pick<DashboardConversation, 'tasks' | 'events' | 'whiteboard'>[],
   current: DashboardSnapshot | null, pending = 0, unavailable = false): Activity {
@@ -63,7 +70,7 @@ export function localOfficeSession(office: OfficeTeamDefinition, storage?: Stora
   const historyKey = office.id.startsWith('office-demo-') ? 'commerce-demo-v1' : undefined
   const chatSource = demo ? new ConferenceChatSource(request => demo.reply(request), historyKey)
     : new PreviewChatSource(() => '收到。当前会话还没有任务资料，可以先补充目标和相关背景。')
-  const simulation = demo ? new OfficeSimulation(runtime, demo, { idleCoffee: {} }) : undefined
+  const simulation = demo ? new OfficeSimulation(runtime, scenario?.scenario.resultOnly ? undefined : demo, { idleCoffee: {} }) : undefined
   const session: OfficeTeamSession = new OfficeTeamSession(runtime, source, {
     chatSource, simulation, decisionPreview: !scenario,
     chatPersistence: storage ? browserChatPersistence(office.id, chatSource.historyKey) : undefined,
@@ -81,6 +88,7 @@ export function independentDemoHost(session: OfficeTeamSession) {
 export function previewOf(frameId: string, connected: boolean, office: { id: string; name: string; session: OfficeTeamSession },
   layout: OfficeLayoutId, connection?: string): OfficePreview {
   const session = office.session, state = session.getSnapshot(), chat = session.chat.getSnapshot(), decisions = session.decisions.getSnapshot(), pending = decisions.pending
+  const actors = session.runtime.readActors()
   const activity = officeActivity(session.source.getConversations?.() ?? [], state.dashboard, pending.length, !!state.dashboardError)
   const demo = session.simulation.demoSource
   if (demo instanceof ScenarioDemoSource && demo.isDispatching && !state.dashboardError) {
@@ -88,7 +96,8 @@ export function previewOf(frameId: string, connected: boolean, office: { id: str
     if (activity.status !== 'attention') activity.status = 'running'
   }
   return { id: officeKey(connected, office.id), frameId, rawId: office.id, connected, name: state.dashboard?.workspace.name ?? office.name,
-    connection: connection ?? state.connection, dashboard: state.dashboard, appearances: Object.fromEntries(session.runtime.readActors().map(actor => [actor.id, actor.templateId])),
+    connection: connection ?? state.connection, dashboard: state.dashboard, appearances: Object.fromEntries(actors.map(actor => [actor.id, actor.templateId])),
+    rosterActors: actors.map(({ id, name }) => ({ id, name })),
     layout, conversationTitle: chat.conversations.find(item => item.id === chat.selectedId)?.title ?? '', decisionCount: pending.length, pendingDecision: pending[0],
     decisionSubmittingId: decisions.submittingIds?.find(id => id === pending[0]?.id),
     decisionError: decisions.errorDecisionId === pending[0]?.id ? decisions.error ?? '' : '',
@@ -97,11 +106,13 @@ export function previewOf(frameId: string, connected: boolean, office: { id: str
 
 export function formalPlaceholder(configured: boolean, connection = '连接中'): OfficePreview {
   return { id: officeKey(true, ''), rawId: '', frameId: formalFrame, connected: true, name: '正式办公室',
-    connection: !configured ? '未连接' : connection === '已连接' ? '等待初始化' : connection, dashboard: null, appearances: {}, layout: 'members',
+    connection: !configured ? '未连接' : connection === '已连接' ? '等待初始化' : connection, dashboard: null, appearances: {}, rosterActors: [], layout: 'members',
     conversationTitle: '', activity: officeActivity([], null), decisionCount: 0, ready: true }
 }
 
-const localAppearances = Object.fromEntries(createReferenceOfficeWorld().actors.map(actor => [actor.id, actor.templateId]))
+const localActors = createReferenceOfficeWorld().actors
+const localAppearances = Object.fromEntries(localActors.map(actor => [actor.id, actor.templateId]))
+const localRosterActors = localActors.map(({ id, name }) => ({ id, name }))
 
 export function localOfficePreview(office: OfficeTeamDefinition, layout: OfficeLayoutId): OfficePreview {
   const { id, name, source } = office
@@ -114,7 +125,7 @@ export function localOfficePreview(office: OfficeTeamDefinition, layout: OfficeL
   } : null
   return {
     id: frameId, frameId, rawId: id, name, connected: false, connection: '本地示例',
-    dashboard, layout, appearances: localAppearances, conversationTitle: conversation?.title ?? '',
+    dashboard, layout, appearances: localAppearances, rosterActors: localRosterActors, conversationTitle: conversation?.title ?? '',
     activity: officeActivity(conversations, dashboard), decisionCount: 0, ready: false,
   }
 }

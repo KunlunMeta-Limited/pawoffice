@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createTestServer } from './helpers/vite.mjs'
 
 let server, runtime, DemoOfficeDirectory, createOfficeDataSource, conferenceLocalOffices, OfficeOverview, OfficeIntegrationSession, OfficeTeamSession, createOfficeRuntime
-let readDemoReport, demoReportMarkdown, DemoReportCard, ConferenceChatSource
+let readDemoReport, demoReportMarkdown, DemoReportCard, ConferenceChatSource, OfficePreviewPage
 const flush = () => new Promise(resolve => setImmediate(resolve))
 before(async () => {
   server = await createTestServer()
@@ -14,7 +14,7 @@ before(async () => {
   ;({ conferenceLocalOffices } = await server.ssrLoadModule('/apps/web/src/conference/demoScenarios.ts'))
   ;({ DemoOfficeDirectory } = await server.ssrLoadModule('/apps/web/src/dashboard/demoOfficeDirectory.ts'))
   ;({ createOfficeDataSource } = await server.ssrLoadModule('/apps/web/src/dashboard/createSource.ts'))
-  ;({ OfficeOverview } = await server.ssrLoadModule('/apps/web/src/conference/ConferenceWorkspace.tsx'))
+  ;({ OfficeOverview, OfficePreviewPage } = await server.ssrLoadModule('/apps/web/src/conference/ConferenceWorkspace.tsx'))
   ;({ OfficeIntegrationSession } = await server.ssrLoadModule('/apps/web/src/application/OfficeIntegrationSession.ts'))
   ;({ OfficeTeamSession } = await server.ssrLoadModule('/apps/web/src/application/OfficeTeamSession.ts'))
   ;({ createOfficeRuntime } = await server.ssrLoadModule('/apps/web/src/application/createOfficeRuntime.ts'))
@@ -43,7 +43,7 @@ test('all eight overview demos use one main conversation and the classic offices
   }
   for (const { source, session } of offices) {
     assert.equal(source.kind, 'example')
-    assert.equal(session.simulation.canDemo, true)
+    assert.equal(session.simulation.canDemo, !source.scenario.resultOnly)
     assert.equal(session.ui.enabled, false)
     assert.equal(session.getSnapshot().connection, '本地示例')
     assert.ok(session.chat.source instanceof ConferenceChatSource)
@@ -94,7 +94,7 @@ test('formal entry stays available with truthful unconfigured, awaiting initiali
   assert.notEqual(runtime.officeKey(true, 'office-1'), runtime.officeKey(false, 'office-1'))
 })
 
-test('PixOffice-style overview preserves ratio, count-only heading, running glow, current marker and formal identification', async t => {
+test('office overview preserves previews and controls without a fixed heading or duplicate back button', async t => {
   const { offices } = await setup(t, conferenceLocalOffices())
   offices[0].session.simulation.setDemo(true)
   await offices[0].session.refresh()
@@ -105,7 +105,8 @@ test('PixOffice-style overview preserves ratio, count-only heading, running glow
   const html = renderToStaticMarkup(createElement(OfficeOverview, {
     offices: entries, images, selectedId: entries[1].id, onSelect() {}, onClose() {}, livePreviews: false, onToggleLivePreviews() {},
   }))
-  assert.match(html, /9 个办公室/)
+  assert.doesNotMatch(html, /dispatch-overview-heading|dispatch-office-count|dispatch-icon-button|关闭办公室总览/)
+  assert.match(html, /class="dispatch-overview-scroll"[^>]*><div class="dispatch-office-grid"/)
   assert.match(html, /1\/9 个办公室运行中 · 1 项待确认 · 返回办公室/)
   assert.match(html, /data-running="true"/)
   assert.match(html, /当前办公室/)
@@ -125,6 +126,24 @@ test('PixOffice-style overview preserves ratio, count-only heading, running glow
   assert.doesNotMatch(html, /大会|办公室与场景演示/)
 })
 
+test('member-layout previews retain scene members and employee profiles before and after runtime initialization', async t => {
+  const { offices } = await setup(t, conferenceLocalOffices())
+  for (const office of offices) {
+    for (const preview of [runtime.localOfficePreview(office, 'members'), runtime.previewOf('test', false, office, 'members')]) {
+      const html = renderToStaticMarkup(createElement(OfficePreviewPage, { office: preview }))
+      assert.equal((html.match(/class="member-roster-person"/g) ?? []).length, 6, office.name)
+      assert.match(html, /class="member-profile-heading"/)
+      for (const employee of preview.dashboard.employees) assert.ok(html.includes(`aria-label="查看${employee.name}的资料"`), employee.name)
+      const unassigned = renderToStaticMarkup(createElement(OfficePreviewPage, { office: { ...preview, dashboard: { ...preview.dashboard, employees: [] } } }))
+      assert.equal((unassigned.match(/class="member-roster-person"/g) ?? []).length, 6)
+      assert.match(unassigned, /当前会话未分配/)
+    }
+  }
+  const empty = renderToStaticMarkup(createElement(OfficePreviewPage, { office: runtime.formalPlaceholder(false) }))
+  assert.equal((empty.match(/data-placeholder="true"/g) ?? []).length, 6)
+  assert.doesNotMatch(empty, /data-actor-id=/)
+})
+
 async function answerDemoQuestions(t, chats, inputs) {
   const sending = chats.map((chat, index) => chat.send(inputs[index]))
   for (let tick = 0; tick < 200 && chats.some(chat => chat.getSnapshot().phase !== 'idle'); tick++) {
@@ -141,9 +160,11 @@ async function answerDemoQuestions(t, chats, inputs) {
   })
 }
 
-function advanceUntil(host, condition, limitMs = 60000) {
-  for (let elapsed = 0; elapsed < limitMs && !condition(); elapsed += 50) host.advance(50)
+function advanceUntil(host, condition, limitMs = 360_000) {
+  let elapsed = 0
+  for (; elapsed < limitMs && !condition(); elapsed += 50) host.advance(50)
   assert.ok(condition(), 'the office did not reach the expected stage')
+  return elapsed
 }
 
 test('all eight offices answer the current question using their own keywords', async t => {
@@ -183,32 +204,47 @@ test('all eight offices answer the current question using their own keywords', a
 test('demo chat starts only an explicit local run and reports its actual progress and results', async t => {
   const { offices, hosts, refresh } = await setup(t, conferenceLocalOffices().slice(3, 5))
   const [seo, tax] = offices
-  const chats = [seo.session.chat.selected]
+  const chats = [tax.session.chat.selected]
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const ask = async question => (await answerDemoQuestions(t, chats, [question]))[0]
 
   assert.match(await ask('现在有结果吗？'), /当前没有任务在运行/)
   assert.match(await ask('可以先看成果预览吗？'), /交付内容的预览/)
   await ask('不要开始处理')
-  assert.equal(seo.session.simulation.isDemoRunning, false)
-
-  assert.match(await ask('请帮我开始处理。'), /已开始「产品页 SEO 检查」/)
-  assert.equal(seo.session.simulation.isDemoRunning, true)
   assert.equal(tax.session.simulation.isDemoRunning, false)
-  assert.match(await ask('现在进度如何？'), /王明正在交代「检查页面标题与描述」/)
-  advanceUntil(hosts[0], () => seo.source.getConversations()[0].tasks[1].status === 'running')
+
+  assert.match(await ask('请帮我开始处理。'), /已开始「本期申报资料整理」/)
+  assert.equal(tax.session.simulation.isDemoRunning, true)
+  assert.equal(seo.session.simulation.isDemoRunning, false)
+  assert.match(await ask('现在进度如何？'), /王明正在交代「归集本期发票」/)
+  advanceUntil(hosts[1], () => tax.source.getConversations()[0].tasks[1].status === 'running')
   await refresh()
-  assert.match(await ask('现在做到哪一步了？'), /已完成 1\/3 项。正在「整理关键词与内链」/)
+  assert.match(await ask('现在做到哪一步了？'), /已完成 1\/3 项。正在「核对收支与凭证」/)
   assert.match(await ask('结果出来了吗？'), /已完成 1\/3 项/)
 
-  advanceUntil(hosts[0], () => !seo.session.simulation.isDemoRunning)
+  advanceUntil(hosts[1], () => !tax.session.simulation.isDemoRunning)
   await refresh()
   const firstResult = await ask('给我看最终结果。')
   const secondResult = await ask('给我看最终结果。')
-  assert.match(firstResult, /SEO 优化清单/)
-  assert.match(secondResult, /SEO 优化清单/)
+  assert.match(firstResult, /申报/)
+  assert.match(secondResult, /申报/)
   assert.notEqual(firstResult, secondResult)
-  assert.equal(seo.session.simulation.isDemoRunning, false)
+  assert.equal(tax.session.simulation.isDemoRunning, false)
+})
+
+test('SEO opens with a complete delivery and cannot start or reset a timed walkthrough', async t => {
+  const { offices, hosts } = await setup(t, conferenceLocalOffices().filter(office => office.id === 'office-demo-seo'))
+  const { source, session } = offices[0]
+  const before = JSON.stringify(source.getConversations())
+  assert.equal(session.simulation.canDemo, false)
+  assert.equal(session.simulation.isDemoRunning, false)
+  assert.equal(source.getConversations()[0].whiteboard.status, 'completed')
+  assert.equal(source.getConversations()[0].whiteboard.result.artifacts.length, 6)
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const [reply] = await answerDemoQuestions(t, [session.chat.selected], ['开始优化'])
+  assert.match(reply, /固定展示结果/)
+  for (let tick = 0; tick < 600; tick++) hosts[0].advance(1000)
+  assert.equal(JSON.stringify(source.getConversations()), before)
 })
 
 test('all eight offices produce their own themed reports in the main chat', async t => {
@@ -241,6 +277,18 @@ test('all eight offices produce their own themed reports in the main chat', asyn
   assert.match(started, /已开始「折叠电脑支架素材审核」/)
   assert.equal(offices[1].session.simulation.isDemoRunning, true)
   assert.equal(offices[2].session.simulation.isDemoRunning, false)
+})
+
+test('the social office answers with platform copy and storyboards through its own chat source', async t => {
+  const { offices } = await setup(t, conferenceLocalOffices())
+  const social = offices[5], demo = social.session.simulation.demoSource
+  const ask = content => demo.reply({ messages: [{ role: 'user', content }] })
+  const before = social.session.simulation.isDemoRunning
+  assert.match(ask('给我看小红书正文'), /屏幕尺寸只是一个线索/)
+  assert.match(ask('配图每页写什么？'), /画面：同机位桌面全景/)
+  assert.match(ask('给我看公众号正文'), /先把桌面画出来/)
+  assert.match(ask('阅读量怎么样？'), /没有本轮阅读/)
+  assert.equal(social.session.simulation.isDemoRunning, before)
 })
 
 test('demo chat waits a randomized interval before its first reply and can be cancelled during the wait', async t => {
@@ -279,10 +327,11 @@ test('demo chat waits a randomized interval before its first reply and can be ca
   await assert.rejects(pending, { name: 'AbortError' })
 })
 
-test('each of the eight offices waits for the leader handoff and can stop and replay independently', async t => {
+test('the seven process offices wait for leader handoff and can stop and replay independently', async t => {
   const { offices, hosts, refresh } = await setup(t, conferenceLocalOffices())
   const groups = new Set()
   for (const [index, office] of offices.entries()) {
+    if (office.source.scenario.resultOnly) continue
     const others = offices.filter(candidate => candidate !== office)
     const before = await Promise.all(others.map(({ source }) => source.getSnapshot()))
     office.session.simulation.setDemo(true)
@@ -299,7 +348,8 @@ test('each of the eight offices waits for the leader handoff and can stop and re
     assert.deepEqual(receivers, office.source.getConversations()[0].tasks.map(task => task.assigneeId))
     groups.add([...receivers].sort().join(','))
 
-    advanceUntil(hosts[index], () => statuses()[1] === 'running')
+    const firstStageMs = advanceUntil(hosts[index], () => statuses()[1] === 'running')
+    assert.ok(firstStageMs >= 90_000, `${office.id} should pace the work, not just wait after finishing`)
     await refresh()
     assert.deepEqual((await office.source.getSnapshot()).tasks.map(task => task.status), ['completed', 'running', 'queued'])
     office.session.simulation.setDemo(false)
@@ -308,26 +358,29 @@ test('each of the eight offices waits for the leader handoff and can stop and re
     assert.equal(office.session.simulation.isDemoRunning, false)
 
     office.session.simulation.setDemo(true)
+    let runElapsedMs = 0
     if (office.id === 'office-1') {
       const { decisions } = office.session
-      advanceUntil(hosts[index], () => decisions.getSnapshot().pending.length > 0)
+      runElapsedMs += advanceUntil(hosts[index], () => decisions.getSnapshot().pending.length > 0)
       const [decision] = decisions.getSnapshot().pending
       assert.equal(decision.conversationId, 'main')
       assert.match(decision.title, /确认按 79 元上架/)
       assert.deepEqual(statuses(), ['completed', 'completed', 'queued'])
       assert.ok(await decisions.choose(office.id, decision.id, 'confirm'))
     }
-    advanceUntil(hosts[index], () => statuses().every(status => status === 'completed'))
+    runElapsedMs += advanceUntil(hosts[index], () => statuses().every(status => status === 'completed'))
+    const workDurationMs = office.source.currentCase ? 280_000 : 300_000
+    assert.ok(runElapsedMs >= workDurationMs && runElapsedMs <= workDurationMs + 50, `${office.id}: ${runElapsedMs} ms`)
     await refresh()
     assert.equal((await office.source.getSnapshot()).whiteboard.status, 'completed')
     assert.equal(office.session.simulation.isDemoRunning, Boolean(office.source.currentCase))
     office.session.simulation.setDemo(false)
     assert.deepEqual(await Promise.all(others.map(({ source }) => source.getSnapshot())), before)
   }
-  assert.equal(groups.size, 8)
+  assert.equal(groups.size, 7)
 })
 
-test('the two exhibit offices rotate five matching cases, keep the result between rounds, and stop on demand', async t => {
+test('the two exhibit offices rotate five cases every five minutes, keep results for twenty seconds, and stop on demand', async t => {
   const { offices, hosts } = await setup(t, conferenceLocalOffices())
   for (const index of [5, 6]) {
     const { source, session } = offices[index]
@@ -339,7 +392,7 @@ test('the two exhibit offices rotate five matching cases, keep the result betwee
     for (let round = 0; round < 5; round++) {
       const current = title()
       seen.add(current)
-      advanceUntil(host, () => board().status === 'completed')
+      assert.equal(advanceUntil(host, () => board().status === 'completed'), 280_000)
       const report = readDemoReport(session.simulation.demoSource.reply({ messages: [{ role: 'user', content: '给我本轮报告' }] }))
       assert.equal(report.title, current)
       assert.equal(board().result.title, current)
@@ -426,8 +479,9 @@ test('listing pauses for a decision, a rejection stops the current run, and repl
   assert.equal(chat.getSnapshot().selectedId, 'main')
   advanceUntil(hosts[0], pending)
   assert.notEqual(pending().id, interrupted.id)
+  for (let tick = 0; tick < 200; tick++) hosts[0].advance(50)
   assert.ok(await decisions.choose(id, pending().id, 'confirm'))
-  advanceUntil(hosts[0], () => !simulation.isDemoRunning)
+  assert.equal(advanceUntil(hosts[0], () => !simulation.isDemoRunning), 100_000, 'waiting for approval must not consume the final task budget')
   await refresh()
   assert.equal((await report()).status, '本轮完成')
   assert.equal(session.getSnapshot().dashboard.whiteboard.status, 'completed')

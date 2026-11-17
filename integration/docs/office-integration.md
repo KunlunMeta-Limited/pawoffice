@@ -283,7 +283,7 @@ Content-Type: application/json
 { "type": "offices.initialize", "offices": [], "layoutId": "members" }
 ```
 
-此处 `offices: []` 表示不增加办公室，也不删除现有办公室。省略 `layoutId` 保留当前选择；服务实例首次启动时默认为 `classic`。
+此处 `offices: []` 表示不增加办公室，也不删除现有办公室。省略 `layoutId` 保留当前选择；服务实例首次启动时默认为 `members`。
 
 运行中单独切换，不需要重新初始化办公室或重新投递任务：
 

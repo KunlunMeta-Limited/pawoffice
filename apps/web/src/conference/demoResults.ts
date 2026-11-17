@@ -2,6 +2,8 @@ import type { OfficeResultInput } from '@pawoffice/protocol/office-ui'
 import type { DemoScenarioId } from './demoDialogue.ts'
 import { formatWorkItems } from './demoCycles.ts'
 import type { DemoCase } from './demoCycles.ts'
+import { editorialBriefMarkdown, editorialDraftMarkdown, editorialPageCount, editorialScheduleCsv } from './demoEditorial.ts'
+import { seoResult } from './demoSeoResult.ts'
 
 const listingReport = `# 折叠电脑支架上架检查
 
@@ -15,6 +17,12 @@ const listingReport = `# 折叠电脑支架上架检查
 ## 上架确认
 
 负责人已确认按 79 元上架，确认结果已登记。
+
+## 交接记录
+
+- 商品资料：规格卡 v2；页面稿：商品页校对稿 v3。陈书核对价格与参数，周理复核页面，赵审登记负责人确认。
+- 本清单记录上架确认；实际发布后由运营回填商品链接、SKU、库存检查与发布时间，再开始计算观察窗口。
+- 不用“任务完成”代替平台发布回执，缺少链接时继续保留待回填状态。
 
 ## 待观察事项
 
@@ -39,6 +47,8 @@ const report = `# 折叠电脑支架转化复盘
 ## 本轮范围
 
 对比首轮与更新后两轮各 24 小时的同口径数据，判断「补充尺寸说明」这一方向是否值得继续验证。
+
+来源为经营台账 W1、W2 和咨询归类表 C01–C10。两轮订单均按支付成功记录，退款与售后单独回收；广告来源与新老访客占比尚未齐全，不能视为严格对照实验。
 
 ## 观察结果
 
@@ -74,15 +84,15 @@ function contentResult(producedAt: string): OfficeResultInput {
     producedAt,
     team: '商品视觉团队',
     title: '折叠电脑支架素材审核',
-    summary: '主图、卖点细节与尺寸图清单已复核：图片 4 张、详情 4 块，13–16 英寸适用范围在移动端清晰可读。',
-    verdict: '素材与商品资料一致，可交付上架页面使用；折叠前后尺寸照片仍待补拍，补齐后再替换详情中的临时示意图。',
+    summary: '已交付 4 张图片的拍摄与审核清单，详情按场景、调节、收纳、尺寸编排。13–16 英寸文案与规格卡一致；收纳尺寸实拍及最终手机预览仍待补齐。',
+    verdict: '清单可交设计与拍摄执行，尚不等于 4 张成品图片全部验收。周理补齐折叠尺寸实拍后，再由王明复核手机版页面并放行。',
     metricsTitle: '素材核对',
     metricsCaption: '以商品资料为唯一基准',
     metrics: [
       { id: 'images', label: '图片清单', value: '4', unit: '张', change: '主图 1 / 卖点细节 2 / 尺寸说明 1' },
       { id: 'fit', label: '适用范围', value: '13–16', unit: '英寸', change: '未承诺 17 英寸机型' },
       { id: 'detail', label: '详情内容', value: '4', unit: '块', change: '场景、调节、收纳、尺寸' },
-      { id: 'verdict', label: '审核结论', value: '通过', kind: 'status', tone: 'positive', change: '移动端字号与图文一致性已复核' },
+      { id: 'verdict', label: '审核结论', value: '待补拍', kind: 'status', tone: 'neutral', change: '清单已交付，成品验收待完成' },
     ],
     report: { title: '素材审核清单', description: '主图、详情与尺寸说明的核对结果。', content: `# 素材审核清单
 
@@ -90,23 +100,26 @@ function contentResult(producedAt: string): OfficeResultInput {
 - 主图展示展开状态的整体形态，附图分别说明六档调节与折叠收纳。
 
 ## 详情结构
-- 使用场景 → 材质与尺寸 → 六档调节 → 折叠收纳 → 注意事项。
+- 使用场景 → 六档调节 → 折叠收纳 → 适用尺寸与注意事项，共 4 块。
 
 ## 尺寸说明
 - 独立尺寸图标注 13–16 英寸，未承诺 17 英寸机型；移动端字号需保持可读。
 
 ## 待补事项
-- 折叠前后尺寸照片待补拍，补齐后替换详情中的临时示意图。
+- P03 折叠前后尺寸照片由周理周三 12:00 前补拍；尺子、主体与标注要同时可见，不把示意图当实测。
+- 陈书替换详情稿 v3 的临时图，王明按手机实际预览确认字是否能读清，再登记验收版本。
+- 本轮交付的是拍摄与审核清单，成品图片另行上传，不能用清单数量充当已交付图片数量。
 ` },
-    data: { title: '图片清单', description: '图片用途与数量。', content: `用途,数量,说明
-商品主图,1,展开状态侧前视角
-卖点细节,2,六档调节与折叠收纳
-尺寸说明,1,13–16 英寸适用范围
+    data: { title: '图片清单', description: '图片编号、用途、依据及验收状态。', content: `图片编号,用途,数量,说明,责任人,状态
+P01,商品主图,1,展开状态侧前视角与同款规格卡对应,李研,拍摄要求已确认
+P02,卖点细节,1,六档调节位置逐档标注,陈书,待成品验收
+P03,折叠收纳,1,补拍折叠前后带尺照片,周理,待补拍
+P04,尺寸说明,1,13–16 英寸并保留机身核对提示,陈书,待手机预览
 ` },
     checks: [
       { id: 'image-copy', label: '主图与附图覆盖商品形态与细节', status: 'passed' },
       { id: 'fit-copy', label: '13–16 英寸说明与商品资料一致', status: 'passed' },
-      { id: 'mobile', label: '移动端字号与图文一致性已复核', status: 'passed' },
+      { id: 'mobile', label: '补齐实拍后进行最终手机预览', status: 'pending' },
     ],
     risks: [{ id: 'photo', title: '折叠前后尺寸照片待补拍', level: 'low', status: 'open', owner: '王明 · 负责人', note: '当前详情使用临时示意图，未核验尺寸不对外承诺。' }],
     tasks: [
@@ -118,53 +131,6 @@ function contentResult(producedAt: string): OfficeResultInput {
   })
 }
 
-/** SEO 优化办公室：页面审查与优化清单。 */
-function seoResult(producedAt: string): OfficeResultInput {
-  return result({
-    producedAt,
-    team: 'SEO优化办公室',
-    title: '产品页 SEO 优化清单',
-    summary: '已完成标题、摘要、H1 与内链的检查，形成 3 项文案调整与 1 条内链建议；待实际修改并发布后再观察搜索表现。',
-    verdict: '以上为检查结论与建议，不代表线上页面已经修改；请先按清单更新页面与内链，发布后观察搜索表现。',
-    metricsTitle: '优化项统计',
-    metricsCaption: '按影响范围排序',
-    metrics: [
-      { id: 'page', label: '待调整项', value: '3', unit: '项', change: '标题、摘要与 H1' },
-      { id: 'keyword', label: '核心搜索词', value: '1', unit: '个', change: '折叠电脑支架' },
-      { id: 'link', label: '内链建议', value: '1', unit: '条', change: '产品对比页 → 产品页' },
-      { id: 'status', label: '检查状态', value: '已完成检查', kind: 'status', tone: 'positive', change: '修改与发布待执行' },
-    ],
-    report: { title: 'SEO 优化清单', description: '页面文案与内链的改动建议。', content: `# 产品页 SEO 优化清单
-
-## 页面文案
-- 标题与 H1 统一围绕「折叠电脑支架」，摘要补充六档调节、便携收纳与使用场景。
-
-## 站内入口
-- 在产品对比页增加一条指向产品页的链接，锚文本使用核心词。
-
-## 观察方式
-- 当前未接入收录与排名数据，发布后观察搜索表现再决定是否扩展关键词。
-` },
-    data: { title: '页面改动清单', description: '项目、现状与建议。', content: `项目,现状,建议
-页面标题,未包含核心词,加入「折叠电脑支架」
-页面摘要,缺少卖点,补充六档调节与便携收纳
-H1,与标题不一致,统一核心词
-内链,无入口,对比页加一条产品页链接
-` },
-    checks: [
-      { id: 'theme', label: '标题、摘要与 H1 的建议已确认', status: 'passed' },
-      { id: 'link', label: '内链建议已标注目标页', status: 'passed' },
-      { id: 'order', label: '改动清单已按影响范围排序', status: 'passed' },
-    ],
-    risks: [{ id: 'data', title: '未接入收录与排名数据', level: 'low', status: 'open', owner: '王明 · 负责人', note: '无法预测排名变化，发布后需观察搜索表现。' }],
-    tasks: [
-      { id: 'page', title: '检查页面标题与描述', owner: '李研 · 页面审查', status: 'done', progress: 100 },
-      { id: 'keyword', title: '整理关键词与内链', owner: '刘市 · 关键词分析', status: 'done', progress: 100 },
-      { id: 'plan', title: '输出优化清单', owner: '陈书 · 优化方案', status: 'done', progress: 100 },
-    ],
-    next: ['先更新产品页标题、摘要与 H1。', '从产品对比页补一条指向产品页的内链。', '发布后观察搜索表现，再决定是否继续扩展关键词。'],
-  })
-}
 
 /** 报税办公室：申报前资料核对，凭证待补。 */
 function taxResult(producedAt: string): OfficeResultInput {
@@ -201,23 +167,25 @@ R-06,入账凭证,补编号并保留发票对应,待补
     extraArtifacts: [{ id: 'draft', kind: 'document', title: '申报草稿（待复核）', description: '已归集资料与待补凭证的申报草稿，仅供内部复核。',
       change: 'added', version: '1.0', producedAt, mimeType: 'text/markdown', content: `# 本期申报草稿（待复核）
 
-## 申报项目
+## 资料工作底稿
 
-| 项目 | 本期数据 | 数据来源 | 状态 |
+| 项目 | 当前记录 | 数据来源 | 状态 |
 | --- | --- | --- | --- |
-| 销售收入（不含税） | 86,400 元 | 收支台账 9 月汇总 | 已核对 |
-| 销项税额 | 5,184 元 | 销售收入 × 6% | 已核对 |
-| 进项税额 | 3,200 元（P-04 待补 800 元） | 发票明细 | 待补凭证 |
-| 本期应纳税额 | 暂计 1,984 元 | 销项税额 − 进项税额 | 待复核 |
+| 所属期 | 以会计确认的本期为准 | 任务单 | 待复核人确认 |
+| 收入与支出台账 | 保留原始流水号与金额，不覆盖原记录 | 收支台账 v1 | 已归集 |
+| P-04 支出 | 发票记录已找到，付款凭证编号缺失 | 台账 P-04 与发票明细 | 待补付款依据 |
+| R-06 收入 | 对应入账凭证编号缺失 | 台账 R-06 与发票明细 | 待补入账依据 |
+| 申报口径 | 主体、税种与适用口径未确认 | 复核交接单 | 暂不计算应纳税额 |
 
-## 缺失凭证的影响
+## 补件责任
 
-- P-04 付款凭证：待补进项 800 元。若复核确认可抵扣，进项税额为 4,000 元，本期应纳税额相应为 1,184 元。
-- R-06 入账凭证：影响成本费用与原始发票的对应关系，补齐后复核入账口径。
+- 周理今天 16:00 前向资料负责人索取 P-04 付款凭证编号与原件，保留原记录与补件的对应关系。
+- 赵审核对 R-06 原始流水，补入账凭证编号并注明回填人、回填时间。
+- 刘市接收补件后复核；不能仅凭有付款凭证就判断可抵扣，也不能从收支总额直接推算税额。
 
 ## 复核状态
 
-- 金额按本期台账与发票明细暂计。补齐凭证并完成复核后，再确认是否提交。
+- 本轮交付资料底稿及缺口清单。主体、所属期和申报口径由会计确认，完成复核后再决定是否提交；当前没有申报回执。
 ` }],
     checks: [
       { id: 'collect', label: '发票已按日期与来源归集', status: 'passed' },
@@ -252,6 +220,15 @@ function digestResult(producedAt: string): OfficeResultInput {
     ],
     report: { title: '项目简报', description: '跨入口信息归并后的时间、变更与待确认事项。', content: `# 跨入口项目简报
 
+## 来源索引
+
+| 编号 | 时间 | 来源 | 原始信息 |
+| --- | --- | --- | --- |
+| E01 | 周二 09:12 | 项目确认邮件 | 样品册周三 15:00 交付 |
+| M02 | 周二 10:05 | 设计群 | 建议改用 B 版封面，未见终稿确认 |
+| M03 | 周二 10:18 | 项目群 | 建议改到周四，未见负责人批准 |
+| F04 | 周二 11:00 | 交付表单 | 验收人字段为空 |
+
 ## 已确认
 - 交付时间：周三 15:00，以项目确认邮件为准。
 
@@ -259,8 +236,10 @@ function digestResult(producedAt: string): OfficeResultInput {
 - 群聊提出改期到周四，保留为待确认建议，未采纳为结论。
 
 ## 待确认
-- 封面设计需设计负责人确认。
-- 表单中的验收人缺失，需项目负责人补齐。
+- 李研周二 17:00 前收 B 版封面确认；确认前保留当前版本。
+- 王明周二 17:30 前决定是否接受延期；无新确认仍按周三 15:00 执行。
+- 陈书周三 10:00 前补齐验收人姓名与接收方式，回填 F04。
+- 确认后在同一事项下追加记录，保留旧来源，不因群消息较晚就自动覆盖已确认时间。
 ` },
     data: { title: '待确认事项', description: '事项、来源与状态。', content: `事项,来源,状态
 封面设计,群聊,待设计负责人确认
@@ -323,10 +302,38 @@ export function scenarioResult(id: DemoScenarioId, at: Date): OfficeResultInput 
 }
 
 export function cycleResult(current: DemoCase, team: string, at: Date, tasks: NonNullable<OfficeResultInput['tasks']>) {
+  if (current.editorial) {
+    const plan = current.editorial, producedAt = stamp(at)
+    return result({
+      producedAt, team, title: current.title, summary: current.summary ?? current.request, verdict: current.next,
+      metricsTitle: '本轮编辑交付', metricsCaption: '文稿与分镜已整理，图片与发布仍待完成',
+      metrics: [
+        { id: 'drafts', label: '分平台文稿', value: String(plan.drafts.length), unit: '份', change: '各平台分别编写，待终审' },
+        { id: 'storyboards', label: '配图分镜', value: String(editorialPageCount(plan)), unit: '页', change: '制图说明，未视为成品图片' },
+        { id: 'review', label: '审核状态', kind: 'status', value: '待审核', change: '补图后由王明终审' },
+        { id: 'published', label: '本轮发布回执', value: '0', unit: '份', change: '实际链接与时间待回填' },
+      ],
+      report: { title: '选题与编辑交接单', description: '账号定位、来源、审核意见及回访安排',
+        content: editorialBriefMarkdown(plan, current.title, current.summary ?? current.request, current.next) },
+      data: { title: '三平台发布排期', description: '拟发布时间、待审核项和发布回执，未发布字段留空', content: editorialScheduleCsv(plan) },
+      extraArtifacts: plan.drafts.map((draft, index) => ({ id: `draft-${index + 1}`, kind: 'document', title: `${draft.platform}｜${draft.title}`,
+        description: `${draft.format}正文、配图分镜和审核交接；待审核`, change: 'added', version: '校对稿 v1', producedAt,
+        mimeType: 'text/markdown', content: editorialDraftMarkdown(draft) })),
+      checks: [
+        { id: 'sources', label: '稿件中的规格与来源编号逐项对应', status: 'passed' },
+        { id: 'formats', label: '各平台正文、标题与图文分镜分别交付', status: 'passed' },
+        { id: 'images', label: '配图制作、来源确认及手机预览', status: 'pending' },
+        { id: 'approval', label: '王明终审与发布回执登记', status: 'pending' },
+      ],
+      risks: plan.drafts.map((draft, index) => ({ id: `review-${index + 1}`, title: `${draft.platform}待审核`, level: 'low', status: 'open',
+        owner: '王明 · 终审', note: draft.review })),
+      tasks, next: [current.next],
+    })
+  }
   const quote = (value: string) => '"' + value.replaceAll('"', '""') + '"'
   const rows = current.items.map(item => [item.label, item.status, item.detail, item.source].map(quote).join(','))
   return result({
-    producedAt: stamp(at), team, title: current.title, summary: current.request, verdict: current.next,
+    producedAt: stamp(at), team, title: current.title, summary: current.summary ?? current.items.map(item => `${item.label}：${item.status}`).join('；') + '。待确认项已保留来源，尚未代替负责人做决定。', verdict: current.next,
     metricsTitle: '事项与状态', metricsCaption: '每条记录附原始依据',
     metrics: current.items.map((item, index) => ({ id: `item-${index + 1}`, label: item.label, kind: 'status', value: item.status })),
     report: { title: '本轮工作简报', description: '委托、处理结果与后续事项',

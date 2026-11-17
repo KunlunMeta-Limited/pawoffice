@@ -36,6 +36,7 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
   const draft = chat.draft
   const setDraft = (value: string) => session.setDraft(value)
   const [atBottom, setAtBottom] = useState(true)
+  const [composerHeight, setComposerHeight] = useState(48)
   const [conversationMenuOpen, setConversationMenuOpen] = useState(false)
   const textarea = useRef<HTMLTextAreaElement>(null)
   const root = useRef<HTMLDivElement>(null)
@@ -52,7 +53,9 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     if (!element) return
     const resize = () => {
       element.style.height = '24px'; element.style.height = `${Math.min(96, element.scrollHeight)}px`
-      root.current?.style.setProperty('--chat-composer-height', `${composer.current?.offsetHeight ?? 48}px`)
+      const height = composer.current?.offsetHeight ?? 48
+      root.current?.style.setProperty('--chat-composer-height', `${height}px`)
+      setComposerHeight(height)
     }
     resize()
     let width = element.clientWidth
@@ -81,7 +84,7 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     <section id={panelId} className="office-chat-panel" aria-label="办公室对话" aria-hidden={!expanded} inert={!expanded}>
       <ConversationTabs workspace={workspace} state={workspaceState} decisions={allDecisions} menuOpen={conversationMenuOpen} onMenuOpenChange={setConversationMenuOpen} menuId={conversationMenuId} onCollapse={collapse} panelId={panelId} />
       <div className="office-chat-body">
-      <ChatTranscript ref={transcript} session={session} chat={chat} expanded={expanded} leaderName={leaderName} storageError={workspaceState.storageError} onAtBottomChange={setAtBottom}
+      <ChatTranscript ref={transcript} session={session} chat={chat} expanded={expanded} bottomInset={composerHeight + 40} leaderName={leaderName} storageError={workspaceState.storageError} onAtBottomChange={setAtBottom}
         deliveries={deliveries} onOpenDelivery={onOpenDelivery ? id => onOpenDelivery(entry.id, id) : undefined}
         onEdit={() => { setDraft(chat.messages.findLast(message => message.role === 'user')?.content ?? ''); textarea.current?.focus() }} />
       </div>
@@ -89,8 +92,8 @@ function ActiveConversation({ session, workspace, workspaceState, entry, allDeci
     </section>
     <OfficeDecisionPanel preview={decisionPreview} openToken={decisionOpenToken} snapshot={decisions} onResolve={(decisionId, choiceId, customText) => { void decisionSession.choose(decisionSession.teamId, decisionId, choiceId, customText) }}
       onReset={onReplayDemo ?? (() => decisionSession.reset())} />
+    {expanded && !conversationMenuOpen && <div className="office-chat-suggestions"><ChatSuggestions send={submit} disabled={!canSend || busy} /></div>}
     <form ref={composer} className="office-chat-composer" data-busy={busy} aria-label="发送消息" onSubmit={event => { event.preventDefault(); submit() }}>
-      <ChatSuggestions send={submit} disabled={!canSend || busy} />
       <button type="button" className="office-chat-history is-session" aria-label={expanded ? `切换会话：${entry.title}` : '展开对话'} title={entry.title} aria-expanded={expanded && conversationMenuOpen} aria-controls={expanded ? conversationMenuId : panelId} onClick={() => { if (expanded) setConversationMenuOpen(true); else onExpandedChange(true) }}><MessageCircle size={15} /><span>{entry.title}</span></button>
       <textarea ref={textarea} value={draft} rows={1} maxLength={4000} disabled={!chat.ready} aria-label="给办公室发送消息" placeholder={expanded ? '继续当前会话，或安排办公室成员执行任务…' : '和办公室聊一聊…'} onClick={() => onExpandedChange(true)} onChange={event => setDraft(event.target.value)} onCompositionStart={() => { composing.current = true }} onCompositionEnd={() => { composing.current = false }} onKeyDown={event => {
         if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && !composing.current && event.keyCode !== 229) { event.preventDefault(); submit() }

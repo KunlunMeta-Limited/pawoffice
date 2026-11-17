@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowRight, Braces, Download, Ellipsis, FileJson, PanelLeftClose, PanelLeftOpen, Plug, Plus, SlidersHorizontal, UserRound, X } from 'lucide-react'
 import type { DashboardTask } from '@pawoffice/protocol/dashboard'
 import { maxOfficeMembers, officeMemberLimitMessage } from '@pawoffice/protocol/dashboard'
@@ -8,6 +8,8 @@ import { memberOverview, memberProgress, memberRoster, memberTaskStatuses, membe
 import { dashboardMetrics } from '../dashboard/selectors.ts'
 import type { OfficeShellProps } from './OfficeShell.tsx'
 import { AddOfficeMemberDialog } from './AddOfficeMemberDialog.tsx'
+import { OfficeOverviewPresentation } from './officeOverviewPresentation.ts'
+import { OfficeMemberPlaceholders, QuestionAvatar } from './OfficeMemberPlaceholders.tsx'
 import '../components/RuntimeWorkspace.css'
 import './MemberOfficeShell.css'
 
@@ -21,6 +23,7 @@ export function MemberOfficeShell({ dashboard, appearanceIds, scene, layoutContr
   dashboardError, sceneLinkError, persistenceError, actionError, canRecoverLayout, recoverLayout, renderScenePanel, exportCapabilities, exportSnapshot,
   onInspectEmployee, executeAction, pendingTaskIds, canExecuteActions = true, hasOffice = true, editing, createEmployee, memberActors = [], memberCreationBlockReason = '' }: OfficeShellProps) {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const officeOverview = useContext(OfficeOverviewPresentation)
   const [addingMember, setAddingMember] = useState(false)
   const [panel, setPanel] = useState<ScenePanel | 'profile' | ''>('')
   const [recoveryError, setRecoveryError] = useState('')
@@ -32,7 +35,9 @@ export function MemberOfficeShell({ dashboard, appearanceIds, scene, layoutContr
   const titleId = useId()
   const sidebarId = useId()
   const employees = dashboard?.employees ?? []
+  const awaitingInitialization = !hasOffice && dataMode === 'push'
   const roster = hasOffice ? memberRoster(dashboard, rosterActors, selectedEmployeeId) : []
+  const rosterSize = awaitingInitialization ? maxOfficeMembers : roster.length
   const selectedSlot = roster.find(item => item.id === selectedActorId) ?? roster.find(item => item.employee?.id === selectedEmployeeId) ?? roster[0]
   const metrics = dashboard && dashboardMetrics(dashboard)
   const currentTask = (['running', 'blocked', 'queued', 'failed'] as const)
@@ -83,10 +88,10 @@ export function MemberOfficeShell({ dashboard, appearanceIds, scene, layoutContr
 
   return <div className={`member-workspace${editing ? ' map-editing' : ''}`} data-drawer-open={drawerOpen} data-empty={!hasOffice}>
     <header className="member-brand-row" aria-label="当前办公室" inert={drawerOpen}>
-      <div className="member-office-identity"><CharacterAvatar appearanceId={leadAppearanceId} height={56} crop="head" /><div>
+      <div className="member-office-identity">{awaitingInitialization ? <QuestionAvatar height={56} /> : <CharacterAvatar appearanceId={leadAppearanceId} height={56} crop="head" />}<div>
         <span className="member-office-eyebrow">PawOffice · 当前办公室</span>
-        <h1 title={dashboard?.workspace.name}>{dashboard?.workspace.name || (hasOffice ? '正在连接办公室…' : '尚未创建办公室')}</h1>
-        <p><span>{roster.length} 个工位</span><i aria-hidden="true" /><span title={`消息连接：${connection}`}>{dataMode === 'example' ? '本地演示' : connection}</span></p>
+        <h1 title={dashboard?.workspace.name}>{dashboard?.workspace.name || (awaitingInitialization ? '正式办公室' : hasOffice ? '正在连接办公室…' : '尚未创建办公室')}</h1>
+        <p><span>{rosterSize} 个工位</span><i aria-hidden="true" /><span title={`消息连接：${connection}`}>{dataMode === 'example' ? '本地演示' : connection}</span></p>
       </div></div>
       <div className="member-office-actions">{layoutControl}<div className="member-office-control" ref={officeSwitcherRef} /></div>
     </header>
@@ -98,10 +103,11 @@ export function MemberOfficeShell({ dashboard, appearanceIds, scene, layoutContr
       </article>
       <article className="member-overview-card"><span className="member-overview-label">进行中</span><strong>{metrics?.running ?? '—'}</strong><small>当前会话任务</small></article>
       <article className="member-overview-card"><span className="member-overview-label">已完成</span><strong>{completed ?? '—'}</strong><small>当前会话任务</small></article>
-      <article className="member-overview-card"><span className="member-overview-label">活跃成员</span><strong>{dashboard ? roster.filter(item => item.active).length : '—'}<span className="member-overview-total"> / {roster.length}</span></strong><small>当前会话 · 绿点人数</small></article>
+      {officeOverview ?? <article className="member-overview-card"><span className="member-overview-label">活跃成员</span><strong>{dashboard ? roster.filter(item => item.active).length : '—'}<span className="member-overview-total"> / {rosterSize}</span></strong><small>当前会话 · 绿点人数</small></article>}
     </section>
     {drawerOpen && <button className="member-drawer-backdrop" type="button" aria-label="关闭成员侧栏" onClick={() => setDrawerOpen(false)} />}
     <aside className="member-sidebar" ref={sidebar} id={sidebarId} aria-label="办公室成员" role={drawerOpen ? 'dialog' : undefined} aria-modal={drawerOpen || undefined}>
+      {awaitingInitialization ? <OfficeMemberPlaceholders titleId={`${sidebarId}-title`} onCloseDrawer={() => setDrawerOpen(false)} /> : <>
       <section className="member-roster" aria-labelledby={`${sidebarId}-title`}><div className="member-roster-heading"><h2 id={`${sidebarId}-title`}>团队成员 <span>（{roster.length}）</span></h2><button className="member-add-button" type="button" title={addMemberBlocked || '添加成员'} aria-label="添加成员" disabled={!hasOffice || !createEmployee || !memberActors.length || !!addMemberBlocked} onClick={() => setAddingMember(true)}><Plus size={15} strokeWidth={1.8} /></button><button type="button" className="member-icon-button member-drawer-close" title="收起成员侧栏" aria-label="收起成员侧栏" onClick={() => setDrawerOpen(false)}><PanelLeftClose size={18} /></button></div>
         <div className="member-roster-grid">{roster.map(item => <button className="member-roster-person" type="button" key={item.id} data-actor-id={item.id} aria-label={`查看${item.employee?.name ?? item.name}的资料`} aria-pressed={item.id === selectedSlot?.id}
           title={item.employee?.name ?? item.name} onClick={() => { if (onSelectRosterActor) onSelectRosterActor(item.id); else if (item.employee) onSelectEmployee?.(item.employee.id) }}><span className="member-portrait"><CharacterAvatar height={46} crop="head" appearanceId={appearanceIds[item.id]} /><i className={`member-presence ${item.active ? 'online' : ''}`} role="img" aria-label={item.active ? '活跃' : '空闲'} title={item.active ? '活跃' : '空闲'} /></span><strong>{item.employee?.name ?? item.name}</strong></button>)}</div>
@@ -128,6 +134,7 @@ export function MemberOfficeShell({ dashboard, appearanceIds, scene, layoutContr
           <footer className="member-detail-footer"><button type="button" className="member-profile-open" disabled={!employee} title={!employee ? '当前会话未绑定业务成员' : undefined} onClick={() => { if (!employee) return; if (onInspectEmployee) onInspectEmployee(employee.id); else setPanel('profile') }}><UserRound size={16} />查看完整档案<ArrowRight size={16} /></button></footer>
         </> : <p className="member-empty">{hasOffice ? '选择一位成员查看资料' : '暂无办公室'}</p>}
       </section>
+      </>}
     </aside>
     <div className="member-scene-area" inert={drawerOpen}>
       <button ref={drawerTrigger} className="member-drawer-open member-icon-button" type="button" title="展开成员侧栏" aria-label="展开成员侧栏" aria-expanded={drawerOpen} aria-controls={sidebarId} onClick={() => setDrawerOpen(true)}><PanelLeftOpen size={19} /></button>

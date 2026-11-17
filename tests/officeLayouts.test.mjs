@@ -20,7 +20,7 @@ test('layout discovery works before initialization and reports each layout data 
   const response = await post(app, { type: 'office.layout.read' })
   assert.equal(response.statusCode, 200)
   const info = officeLayoutInfoSchema.parse(response.json().data)
-  assert.equal(info.currentLayoutId, 'classic'); assert.equal(info.revision, 0)
+  assert.equal(info.currentLayoutId, 'members'); assert.equal(info.revision, 0)
   assert.deepEqual(info.layouts.map(layout => layout.id), ['classic', 'members'])
   for (const layout of info.layouts) {
     assert.equal(layout.dataMessageType, 'office.snapshot')
@@ -36,47 +36,47 @@ test('layout discovery works before initialization and reports each layout data 
   for (const layoutId of ['missing', null, 1]) {
     assert.equal((await post(app, { type: 'office.layout.set', layoutId })).statusCode, 400)
   }
-  assert.equal((await post(app, { type: 'office.layout.read' })).json().data.currentLayoutId, 'classic')
+  assert.equal((await post(app, { type: 'office.layout.read' })).json().data.currentLayoutId, 'members')
 })
 
 test('offline initialization and layout selection share state without resetting it on business updates', async t => {
   const app = await createPawOfficeServer(); t.after(() => app.close())
-  const initialized = await post(app, { type: 'offices.initialize', offices: [office()], layoutId: 'members' })
+  const initialized = await post(app, { type: 'offices.initialize', offices: [office()], layoutId: 'classic' })
   assert.equal(initialized.statusCode, 202)
-  assert.equal(initialized.json().data.currentLayoutId, 'members')
+  assert.equal(initialized.json().data.currentLayoutId, 'classic')
   assert.equal(initialized.json().data.revision, 1)
   assert.deepEqual(initialized.json().data.layouts, describeOfficeLayouts().layouts)
   await post(app, { type: 'offices.initialize', offices: [] })
   const next = office(); next.seq = 2
   await post(app, { type: 'office.snapshot', teamId: 'office-a', snapshot: next })
   const selected = await post(app, { type: 'office.layout.read' })
-  assert.equal(selected.json().data.currentLayoutId, 'members'); assert.equal(selected.json().data.revision, 1)
-  const switched = await post(app, { type: 'office.layout.set', layoutId: 'classic' })
+  assert.equal(selected.json().data.currentLayoutId, 'classic'); assert.equal(selected.json().data.revision, 1)
+  const switched = await post(app, { type: 'office.layout.set', layoutId: 'members' })
   assert.equal(switched.statusCode, 202)
-  assert.equal(switched.json().data.currentLayoutId, 'classic'); assert.equal(switched.json().data.revision, 2)
+  assert.equal(switched.json().data.currentLayoutId, 'members'); assert.equal(switched.json().data.revision, 2)
   assert.equal((await post(app, { type: 'office.read' })).json().data.offices[0].seq, 2)
-  const repeated = await post(app, { type: 'office.layout.set', layoutId: 'classic' })
+  const repeated = await post(app, { type: 'office.layout.set', layoutId: 'members' })
   assert.equal(repeated.json().data.revision, 2, 'retries do not create a second layout change')
 })
 
 test('browser layout controls use the same state with same-origin checks and no external API key', async t => {
   const app = await createPawOfficeServer(); t.after(() => app.close())
-  const payload = { type: 'office.layout.set', layoutId: 'members' }
+  const payload = { type: 'office.layout.set', layoutId: 'classic' }
   const request = headers => app.inject({ method: 'POST', url: '/api/pawoffice/layout', headers, payload })
   assert.equal((await request({ origin: 'https://bad.example', 'sec-fetch-site': 'cross-site' })).statusCode, 403)
-  assert.equal((await post(app, { type: 'office.layout.read' })).json().data.currentLayoutId, 'classic')
+  assert.equal((await post(app, { type: 'office.layout.read' })).json().data.currentLayoutId, 'members')
   assert.equal((await request({})).statusCode, 200)
   const actual = (await post(app, { type: 'office.layout.read' })).json().data
-  assert.equal(actual.currentLayoutId, 'members'); assert.equal(actual.revision, 1)
+  assert.equal(actual.currentLayoutId, 'classic'); assert.equal(actual.revision, 1)
 })
 
 test('layout state is instance-local and layout contracts reject invalid or conflicting catalogues', () => {
   const a = new OfficeLayouts(), b = new OfficeLayouts()
-  a.select('members')
-  assert.equal(b.read().currentLayoutId, 'classic')
+  a.select('classic')
+  assert.equal(b.read().currentLayoutId, 'members')
   assert.equal(b.read().revision, 0)
-  const selection = a.read(); selection.currentLayoutId = 'classic'
-  assert.equal(a.read().currentLayoutId, 'members', 'callers cannot mutate the stored selection')
+  const selection = a.read(); selection.currentLayoutId = 'members'
+  assert.equal(a.read().currentLayoutId, 'classic', 'callers cannot mutate the stored selection')
   const info = describeOfficeLayouts()
   assert.equal(officeLayoutInfoSchema.safeParse({ ...info, layouts: [] }).success, false)
   assert.equal(officeLayoutInfoSchema.safeParse({ ...info, layouts: [info.layouts[0], info.layouts[0]] }).success, false)

@@ -39,7 +39,7 @@ export const officeLayoutIdSchema = z.enum(['classic', 'members'])
 export type OfficeLayoutId = z.infer<typeof officeLayoutIdSchema>
 export const officeLayoutStateSchema = z.strictObject({ currentLayoutId: officeLayoutIdSchema, revision: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER) })
 export type OfficeLayoutState = z.infer<typeof officeLayoutStateSchema>
-export const defaultOfficeLayout: OfficeLayoutState = Object.freeze({ currentLayoutId: 'classic', revision: 0 })
+export const defaultOfficeLayout: OfficeLayoutState = Object.freeze({ currentLayoutId: 'members', revision: 0 })
 export const officeLayoutInfoSchema = officeLayoutStateSchema.safeExtend({ layouts: z.array(z.strictObject({
   id: officeLayoutIdSchema, name: z.string().min(1), dataMessageType: z.literal('office.snapshot'), dataSchema: jsonObjectSchema,
 })).min(1).max(officeLayoutIdSchema.options.length) }).superRefine((value, context) => {

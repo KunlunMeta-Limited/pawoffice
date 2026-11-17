@@ -49,8 +49,8 @@ export function cycleChatReport(current: DemoCase, team: string, status: string,
   for (const item of current.items) counts.set(item.status, (counts.get(item.status) ?? 0) + 1)
   return encodeReport({
     scope: team, title: current.title, tone: team === '自媒体运营办公室' ? 'amber' : 'teal',
-    status, summary: progress,
-    metrics: current.items.map(item => ({ label: item.label, value: item.status, detail: item.label + '事项' })),
+    status, summary: [progress, status === '本轮完成' ? current.summary : current.request].filter(Boolean).join(' '),
+    metrics: current.items.map((item, index) => ({ label: item.label, value: item.status, detail: current.editorial?.drafts[index].format ?? item.label + '事项' })),
     chart: { title: '待跟进状态分布', unit: '项', rows: [...counts].map(([label, value]) => ({ label, value })) },
     findings: current.items.map(item => ({ title: item.label, detail: `${item.detail} 依据：${item.source}。` })),
     next: current.next,
@@ -96,7 +96,7 @@ const scenarioReports = {
     title: '折叠电脑支架商品素材审核报告',
     tone: 'amber',
     metrics: [
-      { label: '图片清单', value: '04 张', detail: '主图、调节、收纳、尺寸' },
+      { label: '图片规划', value: '04 张', detail: 'P01–P04，成品验收待完成' },
       { label: '适用范围', value: '13–16 英寸', detail: '独立尺寸图' },
       { label: '详情内容', value: '04 块', detail: '场景、调节、收纳、尺寸' },
     ],
@@ -105,9 +105,9 @@ const scenarioReports = {
     ] },
     findings: [
       { title: '主图优先展示商品形态', detail: '用侧前视角展示展开后的支架，调节和收纳细节分配给附图。' },
-      { title: '尺寸说明在手机上直接可读', detail: '独立尺寸图标注 13–16 英寸，校对标题、详情文案和图片标注是否一致。' },
+      { title: '补实拍后再完成验收', detail: 'P03 折叠尺寸照片仍缺；周理补图后，王明核对 13–16 英寸说明及手机实际预览，再登记验收版本。' },
     ],
-    next: '按主图、卖点细节和尺寸图顺序走查移动端页面，再交付审核清单。',
+    next: '先交 P01–P04 拍摄与审核清单；周理补实拍，陈书替换临时图，王明确认手机预览后放行。',
   },
   'office-analysis': {
     scope: '经营分析 · 转化复盘',
@@ -132,16 +132,17 @@ const scenarioReports = {
     title: '产品页 SEO 优化调研报告',
     tone: 'blue',
     metrics: [
-      { label: '待调整项', value: '03 项', detail: '标题、摘要与 H1' },
-      { label: '核心搜索词', value: '01 个', detail: '折叠电脑支架' },
-      { label: '内链建议', value: '01 条', detail: '产品对比页 → 产品页' },
+      { label: '审查页面', value: '03 页', detail: '产品页、对比页、测量指南' },
+      { label: '优化方案', value: '06 项', detail: 'P1 内容 4 项 · P2 配套 2 项' },
+      { label: '成果文件', value: '06 份', detail: '报告、改写稿、台账与执行表' },
     ],
     chart: { title: '优化项分布', unit: '项', rows: [
-      { label: '页面文案', value: 3 }, { label: '主词定位', value: 1 }, { label: '站内链接', value: 1 },
+      { label: 'P1 · 页面内容', value: 4 }, { label: 'P2 · 图片与链接', value: 2 },
     ] },
     findings: [
-      { title: '统一页面主题', detail: '产品标题和 H1 都围绕「折叠电脑支架」。摘要补充六档调节、便携收纳和使用场景。' },
-      { title: '补齐站内入口', detail: '从产品对比页增加一条指向产品页的链接，把尺寸和使用场景的辅助词放到对应卖点。' },
+      { title: '交付可用文稿', detail: '标题、摘要、H1、正文、三组 FAQ 与图片说明已成稿，适用范围保持 13–16 英寸。' },
+      { title: '安排搜索意图和路径', detail: '6 组查询词分配到产品、选型与测量内容，交付 3 条内链的来源、锚文本和目标。' },
+      { title: '交付与上线分开验收', detail: '页面样稿审查已完成；正式发布、技术检查与搜索效果仍待执行，没有虚构排名或流量提升。' },
     ],
     next: '先更新产品页，再补充内链。发布前逐页核对标题、摘要和链接目标。',
   },

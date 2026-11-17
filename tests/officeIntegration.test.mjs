@@ -141,7 +141,7 @@ test('a late joining page restores an offline layout selection without an office
   const post = payload => app.inject({ method: 'POST', url: '/api/pawoffice/messages', headers: { authorization: `Bearer ${DEMO_API_KEY}` }, payload })
   assert.equal((await post({ type: 'office.layout.set', layoutId: 'members' })).statusCode, 202)
   const browser = await connectedBrowser(t, app, base)
-  assert.deepEqual(browser.integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 1 })
+  assert.deepEqual(browser.integration.getSnapshot().layout, { currentLayoutId: 'members', revision: 0 })
   assert.equal(browser.integration.getSnapshot().offices.length, 0)
   assert.equal((await post({ type: 'office.layout.set', layoutId: 'classic' })).statusCode, 200)
   assert.equal(browser.integration.getSnapshot().layout.currentLayoutId, 'classic')
@@ -177,8 +177,8 @@ test('a delayed browser selection response cannot overwrite a newer backend sele
 
 test('failed layout changes keep the previous selection and release the busy state', async t => {
   const { integration } = await setup(t, { changeLayout: async () => { throw new Error('network unavailable') } })
-  await integration.selectLayout('members')
-  assert.equal(integration.getSnapshot().layout.currentLayoutId, 'classic')
+  await integration.selectLayout('classic')
+  assert.equal(integration.getSnapshot().layout.currentLayoutId, 'members')
   assert.equal(integration.getSnapshot().layoutBusy, false)
   assert.match(integration.getSnapshot().error, /network unavailable/)
 })

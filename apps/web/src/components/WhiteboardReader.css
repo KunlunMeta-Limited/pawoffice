@@ -1,9 +1,13 @@
 .whiteboard-reader { box-sizing: border-box; width: min(960px, calc(100vw - 48px)); max-height: calc(100dvh - 64px); margin: auto; padding: 0; overflow: hidden; border: 1px solid #dedfdd; border-radius: 16px; background: #fff; color: #343b36; box-shadow: 0 16px 56px #17221a24; }
-.whiteboard-reader.is-result { width: min(1120px, calc(100vw - 48px)); max-height: calc(100dvh - 40px); overflow: clip; }
-dialog.whiteboard-reader.is-result { height: min(900px, calc(100dvh - 40px)); }
+.whiteboard-reader.is-result { position: fixed; isolation: isolate; width: min(1240px, calc(100vw - 64px)); max-width: calc(100vw - 64px); max-height: calc(100dvh - 64px); padding: 13px 14px 24px; overflow: visible; border: 0; border-radius: 7px; background: #e9e8e6; box-shadow: 0 24px 64px #24272238, 0 4px 12px #24272226; }
+dialog.whiteboard-reader.is-result { height: min(900px, calc(100dvh - 64px)); }
 .whiteboard-reader[open] { display: flex; flex-direction: column; }
-.whiteboard-reader::backdrop { background: #1b241e66; backdrop-filter: blur(3px); }
+.office-whiteboard-surface { position: absolute; inset: 0; z-index: -1; display: grid; grid-template-columns: 12px minmax(0, 1fr) 13px; grid-template-rows: 12px minmax(0, 1fr) 12px; overflow: hidden; border-radius: 7px; pointer-events: none; }
+.office-whiteboard-surface svg { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.whiteboard-reader::backdrop { background: #30332f40; backdrop-filter: blur(5px); }
 .whiteboard-reader > header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 20px; border-bottom: 1px solid #eef0ec; }
+.whiteboard-reader.is-result > header { padding: 7px 16px 4px 24px; border-bottom: 0; background: transparent; }
+.whiteboard-reader.is-result .whiteboard-reader-heading h2 { color: #727872; font-size: 13px; font-weight: 500; }
 .whiteboard-reader-heading { display: flex; align-items: center; gap: 16px; min-width: 0; }
 .whiteboard-reader-heading h2 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600; }
 .whiteboard-reader-actions { display: flex; flex: none; gap: 4px; }
@@ -15,7 +19,7 @@ dialog.whiteboard-reader.is-result { height: min(900px, calc(100dvh - 40px)); }
 .whiteboard-reader-switch button:hover { color: #355a45; }
 .whiteboard-reader button:focus-visible { outline: 2px solid #718575; outline-offset: 2px; }
 .whiteboard-reader-content { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 20px 32px 32px; font: 16px/1.8 system-ui, sans-serif; overflow-wrap: anywhere; }
-.whiteboard-reader-content.is-result { padding: 0; font: 14px/1.62 system-ui, sans-serif; }
+.whiteboard-reader-content.is-result { flex: 1; padding: 0; background: transparent; scrollbar-width: thin; scrollbar-color: #a6ada7 transparent; font: 14px/1.62 system-ui, sans-serif; }
 .whiteboard-reader-content:focus-visible { outline: 2px solid #718575; outline-offset: -4px; }
 /* Expanded detail uses structured sections (see WhiteboardDetail.css); only fallback board styles live here. */
 .whiteboard-reader-fallback .task-whiteboard h3, .whiteboard-reader-fallback .task-whiteboard p, .whiteboard-reader-fallback .task-whiteboard aside > div, .whiteboard-reader-fallback .task-whiteboard [title] { display: block !important; -webkit-line-clamp: unset !important; white-space: normal !important; overflow: visible !important; }
@@ -29,7 +33,9 @@ dialog.whiteboard-reader.is-result { height: min(900px, calc(100dvh - 40px)); }
 @media (max-width: 620px) { .whiteboard-reader { max-height: calc(100dvh - 32px); } .whiteboard-reader > header { padding: 11px 12px 12px 16px; align-items: flex-start; gap: 8px; } .whiteboard-reader-heading { flex-wrap: wrap; row-gap: 9px; } .whiteboard-reader-heading h2 { font-size: 14px; } .whiteboard-reader-switch { order: 3; width: 100%; } .whiteboard-reader-switch button { flex: 1; justify-content: center; } .whiteboard-reader-content { padding: 6px 18px 20px; } .whiteboard-reader-content.is-result { padding: 0; } }
 @media (max-width: 620px) { .whiteboard-reader-content .task-whiteboard { font-size: 17px; } .whiteboard-reader-content .task-whiteboard-columns { grid-template-columns: minmax(0, 1fr) !important; gap: 24px !important; } .whiteboard-reader-content .task-whiteboard > header > span { display: none; } }
 @media (max-width: 620px) {
-  dialog.whiteboard-reader.is-result { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  dialog.whiteboard-reader.is-result { width: calc(100vw - 16px); max-width: calc(100vw - 16px); height: calc(100dvh - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 8px 8px 18px; border-radius: 5px; }
+  .office-whiteboard-surface { grid-template-columns: 8px minmax(0, 1fr) 8px; grid-template-rows: 8px minmax(0, 1fr) 10px; border-radius: 5px; }
+  .whiteboard-reader.is-result > header { padding-inline: 10px 3px; }
   dialog.whiteboard-reader > header { padding-top: max(10px, env(safe-area-inset-top)); }
   dialog.whiteboard-reader .whiteboard-reader-content { padding-bottom: env(safe-area-inset-bottom); }
 }

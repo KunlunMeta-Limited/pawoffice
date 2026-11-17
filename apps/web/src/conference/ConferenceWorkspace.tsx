@@ -2,7 +2,7 @@
 // This presentation is installed only in local demo frames.
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { RefObject } from 'react'
-import { ArrowUp, Bell, ChevronLeft, Clapperboard, Grid2X2, MessageCircle, Play } from 'lucide-react'
+import { ArrowUp, Bell, Clapperboard, Grid2X2, MessageCircle, Play } from 'lucide-react'
 import App, { OfficeApp } from '../App.tsx'
 import { ChatTranscriptPresentation } from '../components/ChatTranscript.tsx'
 import { ResultBodyPresentation } from '../results/bodyPresentation.ts'
@@ -26,11 +26,12 @@ import { readOfficeShell, saveOfficeShell } from '../ui/officeLayout.ts'
 import type { OfficeCreationInput } from '../dashboard/officeDirectory.ts'
 import { OfficeShell } from '../ui/OfficeShell.tsx'
 import { MemberOfficeShell } from '../ui/MemberOfficeShell.tsx'
+import { OfficeOverviewPresentation } from '../ui/officeOverviewPresentation.ts'
 import { OfficeEmptyState } from '../ui/OfficeEmptyState.tsx'
 import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
 import { captureScene, formalFrame, formalPlaceholder, frameParameter, frameScope, localOfficePreview, localOfficeSession, officeKey, previewOf } from './frameRuntime.ts'
-import type { FrameCommand, FrameReport, OfficePreview } from './frameRuntime.ts'
+import type { FrameCommand, FrameReport, OfficePreview, OfficeOverviewSummary, OverviewOrigin } from './frameRuntime.ts'
 import { conferenceLocalOffices, ScenarioDemoSource, ScenarioOfficeDataSource } from './demoScenarios.ts'
 import { demoDialogues } from './demoDialogue.ts'
 import { cycleQuestions, isCycleOffice } from './demoCycles.ts'
@@ -54,6 +55,20 @@ const statuses = { unknown: '未同步', attention: '待处理', running: '运�
 const frameUrl = (frameId: string) => { const url = new URL(location.href); url.searchParams.set(frameParameter, frameId); return url.href }
 const sendReport = (frameId: string, report: FrameReport) => parent.postMessage({ scope: frameScope, frameId, report }, location.origin)
 
+function OfficeActivityCard({ summary, buttonRef, onOpen }: { summary: OfficeOverviewSummary; buttonRef?: RefObject<HTMLButtonElement | null>; onOpen: () => void }) {
+  const label = `办公室总览，${summary.running} 个运行中，共 ${summary.total} 个办公室${summary.pending ? `，${summary.pending} 项待确认` : ''}`
+  const count = `${summary.running}/${summary.total}`
+  return <article className="member-overview-card dispatch-office-summary">
+    <span className="member-overview-label">活跃办公室</span>
+    <strong>{summary.running}<span className="member-overview-total"> / {summary.total}</span></strong>
+    <small>运行中 / 全部</small>
+    <button ref={buttonRef} type="button" className="dispatch-overview-ring" data-running={summary.running > 0 || undefined}
+      aria-label={label} title={label} aria-expanded={summary.open} aria-haspopup="dialog" disabled={summary.disabled} onClick={onOpen}>
+      <span aria-hidden="true" data-wide={count.length > 5 || undefined}>{count}</span>{summary.pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}
+    </button>
+  </article>
+}
+
 // One clock per host, including when Chrome throttles background frame RAFs.
 function useHostedSessions(sessions: readonly OfficeTeamSession[], active: boolean) {
   const [host] = useState(() => new OfficeTeamHost()), activeRef = useRef(active)
@@ -76,6 +91,8 @@ function useHostedSessions(sessions: readonly OfficeTeamSession[], active: boole
 
 function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], command: (value: FrameCommand) => void, prewarm = false) {
   const [view, setView] = useState(() => ({ active: parent === window, rendering: parent === window || prewarm }))
+  const [overview, setOverview] = useState<OfficeOverviewSummary>()
+  const overviewButton = useRef<HTMLButtonElement>(null)
   const current = useRef({ getOffices, command })
   useEffect(() => { current.current = { getOffices, command } }, [getOffices, command])
   useEffect(() => {
@@ -100,6 +117,8 @@ function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], comm
       if (event.origin !== location.origin || event.source !== parent || event.data?.scope !== frameScope || event.data.frameId !== frameId) return
       const value = event.data.command as FrameCommand | undefined
       if (!value) return
+      if (value.type === 'overview') { setOverview(value.summary); return }
+      if (value.type === 'overview.focus') { requestAnimationFrame(() => overviewButton.current?.focus()); return }
       if (value.type !== 'view') { current.current.command(value); return }
       if (desiredView.active === value.active && desiredView.rendering === value.rendering && desiredView.sampling === value.sampling) return
       const officeId = desiredView.active && !value.rendering ? activeOffice() : undefined
@@ -129,7 +148,8 @@ function useFrameBridge(frameId: string, getOffices: () => OfficePreview[], comm
     const timer = setInterval(publish, 500)
     return () => { capture?.abort(); capture = undefined; clearInterval(timer); window.removeEventListener('message', receive); navigation.remove() }
   }, [frameId, prewarm])
-  return view
+  return { ...view, overviewCard: overview ? <OfficeActivityCard summary={overview} buttonRef={overviewButton}
+    onOpen={() => sendReport(frameId, { type: 'overview.open', origin: readOverviewOrigin(overviewButton.current) })} /> : null }
 }
 
 function LocalOfficeFrame({ frameId }: { frameId: string }) {
@@ -175,7 +195,7 @@ function LocalOfficeFrame({ frameId }: { frameId: string }) {
         {questions.map(question => <button key={question} type="button" disabled={disabled} onClick={() => send(question)}>{question}</button>)}
       </div>,
   } : undefined
-  return <div ref={frame} className="conference-frame" data-demo-whiteboard={source ? true : undefined} data-frame-office={office && officeKey(false, office.id)}>
+  return <OfficeOverviewPresentation.Provider value={view.overviewCard}><div ref={frame} className="conference-frame" data-demo-whiteboard={source ? true : undefined} data-frame-office={office && officeKey(false, office.id)}>
     {session ? <ChatTranscriptPresentation value={presentation}>
       <ResultBodyPresentation.Provider value={source ? renderWhiteboardNotes : null}>
         <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
@@ -183,7 +203,7 @@ function LocalOfficeFrame({ frameId }: { frameId: string }) {
       </ResultBodyPresentation.Provider>
     </ChatTranscriptPresentation>
       : <div className="conference-empty" role="status">办公室未找到，请返回总览。</div>}
-  </div>
+  </div></OfficeOverviewPresentation.Provider>
 }
 
 function ConnectedOfficeFrame() {
@@ -229,19 +249,20 @@ function ConnectedOfficeFrame() {
   }
   const pageLayout = { value: state.layout.currentLayoutId, busy: state.layoutBusy, onChange: (id: typeof state.layout.currentLayoutId) => { void integration.selectLayout(id) } }
   const placeholder = formalPlaceholder(!!relayUrl, state.connection), Shell = pageLayout.value === 'classic' ? OfficeShell : MemberOfficeShell
-  return <div className="conference-frame" data-frame-office={office ? officeKey(true, office.id) : placeholder.id}>
+  return <OfficeOverviewPresentation.Provider value={view.overviewCard}><div className="conference-frame" data-frame-office={office ? officeKey(true, office.id) : placeholder.id}>
     {office ? <OfficeApp key={office.id} dataSource={office.source} session={office.session} pageLayout={pageLayout} decisionOpenToken={decisionToken} integrationError={state.error} renderingSuspended={!view.rendering} />
       : <Shell connection={placeholder.connection} dashboard={null} dashboardError={state.error} sceneLinkError={null} dataMode="push" hasOffice={false}
         canExecuteActions={false} executeAction={noAction} pendingTaskIds={[]} actionError={null} appearanceIds={{}} editing={false}
         canRecoverLayout={false} recoverLayout={noop} exportCapabilities={noop} exportSnapshot={noop} renderScenePanel={() => null}
         scene={<OfficeEmptyState create={relayUrl ? createOffice : undefined} />} />}
-  </div>
+  </div></OfficeOverviewPresentation.Provider>
 }
 
 export function OfficePreviewPage({ office, image }: { office: OfficePreview; image?: string }) {
   const Shell = office.layout === 'classic' ? OfficeShell : MemberOfficeShell
   const preview = image ?? (office.connected ? undefined : `${import.meta.env.BASE_URL}assets/office/preview.webp`)
   return <Shell connection={office.connection} dashboard={office.dashboard} dashboardError={null} sceneLinkError={null} dataMode={office.connected ? 'push' : 'example'}
+    hasOffice={!!office.rawId} rosterActors={office.rosterActors}
     appearanceIds={office.appearances} executeAction={noAction} canExecuteActions={false} pendingTaskIds={[]} actionError={null} editing={false}
     canRecoverLayout={false} recoverLayout={noop} exportCapabilities={noop} exportSnapshot={noop} renderScenePanel={() => undefined}
     scene={<main className="office-main office-main-reference"><div className="office-stage"><div className="office-canvas"><div className="office-render-surface">
@@ -263,13 +284,7 @@ function OfficePreview({ office, image, viewport }: { office: OfficePreview; ima
 }
 
 // Temporary office overview; remove with ConferenceWorkspace.
-export interface OverviewOrigin {
-  top: number
-  left: number
-  width: number
-  height: number
-  radius: number
-}
+export type { OverviewOrigin } from './frameRuntime.ts'
 
 function readOverviewOrigin(trigger: HTMLElement | null, radius?: number): OverviewOrigin | undefined {
   if (!trigger) return undefined
@@ -278,22 +293,20 @@ function readOverviewOrigin(trigger: HTMLElement | null, radius?: number): Overv
     radius: radius ?? Math.min(bounds.width, bounds.height) / 2 }
 }
 
-function overviewOriginFrame(origin: OverviewOrigin, viewport: { width: number; height: number }): Keyframe {
-  const scaleX = Math.max(.001, origin.width / viewport.width), scaleY = Math.max(.001, origin.height / viewport.height)
-  return { transform: `translate(${origin.left}px, ${origin.top}px) scale(${scaleX}, ${scaleY})`, borderRadius: `${origin.radius}px` }
+function overviewOriginFrame(origin: OverviewOrigin, viewport: { width: number; height: number }, expanded: boolean): Keyframe {
+  const x = origin.left + origin.width / 2, y = origin.top + origin.height / 2
+  const radius = expanded ? Math.hypot(Math.max(x, viewport.width - x), Math.max(y, viewport.height - y)) : origin.radius
+  return { clipPath: `circle(${radius}px at ${x}px ${y}px)` }
 }
-
-const fullOverviewFrame: Keyframe = { transform: 'translate(0px, 0px) scale(1, 1)', borderRadius: '0px' }
 
 function applyOverviewFrame(element: HTMLElement, frame: Keyframe) {
-  element.style.transform = String(frame.transform ?? 'none')
-  element.style.borderRadius = String(frame.borderRadius ?? '0px')
+  element.style.clipPath = String(frame.clipPath ?? 'none')
 }
 
-function overviewTriggerFrame(element: HTMLElement, trigger: HTMLElement | null): Keyframe {
+function overviewTriggerFrame(element: HTMLElement, trigger: HTMLElement | null, origin?: OverviewOrigin, expanded = false): Keyframe {
   const viewport = element.ownerDocument.defaultView!
-  return overviewOriginFrame(readOverviewOrigin(trigger) ?? { top: 18, left: viewport.innerWidth - 64, width: 44, height: 44, radius: 22 },
-    { width: viewport.innerWidth, height: viewport.innerHeight })
+  return overviewOriginFrame(origin ?? readOverviewOrigin(trigger) ?? { top: 18, left: viewport.innerWidth - 64, width: 44, height: 44, radius: 22 },
+    { width: viewport.innerWidth, height: viewport.innerHeight }, expanded)
 }
 
 function timing(element: HTMLElement, duration: number) {
@@ -319,22 +332,24 @@ function revealOffice(element: HTMLElement) {
 
 const previewViewport = () => typeof window === 'undefined' ? { width: 1440, height: 900 } : ({ width: Math.max(1440, window.innerWidth), height: Math.max(900, window.innerHeight) })
 type OverviewProps = { offices: OfficePreview[]; images: Record<string, string>; selectedId: string; onSelect: (office: OfficePreview, decisions?: boolean) => void;
-  onClose: () => void; livePreviews: boolean; onToggleLivePreviews: () => void; trigger?: RefObject<HTMLButtonElement | null> }
-export function OfficeOverview({ offices, images, selectedId, onSelect, onClose, livePreviews, onToggleLivePreviews, trigger }: OverviewProps) {
+  onClose: () => void; livePreviews: boolean; onToggleLivePreviews: () => void; trigger?: RefObject<HTMLButtonElement | null>; origin?: OverviewOrigin }
+export function OfficeOverview({ offices, images, selectedId, onSelect, onClose, livePreviews, onToggleLivePreviews, trigger, origin }: OverviewProps) {
   const dialog = useRef<HTMLDialogElement>(null), zoom = useRef<HTMLDivElement>(null), transition = useRef<Animation | undefined>(undefined)
   const closing = useRef(false), closed = useRef(onClose), titleId = useId()
   const [opening, setOpening] = useState(true), [isClosing, setClosing] = useState(false)
   const [entry, setEntry] = useState<{ office: OfficePreview; origin: OverviewOrigin }>(), [expanded, setExpanded] = useState(false)
   const [viewport, setViewport] = useState(previewViewport)
+  const anchor = origin ?? readOverviewOrigin(trigger?.current ?? null)
   const running = offices.filter(office => office.activity.running).length, pending = offices.reduce((sum, office) => sum + office.decisionCount, 0)
   const close = () => {
     if (closing.current) return
     const element = dialog.current
     if (!element) return
     closing.current = true; setClosing(true)
-    const current = getComputedStyle(element), from = { transform: current.transform === 'none' ? fullOverviewFrame.transform : current.transform, borderRadius: current.borderRadius }
+    const current = getComputedStyle(element), from = current.clipPath === 'none'
+      ? overviewTriggerFrame(element, trigger?.current ?? null, origin, true) : { clipPath: current.clipPath }
     applyOverviewFrame(element, from); transition.current?.cancel()
-    const animation = animateOverview(element, from, overviewTriggerFrame(element, trigger?.current ?? null), true)
+    const animation = animateOverview(element, from, overviewTriggerFrame(element, trigger?.current ?? null, origin), true)
     transition.current = animation; void animation.finished.then(onClose).catch(() => {})
   }
   const enter = (office: OfficePreview, preview?: HTMLElement | null, decisions = false) => {
@@ -349,17 +364,22 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, onClose,
     const element = dialog.current
     if (!element) return
     let active = true
-    const from = overviewTriggerFrame(element, trigger?.current ?? null)
+    const from = overviewTriggerFrame(element, trigger?.current ?? null, origin)
     applyOverviewFrame(element, from); element.showModal()
     const timer = setTimeout(() => {
       if (!active) return
-      const animation = animateOverview(element, from, fullOverviewFrame)
+      const animation = animateOverview(element, from, overviewTriggerFrame(element, trigger?.current ?? null, origin, true))
       transition.current = animation; element.dataset.presented = 'true'
-      element.querySelector<HTMLButtonElement>('.dispatch-icon-button')?.focus({ preventScroll: true })
-      void animation.finished.then(() => { if (active) { applyOverviewFrame(element, fullOverviewFrame); setOpening(false) } }).catch(() => {})
+      element.querySelector<HTMLButtonElement>('.dispatch-overview-actions .dispatch-overview-ring')?.focus({ preventScroll: true })
+      void animation.finished.then(() => {
+        if (active) {
+          // The reveal is complete; remove its mask so resizing never clips the list.
+          element.style.clipPath = 'none'; animation.cancel(); transition.current = undefined; setOpening(false)
+        }
+      }).catch(() => {})
     }, 0)
     return () => { active = false; clearTimeout(timer); delete element.dataset.presented; transition.current?.cancel(); element.close() }
-  }, [trigger])
+  }, [trigger, origin])
   useLayoutEffect(() => {
     if (!entry || !zoom.current) return
     const animation = animateOfficeEntry(zoom.current, entry.origin)
@@ -377,20 +397,20 @@ export function OfficeOverview({ offices, images, selectedId, onSelect, onClose,
   return <dialog ref={dialog} className="dispatch-overview" aria-labelledby={titleId} aria-busy={isClosing || !!entry}
     onCancel={event => { event.preventDefault(); if (entry) onClose(); else close() }}>
     <h2 id={titleId} className="dispatch-visually-hidden">办公室总览</h2>
-    <header className="dispatch-overview-heading">
-      <button type="button" className="dispatch-icon-button" title="返回办公室" aria-label="关闭办公室总览" disabled={isClosing || !!entry} onClick={close}><ChevronLeft size={22} /></button>
-      <span className="dispatch-office-count">{offices.length} 个办公室</span>
-      <div className="dispatch-overview-actions">
+      <div className="dispatch-overview-actions" style={anchor ? { top: anchor.top,
+        right: `max(12px, calc(100vw - ${anchor.left + anchor.width}px))` } : undefined}>
         <button type="button" role="switch" className="dispatch-live-preview-toggle" aria-checked={livePreviews} disabled={isClosing || !!entry}
           title={livePreviews ? '关闭后复用办公室预览' : '开启后实时刷新所有办公室预览'} onClick={onToggleLivePreviews}>
           实时预览<span aria-hidden="true">{livePreviews ? '开' : '关'}</span>
         </button>
         <button type="button" className="dispatch-overview-ring" data-running={running > 0 || undefined} disabled={isClosing || !!entry}
-          title={`${running}/${offices.length} 个办公室运行中${pending ? ` · ${pending} 项待确认` : ''} · 返回办公室`} aria-label="返回当前办公室" onClick={close}><span data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
+          style={anchor ? { width: anchor.width, height: anchor.height, boxShadow: 'none' } : undefined}
+          title={`${running}/${offices.length} 个办公室运行中${pending ? ` · ${pending} 项待确认` : ''} · 返回办公室`} aria-label="返回当前办公室" onClick={close}><span
+            style={anchor && `${running}/${offices.length}`.length <= 5 ? { fontSize: anchor.width >= 52 ? 15 : 12 } : undefined}
+            data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
       </div>
-    </header>
-    <div className="dispatch-overview-scroll" inert={opening || isClosing || !!entry}>
-      <div className="dispatch-office-grid">
+    <div className="dispatch-overview-scroll" inert={isClosing || !!entry}>
+      <div className="dispatch-office-grid" inert={opening || isClosing || !!entry}>
         {offices.map(office => <article className="dispatch-office-card" key={office.id} data-office={office.id} data-running={office.activity.running || undefined}
           data-current={office.id === selectedId || undefined} data-status={office.activity.status}>
           <div role="button" tabIndex={0} className="dispatch-card-enter" aria-label={`进入${office.name}`} aria-pressed={office.id === selectedId}
@@ -416,6 +436,7 @@ function MultiOfficeWorkspace() {
   const [selected, select] = useState(() => sceneRelayUrl() ? formalPlaceholder(true).id : officeKey(false, locals[0].id))
   const [reports, setReports] = useState<Record<string, OfficePreview[]>>({}), [images, setImages] = useState<Record<string, string>>({})
   const [overview, setOverview] = useState<'closed' | 'browse' | 'enter'>('closed'), [dismissed, setDismissed] = useState<string[]>([])
+  const [overviewOrigin, setOverviewOrigin] = useState<OverviewOrigin>()
   const [optimized, setOptimized] = useState(true)
   const frames = useRef(new Map<string, HTMLIFrameElement>()), trigger = useRef<HTMLButtonElement>(null)
   const imageUrls = useRef(new Map<string, string>())
@@ -444,6 +465,7 @@ function MultiOfficeWorkspace() {
   const activeFrame = (optimized ? overview !== 'browse' : !open) ? current.frameId : undefined
   const sampling = !optimized && open
   const running = offices.filter(office => office.activity.running).length, pending = offices.reduce((sum, office) => sum + office.decisionCount, 0)
+  const total = offices.length
   const command = (frameId: string, value: FrameCommand) => frames.current.get(frameId)?.contentWindow?.postMessage({ scope: frameScope, frameId, command: value }, location.origin)
   const selectOffice = (office: OfficePreview, decisions = false) => {
     select(office.id)
@@ -465,6 +487,7 @@ function MultiOfficeWorkspace() {
       if (event.origin !== location.origin || event.data?.scope !== frameScope) return
       const { frameId, report } = event.data as { frameId: string; report: FrameReport }
       if (!report || event.source !== frames.current.get(frameId)?.contentWindow) return
+      if (report.type === 'overview.open') { setOverviewOrigin(report.origin); setOverview('browse') }
       if (report.type === 'state') setReports(current => ({ ...current, [frameId]: report.offices }))
       if (report.type === 'image') {
         const previous = urls.get(report.officeId)
@@ -489,13 +512,20 @@ function MultiOfficeWorkspace() {
     sync(); const timer = setInterval(sync, 1000); return () => clearInterval(timer)
   }, [frameIds, activeFrame, optimized, sampling])
   useEffect(() => {
-    if (wasOverviewOpen.current && !open) trigger.current?.focus()
+    const sync = () => frameIds.forEach(frameId => command(frameId, { type: 'overview', summary: { running, total, pending, open, disabled: starting } }))
+    sync(); const timer = setInterval(sync, 1000); return () => clearInterval(timer)
+  }, [frameIds, running, total, pending, open, starting])
+  useEffect(() => {
+    if (wasOverviewOpen.current && !open) {
+      if (current.layout === 'members') command(current.frameId, { type: 'overview.focus' })
+      else trigger.current?.focus()
+    }
     wasOverviewOpen.current = open
-  }, [open])
+  }, [open, current.layout, current.frameId])
   const background = offices.filter(office => office.id !== current.id && office.decisionCount > 0)
   const notice = background.find(office => !dismissed.includes(`${office.id}:${office.pendingDecision?.id}`))
   const label = `办公室总览，${running} 个运行中，共 ${offices.length} 个办公室${pending ? `，${pending} 项待确认` : ''}`
-  return <div className="conference-workspace">
+  return <OfficeOverviewPresentation.Provider value={<OfficeActivityCard summary={{ running, total, pending, open, disabled: starting }} onOpen={noop} />}><div className="conference-workspace">
     <div className="conference-frames">{frameIds.map(frameId => <iframe key={frameId} ref={frame => { if (frame) frames.current.set(frameId, frame); else frames.current.delete(frameId) }}
       src={frameUrl(frameId)} title={frameId === formalFrame ? '正式办公室' : locals.find(office => officeKey(false, office.id) === frameId)?.name}
       className="conference-office-frame" data-active={frameId === current.frameId || undefined} aria-hidden={starting || frameId !== current.frameId || open}
@@ -504,9 +534,8 @@ function MultiOfficeWorkspace() {
         command(frameId, { type: 'view', active, rendering: !optimized || active, sampling })
       }} />)}</div>
     {current.connected && <span className="conference-current-source" data-connected>正式连接 · {current.connection}</span>}
-    {current.activity.running && <div className="dispatch-running-frame" aria-hidden="true" />}
-    <button ref={trigger} type="button" className="dispatch-ring-button" data-running={running > 0 || undefined} aria-label={label} title={label}
-      disabled={starting} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOverview('browse')}><span aria-hidden="true" data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>
+    {current.layout !== 'members' && <button ref={trigger} type="button" className="dispatch-ring-button" data-running={running > 0 || undefined} aria-label={label} title={label}
+      disabled={starting} aria-expanded={open} aria-haspopup="dialog" onClick={() => { setOverviewOrigin(undefined); setOverview('browse') }}><span aria-hidden="true" data-wide={`${running}/${offices.length}`.length > 5 || undefined}>{running}/{offices.length}</span>{pending > 0 && <i className="dispatch-attention-dot" aria-hidden="true" />}</button>}
     {starting && <div className="conference-startup" role="status">
       <span>正在初始化办公室 · {initializedCount}/{preloadFrameIds.size}</span>
       <progress aria-label="办公室初始化进度" value={initializedCount} max={preloadFrameIds.size} />
@@ -514,9 +543,9 @@ function MultiOfficeWorkspace() {
     {!starting && !open && notice && <TeamDecisionNotice key={`${notice.id}:${notice.pendingDecision?.id}`} team={{ ...notice, sceneLabel: '办公室' } as OfficeTeamOption} otherCount={background.length - 1}
       onDismiss={() => setDismissed(values => [...values, `${notice.id}:${notice.pendingDecision?.id}`])} onOpen={() => selectOffice(notice, true)}
       onResolve={(decisionId, choiceId, customText) => command(notice.frameId, { type: 'resolve', officeId: notice.rawId, decisionId, choiceId, customText })} />}
-    {open && <OfficeOverview offices={offices} images={images} selectedId={current.id} onSelect={selectOffice} trigger={trigger}
+    {open && <OfficeOverview offices={offices} images={images} selectedId={current.id} onSelect={selectOffice} trigger={trigger} origin={overviewOrigin}
       livePreviews={!optimized} onToggleLivePreviews={toggleOptimization} onClose={() => setOverview('closed')} />}
-  </div>
+  </div></OfficeOverviewPresentation.Provider>
 }
 
 export default function ConferenceWorkspace() {

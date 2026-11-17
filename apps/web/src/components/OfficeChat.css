@@ -7,7 +7,7 @@
 .office-chat[data-expanded=true] .office-chat-panel:has(.office-conversation-menu) { transform: none; clip-path: none; }
 .office-chat-message-meta button { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #7a827c; }
 .office-chat-message-meta button:hover { background: #f1f3f1; }
-.office-chat-body { display: flex; flex: 1; min-height: 0; padding-bottom: calc(var(--chat-composer-height, 48px) + 40px); }
+.office-chat-body { display: flex; flex: 1; min-height: 0; }
 .office-chat-transcript-wrap { position: relative; flex: 1; min-width: 0; min-height: 0; }
 .office-chat-transcript { position: absolute; inset: 0; min-width: 0; min-height: 0; overflow-y: auto; overflow-anchor: none; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 0 var(--chat-gutter); }
 .office-chat-virtual-list { position: relative; width: 100%; }
@@ -65,6 +65,8 @@
 .office-chat-error { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; width: min(100%, 760px); margin: 0 auto 20px; padding: 14px; border: 1px solid #e2e6e2; border-radius: 12px; font-size: 12px; color: #706966; }
 .office-chat-error button { display: flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #56705e; }
 .office-chat-latest { position: absolute; right: var(--chat-gutter); bottom: calc(var(--chat-composer-height, 48px) + 34px); display: grid; place-items: center; width: 34px; height: 34px; background: #fff; border: 1px solid #e0e5e1; border-radius: 50%; }
+.office-chat-suggestions { position: absolute; left: var(--chat-gutter); right: var(--chat-gutter); bottom: calc(var(--chat-composer-height, 48px) + 28px); padding-right: 46px; background: transparent; pointer-events: none; }
+.office-chat-suggestions button { pointer-events: auto; }
 .office-chat-composer { position: absolute; left: var(--chat-gutter); right: var(--chat-gutter); bottom: 22px; display: flex; gap: 10px; align-items: flex-end; min-height: 48px; padding: 5px 8px; border: 1px solid #e0e5e0; border-radius: 26px; background: #fffffff7; box-shadow: 0 5px 24px #24302a0c; pointer-events: auto; isolation: isolate; }
 .office-chat[data-expanded=true] .office-chat-composer { border-color: #c9dfd0; box-shadow: 0 0 0 3px #f2f7f3; bottom: 18px; }
 .office-chat-composer[data-busy=true] { border-color: #80a98f; }

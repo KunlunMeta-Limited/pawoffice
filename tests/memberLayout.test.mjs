@@ -63,11 +63,12 @@ test('member progress only reaches 100 for completed tasks', () => {
 })
 
 test('page shell selection is separate from scene-only layout and handles unknown preferences', () => {
-  assert.equal(layout.resolveOfficeShell(''), 'classic')
+  assert.equal(layout.resolveOfficeShell(''), 'members')
+  assert.equal(layout.resolveOfficeShell('', 'classic'), 'classic')
   assert.equal(layout.resolveOfficeShell('?shell=members'), 'members')
   assert.equal(layout.resolveOfficeShell('?shell=classic', 'members'), 'classic')
   assert.equal(layout.resolveOfficeShell('?layout=scene', 'members'), 'members')
-  assert.equal(layout.resolveOfficeShell('?shell=invalid', 'members'), 'classic')
+  assert.equal(layout.resolveOfficeShell('?shell=invalid', 'members'), 'members')
 })
 
 const rosterActors = ['shared-actor', 'second-actor', 'idle-3', 'idle-4', 'idle-5', 'idle-6'].map((id, index) => ({ id, name: `场景成员${index + 1}` }))
@@ -134,7 +135,12 @@ test('idle room characters can show an empty profile without inventing backend e
   assert.match(html, /class="member-profile-open" disabled="" title="当前会话未绑定业务成员"/)
   assert.match(html, /当前没有关联任务/)
   const emptyOffice = renderMemberShell({ hasOffice: false, dashboard: null })
-  assert.doesNotMatch(emptyOffice, /class="member-roster-person"/)
+  assert.equal((emptyOffice.match(/data-placeholder="true"/g) ?? []).length, 6)
+  assert.match(emptyOffice, /成员介绍/)
+  assert.match(emptyOffice, /等待办公室初始化/)
+  assert.doesNotMatch(emptyOffice, /data-actor-id=|member-presence online/)
+  assert.doesNotMatch(html, /data-placeholder="true"/)
+  assert.doesNotMatch(renderMemberShell({ hasOffice: false, dashboard: null, dataMode: 'example' }), /data-placeholder="true"/)
 })
 
 test('member roster and details have a decorative divider with compact spacing', async () => {

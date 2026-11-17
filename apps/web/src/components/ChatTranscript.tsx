@@ -25,9 +25,9 @@ export function ChatSuggestions({ send, disabled }: { send: (text: string) => vo
   return useContext(PresentationContext)?.renderSuggestions?.(send, disabled)
 }
 
-export function ChatTranscript({ ref, session, chat, expanded, leaderName, storageError, onAtBottomChange, onEdit, deliveries, onOpenDelivery }: {
+export function ChatTranscript({ ref, session, chat, expanded, bottomInset, leaderName, storageError, onAtBottomChange, onEdit, deliveries, onOpenDelivery }: {
   ref: Ref<ChatTranscriptHandle>; session: ChatSession; chat: ChatSnapshot; expanded: boolean
-  leaderName: string; storageError: string | null; onAtBottomChange: (value: boolean) => void; onEdit: () => void
+  bottomInset: number; leaderName: string; storageError: string | null; onAtBottomChange: (value: boolean) => void; onEdit: () => void
   deliveries?: readonly ResultDelivery[]; onOpenDelivery?: (deliveryId: string) => boolean
 }) {
   'use no memo'
@@ -53,7 +53,8 @@ export function ChatTranscript({ ref, session, chat, expanded, leaderName, stora
     // Keep start-aligned replies at their heading when their height is first measured.
     estimateSize: () => 140, overscan: 6, anchorTo: startAlignedReply ? 'start' : 'end', followOnAppend: true, scrollEndThreshold: 64,
     // The collapsed panel retains its layout. Disabling clears its rows, but direct DOM updates can skip rendering the same range on reopen.
-    directDomUpdates: true, paddingStart: 22, paddingEnd: 18,
+    // Keep the composer clearance inside the scrollable content so suggestions float over an uninterrupted transcript.
+    directDomUpdates: true, paddingStart: 22, paddingEnd: bottomInset + 18,
     // Delivery cards resize after live snapshots; measure them outside the observer's current layout cycle.
     useAnimationFrameWithResizeObserver: true,
     onChange: instance => { onAtBottomChange(instance.isAtEnd()); setAtStart((instance.scrollOffset ?? 0) < 200) },

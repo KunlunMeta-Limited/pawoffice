@@ -1,9 +1,9 @@
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js'
 import type { SceneAmbientView } from '@pawoffice/renderer-pixi/ScenePresentationPack'
 
-// Floor just in front of the left cabinet, with room for the cat beside the wall.
-const SLEEP_SPOT = { x: 130, y: 327 }
-const CAT_WIDTH = 50
+// Sunlit floor beside the bottom-right planter, clear of the conference table.
+const SLEEP_SPOT = { x: 860, y: 805 }
+const CAT_AND_BED_WIDTH = 90
 const ZZZ_SECONDS = 3.6
 
 export function createOfficeCat(texture: Texture, reducedMotion?: () => boolean): SceneAmbientView {
@@ -13,8 +13,8 @@ export function createOfficeCat(texture: Texture, reducedMotion?: () => boolean)
 
   const cat = new Sprite({ texture, label: 'office-cat-sleeping' })
   cat.anchor.set(.5, 1)
-  cat.scale.set(CAT_WIDTH / texture.width)
-  const shadow = new Graphics().ellipse(0, -2, 20, 4).fill({ color: 0x65523f, alpha: .12 })
+  cat.scale.set(CAT_AND_BED_WIDTH / texture.width)
+  const shadow = new Graphics().ellipse(0, -2.25, 36.75, 4.5).fill({ color: 0x65523f, alpha: .12 })
   root.addChild(shadow, cat)
 
   // Draw the glyphs once; each update only adjusts their position and opacity.
@@ -22,7 +22,7 @@ export function createOfficeCat(texture: Texture, reducedMotion?: () => boolean)
     const glyph = new Graphics({ label: 'office-cat-zzz' })
     glyph.moveTo(0, 0).lineTo(size, 0).lineTo(0, size).lineTo(size, size)
       .stroke({ color: 0x526a65, width: 1.2, cap: 'round', join: 'round' })
-    glyph.position.set(-17 + index * 9, -cat.height - 1 - index * 4)
+    glyph.position.set(-26 + index * 9, -cat.height - 1 - index * 4)
     root.addChild(glyph)
     return { glyph, baseY: glyph.y, offset: index / 3 }
   })

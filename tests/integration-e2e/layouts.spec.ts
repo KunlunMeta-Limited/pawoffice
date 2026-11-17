@@ -5,7 +5,7 @@ import type { LayoutInfo } from './client.ts'
 test('external layout discovery, initialization, live switching and browser controls share one selection', async ({ page, service, backend }) => {
   const discovered = await backend.post<LayoutInfo>({ type: 'office.layout.read' })
   expect(discovered.code).toBe(200)
-  expect(discovered.data.currentLayoutId).toBe('classic')
+  expect(discovered.data.currentLayoutId).toBe('members')
   expect(discovered.data.layouts.map(layout => layout.id)).toEqual(['classic', 'members'])
   expect(discovered.data.layouts.every(layout => layout.dataMessageType === 'office.snapshot')).toBe(true)
 

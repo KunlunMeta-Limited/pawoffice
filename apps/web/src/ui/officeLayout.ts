@@ -1,4 +1,5 @@
 import type { OfficeLayoutId } from '@pawoffice/protocol/office-integration'
+import { defaultOfficeLayout } from '@pawoffice/protocol/office-integration'
 
 export type OfficeLayoutControl = { value: OfficeLayoutId; busy: boolean; onChange: (layoutId: OfficeLayoutId) => void }
 export const officeShellStorageKey = 'pawoffice.page-shell.v1'
@@ -6,7 +7,7 @@ export const officeShellStorageKey = 'pawoffice.page-shell.v1'
 export function resolveOfficeShell(search: string, saved = ''): OfficeLayoutId {
   const requested = new URLSearchParams(search).get('shell')
   const value = requested || saved
-  return value === 'members' ? 'members' : 'classic'
+  return value === 'classic' || value === 'members' ? value : defaultOfficeLayout.currentLayoutId
 }
 
 export function readOfficeShell(): OfficeLayoutId {
