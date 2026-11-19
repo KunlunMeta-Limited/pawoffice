@@ -27,6 +27,8 @@ import type { OfficeCreationInput } from '../dashboard/officeDirectory.ts'
 import { OfficeShell } from '../ui/OfficeShell.tsx'
 import { MemberOfficeShell } from '../ui/MemberOfficeShell.tsx'
 import { OfficeOverviewPresentation } from '../ui/officeOverviewPresentation.ts'
+import { MemberProfilePresentation } from '../ui/memberProfilePresentation.ts'
+import { renderCommerceMemberProfile } from './CommerceMemberProfile.tsx'
 import { OfficeEmptyState } from '../ui/OfficeEmptyState.tsx'
 import { TeamDecisionNotice } from '../ui/team-switcher/TeamDecisionNotice.tsx'
 import type { OfficeTeamOption } from '../ui/TeamSwitcher.tsx'
@@ -197,10 +199,12 @@ function LocalOfficeFrame({ frameId }: { frameId: string }) {
   } : undefined
   return <OfficeOverviewPresentation.Provider value={view.overviewCard}><div ref={frame} className="conference-frame" data-demo-whiteboard={source ? true : undefined} data-frame-office={office && officeKey(false, office.id)}>
     {session ? <ChatTranscriptPresentation value={presentation}>
-      <ResultBodyPresentation.Provider value={source ? renderWhiteboardNotes : null}>
-        <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
-          pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
-      </ResultBodyPresentation.Provider>
+      <MemberProfilePresentation.Provider value={office?.id === 'office-1' ? renderCommerceMemberProfile : null}>
+        <ResultBodyPresentation.Provider value={source ? renderWhiteboardNotes : null}>
+          <OfficeApp dataSource={session.source} session={session} decisionOpenToken={decisionToken} renderingSuspended={!view.rendering}
+            pageLayout={{ value: shell, busy: false, onChange: value => { saveOfficeShell(value); setShell(value) } }} />
+        </ResultBodyPresentation.Provider>
+      </MemberProfilePresentation.Provider>
     </ChatTranscriptPresentation>
       : <div className="conference-empty" role="status">办公室未找到，请返回总览。</div>}
   </div></OfficeOverviewPresentation.Provider>

@@ -167,6 +167,14 @@ function advanceUntil(host, condition, limitMs = 360_000) {
   return elapsed
 }
 
+function grantDemoAccess(office, host) {
+  const { decisions } = office.session
+  const pending = () => decisions.getSnapshot().pending.find(request => request.id.startsWith('demo-permission-'))
+  const elapsed = advanceUntil(host, pending)
+  assert.ok(decisions.resolve(office.id, pending().id, 'confirm'))
+  return elapsed
+}
+
 test('all eight offices answer the current question using their own keywords', async t => {
   const { offices } = await setup(t, conferenceLocalOffices())
   const chats = offices.map(({ session }) => session.chat.selected)
@@ -217,6 +225,7 @@ test('demo chat starts only an explicit local run and reports its actual progres
   assert.equal(tax.session.simulation.isDemoRunning, true)
   assert.equal(seo.session.simulation.isDemoRunning, false)
   assert.match(await ask('现在进度如何？'), /王明正在交代「归集本期发票」/)
+  grantDemoAccess(tax, hosts[1])
   advanceUntil(hosts[1], () => tax.source.getConversations()[0].tasks[1].status === 'running')
   await refresh()
   assert.match(await ask('现在做到哪一步了？'), /已完成 1\/3 项。正在「核对收支与凭证」/)
@@ -327,6 +336,110 @@ test('demo chat waits a randomized interval before its first reply and can be ca
   await assert.rejects(pending, { name: 'AbortError' })
 })
 
+test('the assigned employee requests sensitive access after handoff and work waits for approval', async t => {
+  const { offices, hosts } = await setup(t, conferenceLocalOffices().filter(office => office.id === 'office-demo-tax'))
+  const [{ id, source, session }] = offices
+  const [host] = hosts
+  const { decisions, simulation } = session
+  simulation.setDemo(true)
+  // Advancing the demo clock alone cannot finish a scene handoff or request access.
+  simulation.demoSource.tick(30_000)
+  simulation.demoSource.tick(30_000)
+  assert.equal(decisions.getSnapshot().pending.length, 0)
+  assert.ok(source.getConversations()[0].tasks.every(task => task.status === 'queued'))
+  advanceUntil(host, () => decisions.getSnapshot().pending.length > 0)
+  const [request] = decisions.getSnapshot().pending
+  assert.match(request.id, /^demo-permission-/)
+  assert.equal(request.teamId, id)
+  assert.equal(request.conversationId, 'main')
+  const assigned = session.runtime.readActors().find(actor => actor.id === source.scenario.steps[0].assigneeId)
+  assert.equal(request.requester.name, `${assigned.name} · 票据归集`)
+  assert.equal(request.requester.appearanceId, assigned.templateId)
+  assert.equal(request.title, '申请读取本期财务资料')
+  assert.match(request.description, /只读访问本期发票、收支台账和凭证/)
+  assert.equal(request.confirmLabel, '允许读取本期资料')
+  assert.equal(source.getConversations()[0].tasks[0].status, 'blocked')
+  assert.equal(source.getConversations()[0].tasks[0].progress, 0)
+  const waiting = JSON.stringify(source.getConversations())
+  for (let tick = 0; tick < 60; tick++) host.advance(1000)
+  assert.equal(JSON.stringify(source.getConversations()), waiting)
+  assert.equal(decisions.getSnapshot().pending.length, 1)
+  assert.match(simulation.demoSource.reply({ messages: [{ role: 'user', content: '现在进度如何？' }] }), /申请读取本期财务资料.+等待授权/)
+  assert.ok(await decisions.choose(id, request.id, 'confirm'))
+  advanceUntil(host, () => !simulation.isDemoRunning)
+  assert.equal(source.getConversations()[0].whiteboard.status, 'completed')
+  assert.equal(decisions.getSnapshot().records.length, 1)
+  assert.equal(decisions.getSnapshot().pending.length, 0)
+})
+
+test('ordinary visual planning completes before its designer requests permission to replace draft images', async t => {
+  const { offices, hosts } = await setup(t, conferenceLocalOffices().filter(office => office.id === 'office-content'))
+  const [{ id, source, session }] = offices, [host] = hosts
+  const { simulation, decisions } = session
+  const tasks = () => source.getConversations()[0].tasks
+  simulation.setDemo(true)
+  advanceUntil(host, () => tasks()[0].status === 'running')
+  assert.equal(decisions.getSnapshot().pending.length, 0)
+  advanceUntil(host, () => decisions.getSnapshot().pending.length > 0)
+  const [request] = decisions.getSnapshot().pending
+  assert.deepEqual(tasks().map(task => task.status), ['completed', 'blocked', 'queued'])
+  assert.equal(tasks()[1].progress, 0)
+  assert.equal(request.title, '申请替换详情页草稿图片')
+  assert.equal(request.requester.name, '陈书 · 详情设计')
+  assert.equal(request.confirmLabel, '允许修改草稿')
+  assert.match(request.description, /保留原版本；不发布到线上页面/)
+  assert.ok(await decisions.choose(id, request.id, 'confirm'))
+  host.advance(50)
+  assert.equal(tasks()[1].status, 'running')
+})
+
+test('stopping or rejecting demo access cancels the request and replay asks once with a fresh ID', async t => {
+  const { offices, hosts } = await setup(t)
+  const [{ id, session }] = offices
+  const [host] = hosts
+  const { decisions, simulation } = session
+  const pending = () => decisions.getSnapshot().pending[0]
+  simulation.setDemo(true)
+  host.advance(1000)
+  simulation.setDemo(false)
+  for (let tick = 0; tick < 5; tick++) host.advance(1000)
+  assert.equal(pending(), undefined)
+  simulation.setDemo(true)
+  advanceUntil(host, pending)
+  const rejected = pending()
+  assert.ok(await decisions.choose(id, rejected.id, 'reject'))
+  host.advance(50)
+  assert.equal(simulation.isDemoRunning, false)
+  assert.equal(pending(), undefined)
+  simulation.setDemo(true)
+  advanceUntil(host, pending)
+  const stopped = pending()
+  assert.notEqual(stopped.id, rejected.id)
+  simulation.setDemo(false)
+  assert.equal(pending(), undefined)
+  assert.equal(await decisions.choose(id, stopped.id, 'confirm'), null)
+  assert.ok(offices.slice(1).every(({ session }) => !session.decisions.getSnapshot().pending.length && !session.simulation.isDemoRunning))
+})
+
+test('manually restarting an automatic office requests access once across later rounds', async t => {
+  const { offices, hosts } = await setup(t, conferenceLocalOffices().filter(office => office.id === 'office-demo-social'))
+  const [office] = offices, [host] = hosts
+  const { session, source } = office
+  const { simulation, decisions } = session
+  simulation.demoSource.startAutomatically()
+  for (let tick = 0; tick < 10; tick++) host.advance(1000)
+  assert.equal(decisions.getSnapshot().pending.length, 0)
+  simulation.setDemo(false)
+  simulation.setDemo(true)
+  grantDemoAccess(office, host)
+  const first = source.currentCase.title
+  advanceUntil(host, () => source.currentCase.title !== first)
+  advanceUntil(host, () => source.getConversations()[0].whiteboard.status === 'completed')
+  assert.equal(decisions.getSnapshot().pending.length, 0)
+  assert.equal(decisions.getSnapshot().records.length, 1)
+  assert.equal(simulation.isDemoRunning, true)
+})
+
 test('the seven process offices wait for leader handoff and can stop and replay independently', async t => {
   const { offices, hosts, refresh } = await setup(t, conferenceLocalOffices())
   const groups = new Set()
@@ -348,8 +461,9 @@ test('the seven process offices wait for leader handoff and can stop and replay 
     assert.deepEqual(receivers, office.source.getConversations()[0].tasks.map(task => task.assigneeId))
     groups.add([...receivers].sort().join(','))
 
-    const firstStageMs = advanceUntil(hosts[index], () => statuses()[1] === 'running')
-    assert.ok(firstStageMs >= 90_000, `${office.id} should pace the work, not just wait after finishing`)
+    const permissionMs = grantDemoAccess(office, hosts[index])
+    const firstStageMs = permissionMs + advanceUntil(hosts[index], () => statuses()[1] === 'running')
+    assert.ok(firstStageMs >= (office.id === 'office-1' ? 9_000 : 90_000), `${office.id} should pace the work, not just wait after finishing`)
     await refresh()
     assert.deepEqual((await office.source.getSnapshot()).tasks.map(task => task.status), ['completed', 'running', 'queued'])
     office.session.simulation.setDemo(false)
@@ -358,7 +472,7 @@ test('the seven process offices wait for leader handoff and can stop and replay 
     assert.equal(office.session.simulation.isDemoRunning, false)
 
     office.session.simulation.setDemo(true)
-    let runElapsedMs = 0
+    let runElapsedMs = grantDemoAccess(office, hosts[index])
     if (office.id === 'office-1') {
       const { decisions } = office.session
       runElapsedMs += advanceUntil(hosts[index], () => decisions.getSnapshot().pending.length > 0)
@@ -369,8 +483,10 @@ test('the seven process offices wait for leader handoff and can stop and replay 
       assert.ok(await decisions.choose(office.id, decision.id, 'confirm'))
     }
     runElapsedMs += advanceUntil(hosts[index], () => statuses().every(status => status === 'completed'))
-    const workDurationMs = office.source.currentCase ? 280_000 : 300_000
-    assert.ok(runElapsedMs >= workDurationMs && runElapsedMs <= workDurationMs + 50, `${office.id}: ${runElapsedMs} ms`)
+    const workDurationMs = office.source.scenario.roundDurationMs ?? (office.source.currentCase ? 280_000 : 300_000)
+    // Each immediately answered request can pause the host for one 50 ms tick.
+    const approvalTicksMs = office.source.scenario.listingApproval ? 100 : 50
+    assert.ok(runElapsedMs >= workDurationMs && runElapsedMs <= workDurationMs + approvalTicksMs, `${office.id}: ${runElapsedMs} ms`)
     await refresh()
     assert.equal((await office.source.getSnapshot()).whiteboard.status, 'completed')
     assert.equal(office.session.simulation.isDemoRunning, Boolean(office.source.currentCase))
@@ -393,6 +509,8 @@ test('the two exhibit offices rotate five cases every five minutes, keep results
       const current = title()
       seen.add(current)
       assert.equal(advanceUntil(host, () => board().status === 'completed'), 280_000)
+      assert.equal(session.decisions.getSnapshot().pending.length, 0, 'automatic rounds never request demo access')
+      assert.equal(session.decisions.getSnapshot().records.length, 0)
       const report = readDemoReport(session.simulation.demoSource.reply({ messages: [{ role: 'user', content: '给我本轮报告' }] }))
       assert.equal(report.title, current)
       assert.equal(board().result.title, current)
@@ -443,7 +561,7 @@ test('backend initialization, reconnection reconciliation and restart leave inde
   assert.deepEqual(await offices[0].source.getSnapshot(), before)
 })
 
-test('listing pauses for a decision, a rejection stops the current run, and replay gets a fresh decision', async t => {
+test('commerce requests read access and listing separately, and rejection or replay never bypasses either approval', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const { offices, hosts, refresh } = await setup(t)
   const [{ id, source, session }] = offices
@@ -452,8 +570,20 @@ test('listing pauses for a decision, a rejection stops the current run, and repl
   const report = async () => readDemoReport((await answerDemoQuestions(t, [chat.selected], ['发一下上架报告']))[0])
 
   simulation.setDemo(true)
-  advanceUntil(hosts[0], pending)
+  const accessAtMs = grantDemoAccess(offices[0], hosts[0])
+  assert.ok(accessAtMs > 0 && accessAtMs <= 10_000, `read access should follow the first handoff promptly: ${accessAtMs} ms`)
+  const [readAccess] = decisions.getSnapshot().records
+  assert.equal(readAccess.request.title, '申请读取店铺后台商品资料')
+  assert.equal(readAccess.request.requester.name, '陈书 · 商品运营')
+  assert.match(readAccess.request.description, /不修改售价或执行上架/)
+  const listingAfterAccessMs = advanceUntil(hosts[0], pending)
+  assert.ok(listingAfterAccessMs >= 10_000 && listingAfterAccessMs <= 20_000, `listing should follow real review work within 20 seconds of access approval: ${listingAfterAccessMs} ms`)
   const first = pending()
+  assert.equal(decisions.getSnapshot().records.length, 1)
+  assert.equal(first.requester.name, '赵审 · 发布登记')
+  assert.equal(first.requester.appearanceId, session.runtime.readActors().find(actor => actor.id === 'data-agent').templateId)
+  assert.match(first.description, /此前的只读授权不包含上架权限/)
+  assert.deepEqual(source.getConversations()[0].tasks.map(task => task.status), ['completed', 'completed', 'queued'])
   for (let tick = 0; tick < 200; tick++) hosts[0].advance(50)
   assert.equal((await report()).status, '待确认上架')
   assert.equal(source.getConversations()[0].tasks.at(-1).progress, 0)
@@ -462,6 +592,7 @@ test('listing pauses for a decision, a rejection stops the current run, and repl
   assert.equal((await report()).status, '暂不上架')
 
   simulation.setDemo(true)
+  grantDemoAccess(offices[0], hosts[0])
   advanceUntil(hosts[0], pending)
   const interrupted = pending()
   assert.notEqual(interrupted.id, first.id)
@@ -477,12 +608,17 @@ test('listing pauses for a decision, a rejection stops the current run, and repl
 
   simulation.setDemo(true)
   assert.equal(chat.getSnapshot().selectedId, 'main')
+  grantDemoAccess(offices[0], hosts[0])
   advanceUntil(hosts[0], pending)
   assert.notEqual(pending().id, interrupted.id)
   for (let tick = 0; tick < 200; tick++) hosts[0].advance(50)
   assert.ok(await decisions.choose(id, pending().id, 'confirm'))
-  assert.equal(advanceUntil(hosts[0], () => !simulation.isDemoRunning), 100_000, 'waiting for approval must not consume the final task budget')
+  assert.equal(advanceUntil(hosts[0], () => !simulation.isDemoRunning), 10_000, 'waiting for approval must not consume the final task budget')
   await refresh()
   assert.equal((await report()).status, '本轮完成')
   assert.equal(session.getSnapshot().dashboard.whiteboard.status, 'completed')
+  assert.deepEqual(decisions.getSnapshot().records.map(record => record.request.title), [
+    '申请读取店铺后台商品资料', '确认按 79 元上架折叠电脑支架？',
+  ])
+  assert.equal(pending(), undefined)
 })

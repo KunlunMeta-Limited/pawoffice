@@ -17,7 +17,8 @@ import { cycleQuestions, demoCycle, demoCycles, formatWorkItems, isCycleOffice }
 import type { DemoCase } from './demoCycles.ts'
 import { editorialReply } from './demoEditorial.ts'
 
-type ScenarioStep = { title: string; role: string; summary: string; assigneeId: string }
+type ScenarioStep = { title: string; role: string; summary: string; assigneeId: string;
+  permission?: { title: string; reason: string; scope: string; confirmLabel: string } }
 type Scenario = {
   id: DemoScenarioId
   name: string
@@ -26,6 +27,8 @@ type Scenario = {
   goal: string
   /** Local showcase: keep a completed delivery available without a timed walkthrough. */
   resultOnly?: boolean
+  /** Local recording pace; time spent awaiting a person's decision is excluded. */
+  roundDurationMs?: number
   steps: readonly [ScenarioStep, ScenarioStep, ScenarioStep]
   listingApproval?: { title: string; description: string }
 }
@@ -36,14 +39,16 @@ const scenarios: readonly Scenario[] = [
     name: '电商运营团队',
     conversationTitle: '折叠电脑支架上架准备',
     goal: '核对商品资料与页面，按 79 元完成上架准备与确认登记。',
+    roundDurationMs: 30_000,
     steps: [
-      { title: '核对商品资料与售价', role: '商品运营', summary: '核对 79 元定价、六档调节与 13–16 英寸适用范围。', assigneeId: 'app-agent' },
+      { title: '核对商品资料与售价', role: '商品运营', summary: '核对 79 元定价、六档调节与 13–16 英寸适用范围。', assigneeId: 'app-agent',
+        permission: { title: '申请读取店铺后台商品资料', reason: '需要核对后台实际售价与商品规格，资料位于店铺受限后台。', scope: '只读访问当前商品的资料和价格表；不修改售价或执行上架。', confirmLabel: '允许只读访问' } },
       { title: '复核上架页面', role: '上架质检', summary: '检查标题、主图、详情页和尺寸说明是否一致。', assigneeId: 'file-agent' },
       { title: '记录上架确认结果', role: '发布登记', summary: '等待负责人确认后登记结果和后续观察事项。', assigneeId: 'data-agent' },
     ],
     listingApproval: {
       title: '确认按 79 元上架折叠电脑支架？',
-      description: '商品资料与页面已复核。确认后将在本案例中记录上架，开始准备经营观察。',
+      description: '商品资料与页面已复核，申请将审核后的折叠电脑支架页面按 79 元上架。授权仅限本商品、本次发布；此前的只读授权不包含上架权限。本地演示将模拟发布并登记结果。',
     },
   },
   {
@@ -53,7 +58,8 @@ const scenarios: readonly Scenario[] = [
     goal: '整理主图、详情与尺寸说明，交付可审核的素材清单。',
     steps: [
       { title: '梳理主图拍摄要求', role: '视觉策划', summary: '明确展开状态、调节细节和折叠收纳的画面重点。', assigneeId: 'code-agent' },
-      { title: '编排详情页与尺寸图', role: '详情设计', summary: '按使用场景、六档调节、折叠收纳和适用尺寸编排。', assigneeId: 'app-agent' },
+      { title: '编排详情页与尺寸图', role: '详情设计', summary: '按使用场景、六档调节、折叠收纳和适用尺寸编排。', assigneeId: 'app-agent',
+        permission: { title: '申请替换详情页草稿图片', reason: '拍摄要求已梳理，需要将新编排写入现有详情页草稿，替换旧版图片。', scope: '仅修改当前商品的草稿并保留原版本；不发布到线上页面。', confirmLabel: '允许修改草稿' } },
       { title: '复核并交付图片清单', role: '素材校对', summary: '核对 13–16 英寸说明、图文一致性和移动端可读性。', assigneeId: 'file-agent' },
     ],
   },
@@ -63,7 +69,8 @@ const scenarios: readonly Scenario[] = [
     conversationTitle: '折叠电脑支架转化复盘',
     goal: '对比两轮 24 小时经营数据，整理复盘建议与下一步动作。',
     steps: [
-      { title: '核对两轮访问和订单', role: '数据核验', summary: '统一 24 小时口径，核对 360 次访问、9 单和 350 次访问、14 单。', assigneeId: 'data-agent' },
+      { title: '核对两轮访问和订单', role: '数据核验', summary: '统一 24 小时口径，核对 360 次访问、9 单和 350 次访问、14 单。', assigneeId: 'data-agent',
+        permission: { title: '申请读取店铺经营报表', reason: '需要核对两轮访问与成交数据，报表包含店铺内部经营信息。', scope: '只读访问本商品两轮 24 小时报表；不读取买家身份或联系方式。', confirmLabel: '允许读取报表' } },
       { title: '分类尺寸与机型咨询', role: '咨询分析', summary: '归类首轮 10 条咨询，整理其中 6 条适配问题。', assigneeId: 'code-agent' },
       { title: '整理经营复盘建议', role: '策略复核', summary: '对比两轮成交率，提出保持价格并验证尺寸说明的建议。', assigneeId: 'review-agent' },
     ],
@@ -86,7 +93,8 @@ const scenarios: readonly Scenario[] = [
     conversationTitle: '本期申报资料整理',
     goal: '归集本期票据并核对收支凭证，交付待复核的申报草稿。',
     steps: [
-      { title: '归集本期发票', role: '票据归集', summary: '按日期和来源整理本期发票。', assigneeId: 'data-agent' },
+      { title: '归集本期发票', role: '票据归集', summary: '按日期和来源整理本期发票。', assigneeId: 'data-agent',
+        permission: { title: '申请读取本期财务资料', reason: '需要归集发票并匹配收支记录，材料含企业税务与交易信息。', scope: '只读访问本期发票、收支台账和凭证；不提交纳税申报。', confirmLabel: '允许读取本期资料' } },
       { title: '核对收支与凭证', role: '凭证核对', summary: '对照收支记录，标出待补凭证。', assigneeId: 'file-agent' },
       { title: '整理申报草稿', role: '申报资料', summary: '汇总已核对资料和待确认项目。', assigneeId: 'review-agent' },
     ],
@@ -97,7 +105,8 @@ const scenarios: readonly Scenario[] = [
     conversationTitle: '国内自媒体图文编辑',
     goal: '为「一平米办公笔记」按国内平台分别写文字与图文稿，核对来源、交付配图分镜及待审核排期。',
     steps: [
-      { title: '核对选题与素材来源', role: '选题与事实核对', summary: '核对读者问题、原始资料和旧内容，明确哪些可以写、哪些还需确认。', assigneeId: 'review-agent' },
+      { title: '核对选题与素材来源', role: '选题与事实核对', summary: '核对读者问题、原始资料和旧内容，明确哪些可以写、哪些还需确认。', assigneeId: 'review-agent',
+        permission: { title: '申请读取自媒体账号后台资料', reason: '需要对照「一平米办公笔记」的历史内容、评论摘录与未发布草稿核实本轮选题。', scope: '只读访问本轮关联的账号资料；不读取私信，不发布或删除内容。', confirmLabel: '允许读取账号资料' } },
       { title: '分平台写稿与编排图文', role: '文字与图文编辑', summary: '交付各平台正文、标题与每页配图文字，按读者和内容形式分别改写。', assigneeId: 'app-agent' },
       { title: '校稿并交付发布排期', role: '排期与复盘登记', summary: '逐篇记录审核意见、拟发布时间、图片缺口和回访口径；未发布稿件不填写成绩。', assigneeId: 'data-agent' },
     ],
@@ -108,7 +117,8 @@ const scenarios: readonly Scenario[] = [
     conversationTitle: '受托信息汇总',
     goal: '根据用户委托收集和核对材料，交付带出处的行动简报。',
     steps: [
-      { title: '按委托收集资料', role: '资料收集', summary: '按问题找原始邮件、纪要和登记表。', assigneeId: 'code-agent' },
+      { title: '按委托收集资料', role: '资料收集', summary: '按问题找原始邮件、纪要和登记表。', assigneeId: 'code-agent',
+        permission: { title: '申请读取委托邮件与内部附件', reason: '需要打开委托涉及的原始邮件和附件，核实时间、负责人及材料版本。', scope: '仅查阅本轮委托对应的材料；不访问其他邮件，不转发附件。', confirmLabel: '允许查阅相关材料' } },
       { title: '核对信息和冲突', role: '信息核对', summary: '交叉核对来源，列出缺失和说法不一致的事项。', assigneeId: 'data-agent' },
       { title: '整理并交付一页简报', role: '简报整理', summary: '列出关键结论、负责人、待办和出处。', assigneeId: 'file-agent' },
     ],
@@ -119,7 +129,8 @@ const scenarios: readonly Scenario[] = [
     conversationTitle: '跨入口项目简报',
     goal: '汇总多个入口的项目消息，输出带待确认事项的简报。',
     steps: [
-      { title: '汇集邮件、群聊和表单', role: '入口汇集', summary: '按入口登记消息及其时间。', assigneeId: 'file-agent' },
+      { title: '汇集邮件、群聊和表单', role: '入口汇集', summary: '按入口登记消息及其时间。', assigneeId: 'file-agent',
+        permission: { title: '申请读取项目内部沟通记录', reason: '需要交叉核对项目邮件、工作群记录和表单，材料包含内部沟通内容。', scope: '只读访问当前项目指定的三个入口；不读取其他会话，不发送消息。', confirmLabel: '允许读取项目记录' } },
       { title: '合并同一事件', role: '事件归类', summary: '归并重复提及，标记不同入口的冲突。', assigneeId: 'review-agent' },
       { title: '输出项目简报', role: '简报整理', summary: '将结论分为时间、变更与待确认事项。', assigneeId: 'app-agent' },
     ],
@@ -170,7 +181,7 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
     if (cycle) this.roundIndex = (this.roundIndex + 1) % cycle.cases.length
   }
 
-  showProgress(tick: number, delivered: ReadonlySet<string>) {
+  showProgress(tick: number, delivered: ReadonlySet<string>, blockedStep?: number) {
     const [main] = this.getConversations()
     const current = this.currentCase
     const at = new Date().toISOString()
@@ -180,18 +191,19 @@ export class ScenarioOfficeDataSource extends ExampleOfficeDataSource {
       const progress = Math.max(0, Math.min(100, Math.floor(phase * 100 / ticksPerStep)))
       const awaitingApproval = this.scenario.listingApproval && index === this.scenario.steps.length - 1 && phase === 0
       const status = phase < 0 || awaitingApproval || !delivered.has(this.scenario.steps[index].assigneeId)
-        ? 'queued' : progress === 100 ? 'completed' : 'running'
+        ? 'queued' : index === blockedStep ? 'blocked' : progress === 100 ? 'completed' : 'running'
       if (status !== 'queued' && status !== task.status) {
         events.unshift({
           id: `scenario-progress-${crypto.randomUUID()}`,
-          kind: status === 'running' ? 'task.started' : 'task.completed',
+          kind: status === 'blocked' ? 'task.blocked' : status === 'running' ? 'task.started' : 'task.completed',
           taskId: task.id,
           employeeId: task.assigneeId,
-          summary: `${status === 'running' ? '开始' : '完成'}「${task.title}」`,
+          summary: `${status === 'blocked' ? '等待授权后执行' : status === 'running' ? '开始' : '完成'}「${task.title}」`,
           occurredAt: at,
         })
       }
-      const summary = current?.handoffs?.[index] ?? this.scenario.steps[index].summary
+      const summary = status === 'blocked' ? `等待授权：${this.scenario.steps[index].permission!.title}。`
+        : current?.handoffs?.[index] ?? this.scenario.steps[index].summary
       if (task.status === status && task.progress === progress && task.summary === summary) return task
       return { ...task, summary, status, progress, updatedAt: at }
     })
@@ -231,6 +243,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
   private stepStartedMs?: number
   private shownTick = 0
   private approval?: { id: string; choice?: string }
+  private manualPermission?: { id?: string; granted?: boolean }
   private started = false
   private restMs?: number
 
@@ -250,15 +263,21 @@ export class ScenarioDemoSource extends OfficeDemoSource {
 
   startAutomatically() {
     if (this.startupDelayMs === undefined || this.started) return
-    try { this.setEnabled(true) }
+    try { this.setRunning(true, 'automatic') }
     catch (error) { this.fail(error instanceof Error ? error.message : '暂时无法开始演示') }
   }
 
   override setEnabled(enabled: boolean) {
+    this.setRunning(enabled, 'manual')
+  }
+
+  private setRunning(enabled: boolean, origin: 'manual' | 'automatic') {
     if (this.data.scenario.resultOnly) return
     if (enabled === this.isRunning) return
     if (!enabled) this.handoffs.stop()
     super.setEnabled(enabled)
+    if (this.manualPermission?.id) this.getSession().decisions.dismiss(this.manualPermission.id)
+    this.manualPermission = enabled && origin === 'manual' ? {} : undefined
     this.resetProgress()
     if (!enabled) return
 
@@ -282,7 +301,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     }))
     this.handoffs.visit(stops, handoffSpeechMs, actorId => {
       this.delivered.add(actorId)
-      this.data.showProgress(this.shownTick, this.delivered)
+      this.showProgress()
     }, () => { this.assigning = false })
   }
 
@@ -300,6 +319,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
 
   override tick(elapsedMs: number) {
     if (!this.isRunning || this.scene.isEditing) return
+    if (this.manualPermission?.id && !this.checkManualPermission()) return
     if (this.restMs !== undefined) {
       this.restMs = Math.max(0, this.restMs - elapsedMs)
       // Finish an in-flight reply before changing the case it describes.
@@ -310,8 +330,6 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       return
     }
     const step = Math.floor(this.shownTick / ticksPerStep)
-    const assignee = this.data.scenario.steps[step]?.assigneeId
-    const canAdvance = assignee !== undefined && this.delivered.has(assignee)
     try {
       this.handoffs.tick()
     } catch (error) {
@@ -320,12 +338,15 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       this.fail(error instanceof Error ? error.message : '暂时无法完成任务交接')
       return
     }
+    const assignee = this.data.scenario.steps[step]?.assigneeId
+    const canAdvance = assignee !== undefined && this.delivered.has(assignee)
+    if (canAdvance && !this.checkManualPermission()) return
     const { steps, listingApproval } = this.data.scenario
     if (canAdvance && listingApproval && step === steps.length - 1 && !this.checkListingApproval(listingApproval)) return
-    // Include handoffs in the five-minute round, but pause its clock for human approval.
+    // Include handoffs in the scenario's round, but pause its clock for human approval.
     this.elapsedMs += elapsedMs
     if (canAdvance) {
-      const workDurationMs = roundDurationMs - (this.data.currentCase ? betweenRoundsMs : 0)
+      const workDurationMs = (this.data.scenario.roundDurationMs ?? roundDurationMs) - (this.data.currentCase ? betweenRoundsMs : 0)
       const stepEnd = (step + 1) * workDurationMs / steps.length
       // Only begin showing work after this member has acknowledged the handoff.
       this.stepStartedMs ??= this.elapsedMs - elapsedMs
@@ -333,7 +354,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       const tick = step * ticksPerStep + Math.floor(progress * ticksPerStep)
       if (tick !== this.shownTick) {
         this.shownTick = tick
-        this.data.showProgress(tick, this.delivered)
+        this.showProgress()
       }
       if (progress === 1) this.stepStartedMs = undefined
     }
@@ -347,6 +368,44 @@ export class ScenarioDemoSource extends OfficeDemoSource {
     const approval = this.approval
     if (!approval) return undefined
     return approval.choice ?? this.getSession().decisions.getSnapshot().records.find(record => record.request.id === approval.id)?.choiceId
+  }
+
+  private showProgress() {
+    const step = Math.floor(this.shownTick / ticksPerStep)
+    const blocked = this.manualPermission && !this.manualPermission.granted && this.data.scenario.steps[step]?.permission
+    this.data.showProgress(this.shownTick, this.delivered, blocked ? step : undefined)
+  }
+
+  private checkManualPermission() {
+    const permission = this.manualPermission
+    if (!permission || permission.granted) return true
+    const step = this.data.scenario.steps[Math.floor(this.shownTick / ticksPerStep)]
+    const operation = step?.permission
+    if (!operation || !this.delivered.has(step.assigneeId)) return true
+    const { chat, decisions } = this.getSession()
+    if (!chat.getSnapshot().ready) return false
+    if (!chat.getSnapshot().conversations.some(item => item.id === 'main')) {
+      this.setEnabled(false)
+      return false
+    }
+    if (permission.id) {
+      const snapshot = decisions.getSnapshot()
+      const choice = snapshot.records.find(record => record.request.id === permission.id)?.choiceId
+      if (choice === 'confirm') { permission.granted = true; this.showProgress(); return true }
+      if (choice === 'reject' || !snapshot.pending.some(request => request.id === permission.id)) this.setEnabled(false)
+      return false
+    }
+    const employee = this.scene.readActors().find(actor => actor.id === step.assigneeId)
+    const id = `demo-permission-${crypto.randomUUID()}`
+    if (decisions.enqueue({
+      id, teamId: this.scene.sceneId, conversationId: 'main', kind: 'confirmation',
+      requester: { name: `${employee?.name ?? '任务负责人'} · ${step.role}`, appearanceId: employee?.templateId ?? step.assigneeId },
+      title: operation.title,
+      description: `执行「${step.title}」前，${operation.reason}\n授权范围：${operation.scope}\n仅在本次本地演示中模拟此操作。`,
+      confirmLabel: operation.confirmLabel, rejectLabel: '拒绝并停止',
+    })) permission.id = id
+    else { this.setEnabled(false); this.fail('暂时无法提交资料访问请求') }
+    return false
   }
 
   private checkListingApproval(approval: NonNullable<Scenario['listingApproval']>) {
@@ -367,7 +426,8 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       }
       return choice === 'confirm'
     }
-    const leader = this.scene.readActors().find(actor => actor.id === 'office-lead')
+    const step = this.data.scenario.steps.at(-1)!
+    const employee = this.scene.readActors().find(actor => actor.id === step.assigneeId)
     const id = `listing-${crypto.randomUUID()}`
     if (decisions.enqueue({
       ...approval,
@@ -375,7 +435,7 @@ export class ScenarioDemoSource extends OfficeDemoSource {
       teamId: this.scene.sceneId,
       conversationId: 'main',
       kind: 'confirmation',
-      requester: { name: leader?.name ?? '办公室负责人', appearanceId: leader?.templateId ?? 'office-lead' },
+      requester: { name: `${employee?.name ?? '发布负责人'} · ${step.role}`, appearanceId: employee?.templateId ?? step.assigneeId },
       confirmLabel: '确认上架',
       rejectLabel: '暂不上架',
     })) {
@@ -478,6 +538,10 @@ export class ScenarioDemoSource extends OfficeDemoSource {
   }
 
   private progressReply(tasks: DashboardConversation['tasks']) {
+    if (this.manualPermission?.id && !this.manualPermission.granted) {
+      const request = this.getSession().decisions.getSnapshot().pending.find(item => item.id === this.manualPermission?.id)
+      if (request) return `${request.requester.name}正在${request.title}，对应任务等待授权。请在「待你决定」中处理后继续。`
+    }
     const completed = tasks.filter(task => task.status === 'completed').length
     const running = tasks.find(task => task.status === 'running')
     const next = tasks.find(task => task.status === 'queued')

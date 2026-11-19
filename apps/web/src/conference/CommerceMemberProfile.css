@@ -1,0 +1,9 @@
+.commerce-member-profile { display: grid; gap: 16px; margin-bottom: 18px; color: #65786c; font-size: 12px; line-height: 1.7; }
+.commerce-member-profile h3 { margin: 0 0 6px; color: #455e4e; font-size: 12px; font-weight: 600; }
+.commerce-member-profile p { margin: 0; }
+.commerce-member-profile ul, .commerce-member-profile ol { display: grid; gap: 6px; margin: 0; padding-left: 17px; }
+.commerce-member-profile li::marker { color: #71937d; }
+.commerce-member-focus { padding: 10px 12px; border-left: 2px solid #93b39d; border-radius: 0 6px 6px 0; background: #f1f6f1; }
+.commerce-member-profile[data-expanded=true] { gap: 20px; font-size: 14px; }
+.commerce-member-profile[data-expanded=true] h3 { margin: 0 0 8px; font-size: 14px; }
+.commerce-member-profile .commerce-member-footnote { color: #8b978f; font-size: 11px; }
